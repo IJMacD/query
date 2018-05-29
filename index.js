@@ -15,38 +15,20 @@ runQuery(query);
  * @param {string} query 
  */
 function parseQuery (query) {
-    let unparsed = query;
+    
+    const parts = clauses
+        .map(clause => ({ clause, start: query.indexOf(clause) }))
+        .filter(o => o.start != -1)
+        .sort((a,b) => a.start - b.start);
+    
     const parsed = {};
-    while (unparsed.length > 0) {
-        
-        // Go through each possible type of clause to see if our unparsed 
-        // string starts with one of them.
-        // Using `Array.prototype.find` so that we can short circuit it.
-        clauses.find(clause => {
-            const clauseLower = clause.toLowerCase();
-            if (unparsed.startsWith(clause) || unparsed.startsWith(clauseLower)) {
-                
-                unparsed = unparsed.substr(clause.length + 1);
 
-                // We've found which clause we're dealing with.
-                // In order to find the end we look for the beginning of the next.
-                let minStart = unparsed.length;
-                clauses.forEach(cl2 => {
-                    const cl2Lower = cl2.toLowerCase();
-                    const index = unparsed.indexOf(cl2);
-                    if (index != -1) minStart = Math.min(minStart, index);
-                    const indexLower = unparsed.indexOf(cl2Lower);
-                    if (indexLower != -1) minStart = Math.min(minStart, indexLower);
-                });
-                
-                parsed[clauseLower] = unparsed.substring(0, minStart).trim();
-                unparsed = unparsed.substr(minStart);
-
-                return true;
-            }
-            return false;
-        });
+    for(let i = 0; i < parts.length; i++) {
+        const { clause, start } = parts[i];
+        const end = i < parts.length - 1 ? parts[i+1].start : query.length;
+        parsed[clause.toLowerCase()] = query.substring(start + clause.length, end).trim();
     }
+
     return parsed;
 }
 
@@ -54,6 +36,8 @@ async function runQuery (query) {
     await iL.init({ API_ROOT: process.env.API_ROOT });
 
     const parsedQuery = parseQuery(query);
+
+    // console.log(parsedQuery);
 
     if (parsedQuery.select && parsedQuery.from) {
         const cols = parsedQuery.select.split(",").map(s => s.trim());
@@ -91,7 +75,12 @@ async function runQuery (query) {
 
         if (results) {
             if (orderby) {
-                results = results.sort((a,b) => a[orderby] < b[orderby] ? -1 : a[orderby] > b[orderby] ? 1 : 0);
+                results = results.sort((a,b) => {
+                    const va = a[orderby];
+                    const vb = b[orderby];
+                    if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(va))) return va - vb;
+                    return va < vb ? -1 : va > vb ? 1 : 0;
+                });
             }
 
             const colNames = [];

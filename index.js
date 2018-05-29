@@ -65,12 +65,26 @@ async function runQuery (query) {
             results = await iL.Lesson.find({});
         } else if (table === "Room") {
             results = await iL.Room.all();
-
-            if (whereMatch && whereMatch[1] === "centre") {
-                results = results.filter(r => r.centre == whereMatch[3]);
-            }
         } else if (table === "Term") {
             results = await iL.Term.all();
+        }
+
+        if (whereMatch) {
+            let filterFn;
+            switch (whereMatch[2]) {
+                case '=':
+                    filterFn = r => r[whereMatch[1]] == whereMatch[3];
+                    break;
+                case '<':
+                    filterFn = r => r[whereMatch[1]] < whereMatch[3];
+                    break;
+                case '>':
+                    filterFn = r => r[whereMatch[1]] > whereMatch[3];
+                    break;
+            }
+            if (filterFn) {
+                results = results.filter(filterFn);
+            }
         }
 
         if (results) {

@@ -70,7 +70,7 @@ async function runQuery (query) {
         } else if (table === "User") {
             results = await iL.User.all();
         }
-
+        
         if (whereMatch) {
             let filterFn;
             switch (whereMatch[2]) {
@@ -110,12 +110,7 @@ async function runQuery (query) {
             console.log(colNames.join("\t"));
             console.log(colNames.map(c => "------------".substr(0,c.length)).join("\t"));
 
-            results.forEach(r => console.log(cols.map(col => {
-                if (col === "*") {
-                    return Object.values(r).map(formatCol).join("\t");
-                }
-                return formatCol(r[col])
-            }).join("\t")));
+            results.forEach(r => console.log(colNames.map(col => formatCol(r[col])).join("\t")));
         }
     }
 }
@@ -123,6 +118,9 @@ async function runQuery (query) {
 function formatCol (data) {
     if (data instanceof Date) {
         return moment(data).format("ddd DD/MM HH:mm");
+    }
+    if (data.toString() === "[object Object]") {
+        return "";
     }
     return data;
 }

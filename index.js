@@ -2,7 +2,7 @@ require('fetch-everywhere');
 require('dotenv').config();
 const moment = require('moment');
 
-const queryRegex = /SELECT ([^\s]*) FROM ([^\s]*)(?: WHERE ([^\s]*))?(?: ORDER BY ([^\s]*))?/i;
+const clauses = ["SELECT", "FROM", "WHERE", "ORDER BY", ];
 
 const [ node, script, ...rest ] = process.argv;
 
@@ -10,17 +10,57 @@ const query = rest.join(" ");
 
 runQuery(query);
 
+/**
+ * 
+ * @param {string} query 
+ */
+function parseQuery (query) {
+    let unparsed = query;
+    const parsed = {};
+    while (unparsed.length > 0) {
+        
+        // Go through each possible type of clause to see if our unparsed 
+        // string starts with one of them.
+        // Using `Array.prototype.find` so that we can short circuit it.
+        clauses.find(clause => {
+            const clauseLower = clause.toLowerCase();
+            if (unparsed.startsWith(clause) || unparsed.startsWith(clauseLower)) {
+                
+                unparsed = unparsed.substr(clause.length + 1);
+
+                // We've found which clause we're dealing with.
+                // In order to find the end we look for the beginning of the next.
+                let minStart = unparsed.length;
+                clauses.forEach(cl2 => {
+                    const cl2Lower = cl2.toLowerCase();
+                    const index = unparsed.indexOf(cl2);
+                    if (index != -1) minStart = Math.min(minStart, index);
+                    const indexLower = unparsed.indexOf(cl2Lower);
+                    if (indexLower != -1) minStart = Math.min(minStart, indexLower);
+                });
+                
+                parsed[clauseLower] = unparsed.substring(0, minStart).trim();
+                unparsed = unparsed.substr(minStart);
+
+                return true;
+            }
+            return false;
+        });
+    }
+    return parsed;
+}
+
 async function runQuery (query) {
     await iL.init({ API_ROOT: process.env.API_ROOT });
 
-    const match = queryRegex.exec(query);
+    const parsedQuery = parseQuery(query);
 
-    if (match) {
-        const cols = match[1].split(",");
-        const table = match[2];
-        const where = match[3];
+    if (parsedQuery.select && parsedQuery.from) {
+        const cols = parsedQuery.select.split(",").map(s => s.trim());
+        const table = parsedQuery.from;
+        const where = parsedQuery.where;
         const whereMatch = where && where.match(/([^\s]*)\s*([=><])\s*'?([^']*)'?/);
-        const orderby = match[4];
+        const orderby = parsedQuery['order by'];
         /** @type {Array} */
         let results;
 

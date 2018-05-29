@@ -11,16 +11,16 @@ const query = rest.join(" ");
 runQuery(query);
 
 /**
- * 
- * @param {string} query 
+ *
+ * @param {string} query
  */
 function parseQuery (query) {
-    
+
     const parts = clauses
         .map(clause => ({ clause, start: query.indexOf(clause) }))
         .filter(o => o.start != -1)
         .sort((a,b) => a.start - b.start);
-    
+
     const parsed = {};
 
     for(let i = 0; i < parts.length; i++) {
@@ -53,7 +53,7 @@ async function runQuery (query) {
         if (table === "Tutor") {
             if (whereMatch) {
                 if (whereMatch[1] === "name") {
-                    results = [await iL.Tutor.find(whereMatch[3])]; 
+                    results = [await iL.Tutor.find(whereMatch[3])];
                 } else if (whereMatch[1] === "id") {
                     results = [iL.Tutor.get(whereMatch[3])];
                 }
@@ -70,7 +70,7 @@ async function runQuery (query) {
         } else if (table === "User") {
             results = await iL.User.all();
         }
-        
+
         if (whereMatch) {
             let filterFn;
             switch (whereMatch[2]) {
@@ -91,11 +91,13 @@ async function runQuery (query) {
 
         if (results) {
             if (orderby) {
+                const [ col, asc_desc ] = orderby.split(" ");
+                const desc = asc_desc === "DESC" ? -1 : 1;
                 results = results.sort((a,b) => {
-                    const va = a[orderby];
-                    const vb = b[orderby];
-                    if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(va))) return va - vb;
-                    return va < vb ? -1 : va > vb ? 1 : 0;
+                    const va = a[col];
+                    const vb = b[col];
+                    if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(va))) return (va - vb) * desc;
+                    return (va < vb ? -1 : va > vb ? 1 : 0) * desc;
                 });
             }
 

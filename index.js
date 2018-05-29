@@ -67,6 +67,8 @@ async function runQuery (query) {
             results = await iL.Room.all();
         } else if (table === "Term") {
             results = await iL.Term.all();
+        } else if (table === "User") {
+            results = await iL.User.all();
         }
 
         if (whereMatch) {

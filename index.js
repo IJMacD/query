@@ -72,20 +72,26 @@ async function runQuery (query) {
         }
 
         if (whereMatch) {
-            let filterFn;
+            let compare;
             switch (whereMatch[2]) {
                 case '=':
-                    filterFn = r => r[whereMatch[1]] == whereMatch[3];
+                    compare = (a,b) => a == b;
                     break;
                 case '<':
-                    filterFn = r => r[whereMatch[1]] < whereMatch[3];
+                    compare = (a,b) => a < b;
                     break;
                 case '>':
-                    filterFn = r => r[whereMatch[1]] > whereMatch[3];
+                    compare = (a,b) => a > b;
                     break;
             }
-            if (filterFn) {
-                results = results.filter(filterFn);
+            if (compare) {
+                results = results.filter(r => {
+                    const a = r[whereMatch[1]];
+                    const b = whereMatch[3];
+                    const na = parseFloat(a);
+                    const nb = parseFloat(b);
+                    return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
+                });
             }
         }
 

@@ -205,7 +205,7 @@ async function runQuery (query) {
                         });
                     }
                     else {
-                        const valLength = formatCol(r[c]).length;
+                        const valLength = formatCol(resolveValue(r, c)).length;
                         if (valLength > c.length) {
                             colHeaders.push(c + repeat(" ", valLength - c.length));
                         } else {

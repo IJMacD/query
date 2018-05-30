@@ -23,6 +23,7 @@ runQuery(query).catch(e => console.error(e.message));
 /**
  *
  * @param {string} query
+ * @return {{ [clause: string]: string }}
  */
 function parseQuery (query) {
 
@@ -52,7 +53,7 @@ function parseWhere (where) {
     }
 
     if (where.includes("(")) {
-        throw new Error("Can't parse complicated where clauses.\n\t" + where + "\n\t" + "                                                                                    ".substr(0, where.indexOf("(")) + "^");
+        throw new Error("Can't parse complicated where clauses.\n\t" + where + "\n\t" + repeat(" ", where.indexOf("(")) + "^");
     }
 
     const whereParts = where.split("AND");
@@ -87,6 +88,7 @@ async function runQuery (query) {
     if (parsedQuery.select && parsedQuery.from) {
         const cols = parsedQuery.select.split(",").map(s => s.trim());
         const table = parsedQuery.from;
+        const parsedTables = table.split(",").map(s => s.trim());
         const where = parsedQuery.where;
         const parsedWhere = parseWhere(where);
         const orderby = parsedQuery['order by'];
@@ -125,13 +127,15 @@ async function runQuery (query) {
             const colNames = [];
             for (const c of cols) {
                 if (c === "*" && results.length > 0) {
-                    colNames.push(...Object.keys(results[0]));
+                    const r = results[0];
+                    // only add "primitive" columns
+                    colNames.push(...Object.keys(r).filter(k => formatCol(r[k])));
                 }
                 else colNames.push(c);
             }
 
             output(colNames.join("\t"));
-            output(colNames.map(c => "------------".substr(0,c.length)).join("\t"));
+            output(colNames.map(c => repeat("-", c.length)).join("\t"));
 
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
@@ -159,7 +163,21 @@ async function runQuery (query) {
                 });
             }
 
-            results.forEach(r => output(colNames.map(col => formatCol(r[col])).join("\t")));
+            results.forEach(r => output(colNames.map(col => {
+                let val;
+
+                if (col.includes(".")) {
+                    // resolve path
+                    val = r;
+                    for (const name of col.split(".")) {
+                        val = val[name] || null;
+                        if (val === null) break;
+                    }
+                }
+                else val = r[col];
+
+                return formatCol(val);
+            }).join("\t")));
         }
     }
 }
@@ -174,5 +192,17 @@ function formatCol (data) {
     if (data.toString() === "[object Object]") {
         return "";
     }
-    return data;
+    if (Array.isArray(data)) {
+        return "";
+    }
+    return data.toString();
+}
+
+/**
+ * 
+ * @param {string} char 
+ * @param {number} n 
+ */
+function repeat (char, n) {
+    return Array(n).join(char);
 }

@@ -4,11 +4,21 @@ const moment = require('moment');
 
 const clauses = ["SELECT", "FROM", "WHERE", "ORDER BY", ];
 
+const comparators = {
+    '=': (a,b) => a == b,
+    '<': (a,b) => a < b,
+    '>': (a,b) => a > b,
+    '<=': (a,b) => a <= b,
+    '>=': (a,b) => a >= b,
+};
+
 const [ node, script, ...rest ] = process.argv;
 
 const query = rest.join(" ");
 
-runQuery(query);
+const output = console.log.bind(console);
+
+runQuery(query).catch(e => console.error(e.message));
 
 /**
  *
@@ -32,6 +42,41 @@ function parseQuery (query) {
     return parsed;
 }
 
+/**
+ * 
+ * @param {string} where 
+ */
+function parseWhere (where) {
+    if (!where) {
+        return;
+    }
+
+    if (where.includes("(")) {
+        throw new Error("Can't parse complicated where clauses.\n\t" + where + "\n\t" + "                                                                                    ".substr(0, where.indexOf("(")) + "^");
+    }
+
+    const whereParts = where.split("AND");
+
+    const out = {
+        type: "AND",
+        children: [],
+    };
+
+    whereParts.forEach(part => {
+        const match = part.match(/([^\s]*)\s*([=><]+)\s*'?([^']*)'?/);
+        if (match) {
+            out.children.push({
+                type: "OPERATOR",
+                operator: match[2],
+                operand1: match[1],
+                operand2: match[3],
+            });
+        }
+    });
+
+    return out;
+}
+
 async function runQuery (query) {
     await iL.init({ API_ROOT: process.env.API_ROOT });
 
@@ -43,7 +88,7 @@ async function runQuery (query) {
         const cols = parsedQuery.select.split(",").map(s => s.trim());
         const table = parsedQuery.from;
         const where = parsedQuery.where;
-        const whereMatch = where && where.match(/([^\s]*)\s*([=><])\s*'?([^']*)'?/);
+        const parsedWhere = parseWhere(where);
         const orderby = parsedQuery['order by'];
         /** @type {Array} */
         let results;
@@ -51,14 +96,19 @@ async function runQuery (query) {
         // console.log(match);
         // console.log(whereMatch);
         if (table === "Tutor") {
-            if (whereMatch) {
-                if (whereMatch[1] === "name") {
-                    results = [await iL.Tutor.find(whereMatch[3])];
-                } else if (whereMatch[1] === "id") {
-                    results = [iL.Tutor.get(whereMatch[3])];
+            if (parsedWhere) {
+                for (let child of parsedWhere.children){
+                    if (child.operand1 === "name" && child.operator === "=") {
+                        results = [await iL.Tutor.find(child.operand2)];
+                        break;
+                    }
+                    if (child.operand1 === "id" && child.operator === "=") {
+                        results = [iL.Tutor.get(child.operand2)];
+                        break;
+                    }
                 }
             }
-            else {
+            if (!results) {
                 results = await iL.Tutor.all();
             }
         } else if (table === "Lesson") {
@@ -71,31 +121,33 @@ async function runQuery (query) {
             results = await iL.User.all();
         }
 
-        if (whereMatch) {
-            let compare;
-            switch (whereMatch[2]) {
-                case '=':
-                    compare = (a,b) => a == b;
-                    break;
-                case '<':
-                    compare = (a,b) => a < b;
-                    break;
-                case '>':
-                    compare = (a,b) => a > b;
-                    break;
-            }
-            if (compare) {
-                results = results.filter(r => {
-                    const a = r[whereMatch[1]];
-                    const b = whereMatch[3];
-                    const na = parseFloat(a);
-                    const nb = parseFloat(b);
-                    return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
-                });
-            }
-        }
-
         if (results) {
+            const colNames = [];
+            for (const c of cols) {
+                if (c === "*" && results.length > 0) {
+                    colNames.push(...Object.keys(results[0]));
+                }
+                else colNames.push(c);
+            }
+
+            output(colNames.join("\t"));
+            output(colNames.map(c => "------------".substr(0,c.length)).join("\t"));
+
+            if (parsedWhere) {
+                for (const child of parsedWhere.children) {
+                    const compare = comparators[child.operator];
+                    if (compare) {
+                        results = results.filter(r => {
+                            const a = r[child.operand1];
+                            const b = child.operand2;
+                            const na = parseFloat(a);
+                            const nb = parseFloat(b);
+                            return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
+                        });
+                    }
+                }
+            }
+
             if (orderby) {
                 const [ col, asc_desc ] = orderby.split(" ");
                 const desc = asc_desc === "DESC" ? -1 : 1;
@@ -107,23 +159,15 @@ async function runQuery (query) {
                 });
             }
 
-            const colNames = [];
-            cols.forEach(c => {
-                if (c === "*" && results.length > 0) {
-                    colNames.push(...Object.keys(results[0]));
-                }
-                else colNames.push(c);
-            });
-
-            console.log(colNames.join("\t"));
-            console.log(colNames.map(c => "------------".substr(0,c.length)).join("\t"));
-
-            results.forEach(r => console.log(colNames.map(col => formatCol(r[col])).join("\t")));
+            results.forEach(r => output(colNames.map(col => formatCol(r[col])).join("\t")));
         }
     }
 }
 
 function formatCol (data) {
+    if (data === null || typeof data === "undefined") {
+        return "NULL";
+    }
     if (data instanceof Date) {
         return moment(data).format("ddd DD/MM HH:mm");
     }

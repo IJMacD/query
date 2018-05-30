@@ -141,7 +141,7 @@ async function runQuery (query) {
 
             if (needsLogin ||
                 cols.some(c => c.startsWith("attendees")) ||
-                orderby.startsWith("attendees")
+                orderby && orderby.startsWith("attendees")
             ) {
                 // If we are going to do anything with attendees, we need to be logged in
                 await iL.login(IL_USER, IL_PASS);
@@ -170,7 +170,7 @@ async function runQuery (query) {
                     const compare = comparators[child.operator];
                     if (compare) {
                         results = results.filter(r => {
-                            const a = r[child.operand1];
+                            const a = resolveValue(r, child.operand1);
                             const b = child.operand2;
                             const na = parseFloat(a);
                             const nb = parseFloat(b);
@@ -220,8 +220,8 @@ async function runQuery (query) {
                 const [ col, asc_desc ] = orderby.split(" ");
                 const desc = asc_desc === "DESC" ? -1 : 1;
                 results = results.sort((a,b) => {
-                    const va = a[col];
-                    const vb = b[col];
+                    const va = resolveValue(a, col);
+                    const vb = resolveValue(b, col);
                     if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(va))) return (va - vb) * desc;
                     return (va < vb ? -1 : va > vb ? 1 : 0) * desc;
                 });
@@ -231,23 +231,22 @@ async function runQuery (query) {
                 results = results.slice(0, parseInt(parsedQuery.limit));
             }
 
-            results.forEach(r => output(colNames.map(col => {
-                let val;
-
-                if (col.includes(".")) {
-                    // resolve path
-                    val = r;
-                    for (const name of col.split(".")) {
-                        val = val[name];
-                        if (typeof val === "undefined") break;
-                    }
-                }
-                else val = r[col];
-
-                return formatCol(val);
-            }).join("\t")));
+            results.forEach(r => output(colNames.map(col => formatCol(resolveValue(r, col))).join("\t")));
         }
     }
+}
+
+function resolveValue (row, col) {
+    if (col.includes(".")) {
+        // resolve path
+        let val = row;
+        for (const name of col.split(".")) {
+            val = val[name];
+            if (typeof val === "undefined") break;
+        }
+        return val;
+    }
+    return row[col];
 }
 
 /**

@@ -117,27 +117,40 @@ async function runQuery (query) {
         } else if (table === "Lesson") {
             let start;
             let end;
-            
+            let needsLogin = false;
+
             if (parsedWhere) {
-                parsedWhere.children = parsedWhere.children.filter(child => {
+                for (const child of parsedWhere.children) {
                     if (child.operand1 === "start" || child.operand1 == "end")  {
-                        if (child.operator === ">") {
-                            start = new Date(child.operand2);
-                        } else if (child.operator === "<") {
-                            end = new Date(child.operand2);
+                        if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
+                            start = moment(new Date(child.operand2)).startOf("day").toDate();
+                            child.operand2 = start;
+                        } else if (child.operator === "<" || child.operator === "<=" || child.operator === "=") {
+                            end = moment(new Date(child.operand2)).endOf("day").toDate();
+                            child.operand2 = end;
                         }
-                        return false;
                     }
-                    return true;
-                });
+                    else if (child.operand1.startsWith("attendees")) {
+                        needsLogin = true;
+                    }
+                }
             }
 
             if (!start) { start = new Date(); }
             if (!end) { end = start; }
 
+            if (needsLogin ||
+                cols.some(c => c.startsWith("attendees")) ||
+                orderby.startsWith("attendees")
+            ) {
+                // If we are going to do anything with attendees, we need to be logged in
+                await iL.login(IL_USER, IL_PASS);
+            }
+
             results = await iL.Lesson.find({ start, end });
         } else if (table === "Attendance") {
             await iL.login(IL_USER, IL_PASS);
+
             results = [];
             const lessons = await iL.Lesson.find({});
             for (const lesson of lessons) {
@@ -202,8 +215,8 @@ async function runQuery (query) {
                     // resolve path
                     val = r;
                     for (const name of col.split(".")) {
-                        val = val[name] || null;
-                        if (val === null) break;
+                        val = val[name];
+                        if (typeof val === "undefined") break;
                     }
                 }
                 else val = r[col];

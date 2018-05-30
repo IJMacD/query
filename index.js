@@ -118,6 +118,7 @@ async function runQuery (query) {
             let start;
             let end;
             let needsLogin = false;
+            let tutor;
 
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
@@ -133,6 +134,12 @@ async function runQuery (query) {
                     else if (child.operand1.startsWith("attendees")) {
                         needsLogin = true;
                     }
+                    else if (child.operand1 === "tutor.id" && child.operator === "=") {
+                        tutor = iL.Tutor.get(child.operand2);
+                    }
+                    else if (child.operand1 === "tutor.name" && child.operator === "=") {
+                        tutor = await iL.Tutor.find(child.operand2);
+                    }
                 }
             }
 
@@ -147,7 +154,8 @@ async function runQuery (query) {
                 await iL.login(IL_USER, IL_PASS);
             }
 
-            results = await iL.Lesson.find({ start, end });
+            results = await iL.Lesson.find({ start, end, tutor });
+
         } else if (table === "Attendance") {
             await iL.login(IL_USER, IL_PASS);
 

@@ -115,7 +115,27 @@ async function runQuery (query) {
                 results = await iL.Tutor.all();
             }
         } else if (table === "Lesson") {
-            results = await iL.Lesson.find({});
+            let start;
+            let end;
+            
+            if (parsedWhere) {
+                parsedWhere.children = parsedWhere.children.filter(child => {
+                    if (child.operand1 === "start" || child.operand1 == "end")  {
+                        if (child.operator === ">") {
+                            start = new Date(child.operand2);
+                        } else if (child.operator === "<") {
+                            end = new Date(child.operand2);
+                        }
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            if (!start) { start = new Date(); }
+            if (!end) { end = start; }
+
+            results = await iL.Lesson.find({ start, end });
         } else if (table === "Attendance") {
             await iL.login(IL_USER, IL_PASS);
             results = [];

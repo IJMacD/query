@@ -2,7 +2,7 @@ require('fetch-everywhere');
 require('dotenv').config();
 const moment = require('moment');
 
-const clauses = ["SELECT", "FROM", "WHERE", "ORDER BY", ];
+const clauses = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT" ];
 
 const comparators = {
     '=': (a,b) => a == b,
@@ -88,15 +88,13 @@ async function runQuery (query) {
     if (parsedQuery.select && parsedQuery.from) {
         const cols = parsedQuery.select.split(",").map(s => s.trim());
         const table = parsedQuery.from;
-        const parsedTables = table.split(",").map(s => s.trim());
+        // const parsedTables = table.split(",").map(s => s.trim());
         const where = parsedQuery.where;
         const parsedWhere = parseWhere(where);
         const orderby = parsedQuery['order by'];
         /** @type {Array} */
         let results;
 
-        // console.log(match);
-        // console.log(whereMatch);
         if (table === "Tutor") {
             if (parsedWhere) {
                 for (let child of parsedWhere.children){
@@ -163,6 +161,10 @@ async function runQuery (query) {
                 });
             }
 
+            if (parsedQuery.limit) {
+                results = results.slice(0, parseInt(parsedQuery.limit));
+            }
+
             results.forEach(r => output(colNames.map(col => {
                 let val;
 
@@ -204,5 +206,5 @@ function formatCol (data) {
  * @param {number} n 
  */
 function repeat (char, n) {
-    return Array(n).join(char);
+    return Array(n + 1).join(char);
 }

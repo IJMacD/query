@@ -2,6 +2,9 @@ require('fetch-everywhere');
 require('dotenv').config();
 const moment = require('moment');
 
+const IL_USER = "iain";
+const IL_PASS = "1234";
+
 const clauses = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT" ];
 
 const comparators = {
@@ -113,6 +116,13 @@ async function runQuery (query) {
             }
         } else if (table === "Lesson") {
             results = await iL.Lesson.find({});
+        } else if (table === "Attendance") {
+            await iL.login(IL_USER, IL_PASS);
+            results = [];
+            const lessons = await iL.Lesson.find({});
+            for (const lesson of lessons) {
+                results.push(...lesson.attendees);
+            }
         } else if (table === "Room") {
             results = await iL.Room.all();
         } else if (table === "Term") {

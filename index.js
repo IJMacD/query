@@ -24,9 +24,9 @@ const output = console.log.bind(console);
 runQuery(query).catch(e => console.error(e.message));
 
 /**
- *
+ * Break a flat text SQL query into its clauses
  * @param {string} query
- * @return {{ [clause: string]: string }}
+ * @return {{ from: string, select: string, where?: string, ["order by"]?: string, limit?: string, [clause: string]: string }}
  */
 function parseQuery (query) {
 
@@ -47,7 +47,7 @@ function parseQuery (query) {
 }
 
 /**
- * 
+ * Parse a where clause into a tree
  * @param {string} where 
  */
 function parseWhere (where) {
@@ -165,6 +165,21 @@ async function runQuery (query) {
         }
 
         if (results) {
+            if (parsedWhere) {
+                for (const child of parsedWhere.children) {
+                    const compare = comparators[child.operator];
+                    if (compare) {
+                        results = results.filter(r => {
+                            const a = r[child.operand1];
+                            const b = child.operand2;
+                            const na = parseFloat(a);
+                            const nb = parseFloat(b);
+                            return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
+                        });
+                    }
+                }
+            }
+
             const colNames = [];
             const colHeaders = [];
             for (const c of cols) {
@@ -200,21 +215,6 @@ async function runQuery (query) {
 
             output(colHeaders.join("\t"));
             output(colHeaders.map(c => repeat("-", c.length)).join("\t"));
-
-            if (parsedWhere) {
-                for (const child of parsedWhere.children) {
-                    const compare = comparators[child.operator];
-                    if (compare) {
-                        results = results.filter(r => {
-                            const a = r[child.operand1];
-                            const b = child.operand2;
-                            const na = parseFloat(a);
-                            const nb = parseFloat(b);
-                            return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
-                        });
-                    }
-                }
-            }
 
             if (orderby) {
                 const [ col, asc_desc ] = orderby.split(" ");

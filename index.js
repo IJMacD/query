@@ -7,6 +7,8 @@ const IL_PASS = "1234";
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY" ];
 const COUNT_REGEX = /COUNT\([^)]+\)/i;
+const SUM_REGEX = /SUM\(([^)]+)\)/i;
+const AVG_REGEX = /AVG\(([^)]+)\)/i;
 
 const comparators = {
     '=': (a,b) => a == b,
@@ -95,7 +97,7 @@ async function runQuery (query) {
         // const parsedTables = table.split(",").map(s => s.trim());
         const where = parsedQuery.where;
         const parsedWhere = parseWhere(where);
-        const orderby = parsedQuery['order by'];
+        const orderBy = parsedQuery['order by'];
         const groupBy = parsedQuery['group by'];
 
         /** @type {Array} */
@@ -150,8 +152,9 @@ async function runQuery (query) {
             if (!end) { end = start; }
 
             if (needsLogin ||
-                cols.some(c => c.startsWith("attendees")) ||
-                orderby && orderby.startsWith("attendees")
+                cols.some(c => c.includes("attendees")) ||
+                groupBy && groupBy.includes("attendees") ||
+                orderBy && orderBy.includes("attendees")
             ) {
                 // If we are going to do anything with attendees, we need to be logged in
                 await iL.login(IL_USER, IL_PASS);
@@ -195,11 +198,27 @@ async function runQuery (query) {
             const colHeaders = [];
             for (const c of cols) {
                 // If we're not grouping we can just short-circuit here
-                if (!groupBy && COUNT_REGEX.test(c)) {
-                    output(c);
-                    output(repeat("-", c.length));
-                    output(results.length);
-                    return;
+                if (!groupBy){
+                    if(COUNT_REGEX.test(c)) {
+                        output(c);
+                        output(repeat("-", c.length));
+                        output(results.length);
+                        return;
+                    }
+                    if(SUM_REGEX.test(c)) {
+                        const match = SUM_REGEX.exec(c);
+                        output(c);
+                        output(repeat("-", c.length));
+                        output(sumResults(results, match[1]));
+                        return;
+                    }
+                    if(AVG_REGEX.test(c)) {
+                        const match = AVG_REGEX.exec(c);
+                        output(c);
+                        output(repeat("-", c.length));
+                        output(avgResults(results, match[1]));
+                        return;
+                    }
                 }
                 if (results.length > 0) {
                     const r = results[0];
@@ -249,8 +268,8 @@ async function runQuery (query) {
                 results = Array.from(groupByMap.values()).map(a => a[0]);
             }
 
-            if (orderby) {
-                const [ col, asc_desc ] = orderby.split(" ");
+            if (orderBy) {
+                const [ col, asc_desc ] = orderBy.split(" ");
                 const desc = asc_desc === "DESC" ? -1 : 1;
                 results = results.sort((a,b) => {
                     const va = resolveValue(a, col);
@@ -265,9 +284,19 @@ async function runQuery (query) {
             }
 
             results.forEach(r => output(colNames.map(col => {
-                if (COUNT_REGEX.test(col) && groupBy) {
-                    return groupByMap.get(resolveValue(r, groupBy)).length;
-                } 
+                if (groupBy) {
+                    if (COUNT_REGEX.test(col)) {
+                        return groupByMap.get(resolveValue(r, groupBy)).length;
+                    } 
+                    if (SUM_REGEX.test(col)) {
+                        const match = SUM_REGEX.exec(col);
+                        return sumResults(groupByMap.get(resolveValue(r, groupBy)), match[1]);
+                    } 
+                    if (AVG_REGEX.test(col)) {
+                        const match = AVG_REGEX.exec(col);
+                        return avgResults(groupByMap.get(resolveValue(r, groupBy)), match[1]);
+                    } 
+                }
                 return formatCol(resolveValue(r, col));
             }).join("\t")));
         }
@@ -315,4 +344,24 @@ function formatCol (data) {
  */
 function repeat (char, n) {
     return Array(n + 1).join(char);
+}
+
+/**
+ *  
+ * @param {Array} results 
+ * @param {string} col 
+ * @return {number}
+ */
+function sumResults (results, col) {
+    return results.reduce((t,v) => t + parseFloat(resolveValue(v, col)), 0)
+}
+
+/**
+ *  
+ * @param {Array} results 
+ * @param {string} col 
+ * @return {number}
+ */
+function avgResults (results, col) {
+    return sumResults(results, col) / results.length;
 }

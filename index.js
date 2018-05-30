@@ -5,7 +5,8 @@ const moment = require('moment');
 const IL_USER = "iain";
 const IL_PASS = "1234";
 
-const clauses = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT" ];
+const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY" ];
+const COUNT_REGEX = /COUNT\([^)]+\)/i;
 
 const comparators = {
     '=': (a,b) => a == b,
@@ -26,11 +27,11 @@ runQuery(query).catch(e => console.error(e.message));
 /**
  * Break a flat text SQL query into its clauses
  * @param {string} query
- * @return {{ from: string, select: string, where?: string, ["order by"]?: string, limit?: string, [clause: string]: string }}
+ * @return {{ from?: string, select?: string, where?: string, ["order by"]?: string, limit?: string, ["group by"]?: string, [clause: string]: string }}
  */
 function parseQuery (query) {
 
-    const parts = clauses
+    const parts = CLAUSES
         .map(clause => ({ clause, start: query.indexOf(clause) }))
         .filter(o => o.start != -1)
         .sort((a,b) => a.start - b.start);
@@ -95,6 +96,8 @@ async function runQuery (query) {
         const where = parsedQuery.where;
         const parsedWhere = parseWhere(where);
         const orderby = parsedQuery['order by'];
+        const groupBy = parsedQuery['group by'];
+
         /** @type {Array} */
         let results;
 
@@ -191,7 +194,8 @@ async function runQuery (query) {
             const colNames = [];
             const colHeaders = [];
             for (const c of cols) {
-                if (/COUNT\([^)]+\)/i.test(c)) {
+                // If we're not grouping we can just short-circuit here
+                if (!groupBy && COUNT_REGEX.test(c)) {
                     output(c);
                     output(repeat("-", c.length));
                     output(results.length);
@@ -230,6 +234,21 @@ async function runQuery (query) {
             output(colHeaders.join("\t"));
             output(colHeaders.map(c => repeat("-", c.length)).join("\t"));
 
+            let groupByMap;
+            if (groupBy) {
+                groupByMap = new Map();
+                for(const row of results) {
+                    const key = resolveValue(row, groupBy);
+                    if (!groupByMap.has(key)) {
+                        groupByMap.set(key, []);
+                    }
+                    groupByMap.get(key).push(row);
+                }
+
+                // Just pick the first row from each group
+                results = Array.from(groupByMap.values()).map(a => a[0]);
+            }
+
             if (orderby) {
                 const [ col, asc_desc ] = orderby.split(" ");
                 const desc = asc_desc === "DESC" ? -1 : 1;
@@ -245,7 +264,12 @@ async function runQuery (query) {
                 results = results.slice(0, parseInt(parsedQuery.limit));
             }
 
-            results.forEach(r => output(colNames.map(col => formatCol(resolveValue(r, col))).join("\t")));
+            results.forEach(r => output(colNames.map(col => {
+                if (COUNT_REGEX.test(col) && groupBy) {
+                    return groupByMap.get(resolveValue(r, groupBy)).length;
+                } 
+                return formatCol(resolveValue(r, col));
+            }).join("\t")));
         }
     }
 }

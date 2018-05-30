@@ -166,17 +166,40 @@ async function runQuery (query) {
 
         if (results) {
             const colNames = [];
+            const colHeaders = [];
             for (const c of cols) {
-                if (c === "*" && results.length > 0) {
+                if (results.length > 0) {
                     const r = results[0];
-                    // only add "primitive" columns
-                    colNames.push(...Object.keys(r).filter(k => formatCol(r[k])));
+                    if (c === "*") {
+                        // only add "primitive" columns
+                        let newCols = Object.keys(r).filter(k => formatCol(r[k]));
+                        colNames.push(...newCols);
+                        newCols.forEach(c => {
+                            const valLength = formatCol(r[c]).length;
+                            if (valLength > c.length) {
+                                colHeaders.push(c + repeat(" ", valLength - c.length));
+                            } else {
+                                colHeaders.push(c);
+                            }
+                        });
+                    }
+                    else {
+                        const valLength = formatCol(r[c]).length;
+                        if (valLength > c.length) {
+                            colHeaders.push(c + repeat(" ", valLength - c.length));
+                        } else {
+                            colHeaders.push(c);
+                        }
+                        colNames.push(c);
+                    }
+                } else {
+                    colNames.push(c);
+                    colHeaders.push(c);
                 }
-                else colNames.push(c);
             }
 
-            output(colNames.join("\t"));
-            output(colNames.map(c => repeat("-", c.length)).join("\t"));
+            output(colHeaders.join("\t"));
+            output(colHeaders.map(c => repeat("-", c.length)).join("\t"));
 
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
@@ -227,6 +250,11 @@ async function runQuery (query) {
     }
 }
 
+/**
+ * 
+ * @param {any} data 
+ * @return {string}
+ */
 function formatCol (data) {
     if (data === null || typeof data === "undefined") {
         return "NULL";

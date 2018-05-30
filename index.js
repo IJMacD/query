@@ -183,6 +183,12 @@ async function runQuery (query) {
             const colNames = [];
             const colHeaders = [];
             for (const c of cols) {
+                if (/COUNT\([^)]+\)/i.test(c)) {
+                    output(c);
+                    output(repeat("-", c.length));
+                    output(results.length);
+                    return;
+                }
                 if (results.length > 0) {
                     const r = results[0];
                     if (c === "*") {

@@ -6,11 +6,17 @@ const IL_USER = "iain";
 const IL_PASS = "1234";
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY" ];
-const COUNT_REGEX = /COUNT\([^)]+\)/i;
-const SUM_REGEX = /SUM\(([^)]+)\)/i;
-const AVG_REGEX = /AVG\(([^)]+)\)/i;
+const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
 
-const comparators = {
+const FUNCTIONS = {
+    'COUNT': a => a.length,
+    'SUM': sumResults,
+    'AVG': avgResults,
+    'MIN': minResults,
+    'MAX': maxResults,
+};
+
+const COMPARATORS = {
     '=': (a,b) => a == b,
     '<': (a,b) => a < b,
     '>': (a,b) => a > b,
@@ -187,7 +193,7 @@ async function runQuery (query) {
              ***************/
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
-                    const compare = comparators[child.operator];
+                    const compare = COMPARATORS[child.operator];
                     if (compare) {
                         results = results.filter(r => {
                             const a = resolveValue(r, child.operand1);
@@ -272,13 +278,13 @@ async function runQuery (query) {
                     groupByMap.get(key).push(row);
                 }
 
-                rows = Array.from(groupByMap.values()).map(rows => computeAggregate(rows, colNames));
+                rows = Array.from(groupByMap.values()).map(rows => computeAggregates(rows, colNames));
 
-            } else if (colNames.some(c => COUNT_REGEX.test(c) || SUM_REGEX.test(c) || AVG_REGEX.test(c))) {
+            } else if (colNames.some(c => FUNCTION_REGEX.test(c))) {
                 // If we have any aggregate functions but we're not grouping,
                 // then apply aggregate functions to whole set
                 rows = [
-                    computeAggregate(rows, colNames)
+                    computeAggregates(rows, colNames), // Single row result set
                 ];
             }
 
@@ -391,31 +397,43 @@ function avgResults (results, col) {
 }
 
 /**
+ *  
+ * @param {Array} results 
+ * @param {string} col 
+ * @return {number}
+ */
+function minResults (results, col) {
+    return Math.min(...results.map(row => resolveValue(row['result'], col)));
+}
+
+/**
+ *  
+ * @param {Array} results 
+ * @param {string} col 
+ * @return {number}
+ */
+function maxResults (results, col) {
+    return Math.max(...results.map(row => resolveValue(row['result'], col)));
+}
+
+/**
  * Turns a group of rows into one aggregate row
  * @param {any[][]} rows 
  * @param {string[]} colNames 
  * @return {any[]}
  */
-function computeAggregate (rows, colNames) {
+function computeAggregates (rows, colNames) {
     // Pick the first row from each group
     const row = rows[0];
 
     // Fill in aggregate values
     colNames.forEach((col, i) => {
-        if (COUNT_REGEX.test(col)) {
-            row[i] = rows.length;
+        const match = FUNCTION_REGEX.exec(col);
+        if (match) {
+            const fn = FUNCTIONS[match[1]];
+            row[i] = fn && fn(rows, match[2]);
             return;
-        } 
-        if (SUM_REGEX.test(col)) {
-            const match = SUM_REGEX.exec(col);
-            row[i] = sumResults(rows, match[1]);
-            return;
-        } 
-        if (AVG_REGEX.test(col)) {
-            const match = AVG_REGEX.exec(col);
-            row[i] = avgResults(rows, match[1]);
-            return;
-        } 
+        }
     });
 
     return row;

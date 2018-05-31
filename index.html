@@ -1,0 +1,42 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+        <title>Admin Query</title>
+    </head>
+    <body>
+        <div style="display: flex; flex-direction: column; height: 100%;">
+            <div style="display: flex; flex-direction: row; margin: 10px;">
+                <input type="text" id="input" style="flex: 1; font-size: 1.1em; border-top-left-radius: 5px; border-bottom-left-radius: 5px; border: 1px solid #999; padding: 5px;">
+                <button id="query" style=" font-size: 1.1em;">Query</button>
+            </div>
+            <div style="flex: 1; border: 1px solid #999; border-radius: 5px; margin: 10px; padding: 20px; white-space: pre; font-family: 'Courier New', Courier, monospace; overflow-y: auto;" id="output"></div>
+        </div>
+        <script>
+            const input = document.getElementById("input");
+            const output = document.getElementById("output");
+            const query = document.getElementById("query");
+
+            query.addEventListener("click", sendQuery);
+            document.addEventListener("keydown", e => {
+                if (e.key === "Enter") sendQuery();
+            });
+
+            function sendQuery () {
+                output.innerHTML = "";
+                input.disabled = true;
+                fetch("/query", {
+                    method: 'POST',
+                    body: "query="+encodeURIComponent(input.value),
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                    },
+                })
+                .then(result => result.text())
+                .then(text => {
+                    output.innerHTML = text;
+                    input.disabled = false;
+                });
+            }
+        </script>
+    </body>
+</html>

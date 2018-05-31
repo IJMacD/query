@@ -181,13 +181,17 @@ async function runQuery (query) {
         }
 
         if (results) {
+
+            /***************
+             * Filtering
+             ***************/
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
                     const compare = comparators[child.operator];
                     if (compare) {
                         results = results.filter(r => {
                             const a = resolveValue(r, child.operand1);
-                            const b = child.operand2;
+                            const b = child.operand2; // Always constant
                             const na = parseFloat(a);
                             const nb = parseFloat(b);
                             return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
@@ -196,32 +200,12 @@ async function runQuery (query) {
                 }
             }
 
+            /******************
+             * Columns
+             ******************/
             const colNames = [];
             const colHeaders = [];
             for (const c of cols) {
-                // If we're not grouping we can just short-circuit here
-                if (!groupBy){
-                    if(COUNT_REGEX.test(c)) {
-                        output(c);
-                        output(repeat("-", c.length));
-                        output(results.length);
-                        return;
-                    }
-                    if(SUM_REGEX.test(c)) {
-                        const match = SUM_REGEX.exec(c);
-                        output(c);
-                        output(repeat("-", c.length));
-                        output(sumResults(results, match[1]));
-                        return;
-                    }
-                    if(AVG_REGEX.test(c)) {
-                        const match = AVG_REGEX.exec(c);
-                        output(c);
-                        output(repeat("-", c.length));
-                        output(avgResults(results, match[1]));
-                        return;
-                    }
-                }
                 if (results.length > 0) {
                     const r = results[0];
                     if (c === "*") {
@@ -255,52 +239,90 @@ async function runQuery (query) {
             output(colHeaders.join("\t"));
             output(colHeaders.map(c => repeat("-", c.length)).join("\t"));
 
-            let groupByMap;
+            /*****************
+             * Column Values
+             *****************/
+            let rows = results.map(r => {
+                const values = colNames.map(col => {
+                    if (col.includes("(")) {
+                        // Don't compute aggregate functions until after grouping
+                        return null;
+                    }
+                    return resolveValue(r, col);
+                });
+
+                // Save reference to original object for sorting
+                values['result'] = r;
+
+                return values;
+            });
+
+            /*************
+             * Grouping 
+             *************/
             if (groupBy) {
+                let groupByMap;
                 groupByMap = new Map();
-                for(const row of results) {
-                    const key = resolveValue(row, groupBy);
+                for(const row of rows) {
+                    const key = resolveValue(row['result'], groupBy);
+                    row['groupBy'] = key;
                     if (!groupByMap.has(key)) {
                         groupByMap.set(key, []);
                     }
                     groupByMap.get(key).push(row);
                 }
 
-                // Just pick the first row from each group
-                results = Array.from(groupByMap.values()).map(a => a[0]);
+                rows = Array.from(groupByMap.values()).map(rows => computeAggregate(rows, colNames));
+
+            } else if (colNames.some(c => COUNT_REGEX.test(c) || SUM_REGEX.test(c) || AVG_REGEX.test(c))) {
+                // If we have any aggregate functions but we're not grouping,
+                // then apply aggregate functions to whole set
+                rows = [
+                    computeAggregate(rows, colNames)
+                ];
             }
 
+            /****************
+             * Sorting
+             ***************/
             if (orderBy) {
                 const [ col, asc_desc ] = orderBy.split(" ");
                 const desc = asc_desc === "DESC" ? -1 : 1;
-                results = results.sort((a,b) => {
-                    const va = resolveValue(a, col);
-                    const vb = resolveValue(b, col);
-                    if (!isNaN(parseFloat(va)) && !isNaN(parseFloat(va))) return (va - vb) * desc;
+
+                let colNum = parseInt(col);
+                if (isNaN(colNum)) {
+                    colNum = colNames.indexOf(col);
+                }
+
+                // Pre-compute ordering value once per row
+                rows.forEach(row => {
+                    let v = colNum === -1 ? resolveValue(row['result'], col) : row[colNum];
+                    // Try to coerce into number if possible
+                    if (Number.isFinite(parseFloat(v))) {
+                        v = parseFloat(v);
+                    }
+                    row['orderBy'] = v;
+                });
+
+                rows = rows.sort((a,b) => {
+                    const va = a['orderBy'];
+                    const vb = b['orderBy'];
+                    if (Number.isFinite(va) && Number.isFinite(vb)) return (va - vb) * desc;
                     return (va < vb ? -1 : va > vb ? 1 : 0) * desc;
                 });
             }
 
+            /*****************
+             * Limit
+             ****************/
             if (parsedQuery.limit) {
-                results = results.slice(0, parseInt(parsedQuery.limit));
+                rows = rows.slice(0, parseInt(parsedQuery.limit));
             }
 
-            results.forEach(r => output(colNames.map(col => {
-                if (groupBy) {
-                    if (COUNT_REGEX.test(col)) {
-                        return groupByMap.get(resolveValue(r, groupBy)).length;
-                    } 
-                    if (SUM_REGEX.test(col)) {
-                        const match = SUM_REGEX.exec(col);
-                        return sumResults(groupByMap.get(resolveValue(r, groupBy)), match[1]);
-                    } 
-                    if (AVG_REGEX.test(col)) {
-                        const match = AVG_REGEX.exec(col);
-                        return avgResults(groupByMap.get(resolveValue(r, groupBy)), match[1]);
-                    } 
-                }
-                return formatCol(resolveValue(r, col));
-            }).join("\t")));
+            /*****************
+             * Output
+             ****************/
+            rows.forEach(r => output(r.map(formatCol).join("\t")));
         }
     }
 }
@@ -355,7 +377,7 @@ function repeat (char, n) {
  * @return {number}
  */
 function sumResults (results, col) {
-    return results.reduce((t,v) => t + parseFloat(resolveValue(v, col)), 0)
+    return results.reduce((total,row) => total + parseFloat(resolveValue(row['result'], col)), 0)
 }
 
 /**
@@ -366,4 +388,35 @@ function sumResults (results, col) {
  */
 function avgResults (results, col) {
     return sumResults(results, col) / results.length;
+}
+
+/**
+ * Turns a group of rows into one aggregate row
+ * @param {any[][]} rows 
+ * @param {string[]} colNames 
+ * @return {any[]}
+ */
+function computeAggregate (rows, colNames) {
+    // Pick the first row from each group
+    const row = rows[0];
+
+    // Fill in aggregate values
+    colNames.forEach((col, i) => {
+        if (COUNT_REGEX.test(col)) {
+            row[i] = rows.length;
+            return;
+        } 
+        if (SUM_REGEX.test(col)) {
+            const match = SUM_REGEX.exec(col);
+            row[i] = sumResults(rows, match[1]);
+            return;
+        } 
+        if (AVG_REGEX.test(col)) {
+            const match = AVG_REGEX.exec(col);
+            row[i] = avgResults(rows, match[1]);
+            return;
+        } 
+    });
+
+    return row;
 }

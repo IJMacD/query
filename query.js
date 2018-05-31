@@ -2,7 +2,7 @@ const moment = require('moment');
 
 module.exports = runQuery;
 
-const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY" ];
+const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET" ];
 const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|LIKE)\s*'?([^']*)'?/i;
 const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
 
@@ -340,11 +340,13 @@ async function runQuery (query) {
                 });
             }
 
-            /*****************
-             * Limit
-             ****************/
-            if (parsedQuery.limit) {
-                rows = rows.slice(0, parseInt(parsedQuery.limit));
+            /******************
+             * Limit and Offset
+             ******************/
+            if (parsedQuery.limit || parsedQuery.offset) {
+                const start = parseInt(parsedQuery.offset) || 0;
+                const end = start + parseInt(parsedQuery.limit) || rows.length;
+                rows = rows.slice(start, end);
             }
 
             /*****************

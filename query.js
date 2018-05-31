@@ -296,29 +296,47 @@ async function runQuery (query) {
              * Sorting
              ***************/
             if (orderBy) {
-                const [ col, asc_desc ] = orderBy.split(" ");
-                const desc = asc_desc === "DESC" ? -1 : 1;
+                // Parse the orderBy clause into an array of objects
+                const parsedOrders = orderBy.split(",").map(order => {
+                    const [ col, asc_desc ] = order.split(" ");
+                    const desc = asc_desc === "DESC" ? -1 : 1;
 
-                let colNum = parseInt(col);
-                if (isNaN(colNum)) {
-                    colNum = colNames.indexOf(col);
-                }
+                    // Simplest case: col is actually a column index
+                    let colNum = parseInt(col);
 
-                // Pre-compute ordering value once per row
-                rows.forEach(row => {
-                    let v = colNum === -1 ? resolveValue(row['result'], col) : row[colNum];
-                    // Try to coerce into number if possible
-                    if (Number.isFinite(parseFloat(v))) {
-                        v = parseFloat(v);
+                    if (isNaN(colNum)) {
+                        // It's not a column index so check if its a named column in selection
+                        colNum = colNames.indexOf(col);
                     }
-                    row['orderBy'] = v;
+
+                    return { colNum, col, desc };
+                });
+
+                // Pre-create ordering value array for each row
+                rows.forEach(row => {
+                    row['orderBy'] = [];
                 });
 
                 rows = rows.sort((a,b) => {
-                    const va = a['orderBy'];
-                    const vb = b['orderBy'];
-                    if (Number.isFinite(va) && Number.isFinite(vb)) return (va - vb) * desc;
-                    return (va < vb ? -1 : va > vb ? 1 : 0) * desc;
+                    for (let i = 0; i < parsedOrders.length; i++) {
+                        const o = parsedOrders[i];
+
+                        const va = getOrderingValue(a, o, i);
+                        const vb = getOrderingValue(b, o, i);
+
+                        let sort = (Number.isFinite(va) && Number.isFinite(vb)) ? 
+                            (va - vb) :
+                            (va < vb ? -1 : va > vb ? 1 : 0);
+    
+                        if (sort !== 0) {
+                            sort *= o.desc;
+
+                            return sort;
+                        }
+    
+                    }
+
+                    return 0;
                 });
             }
 
@@ -446,4 +464,33 @@ function computeAggregates (rows, colNames) {
     });
 
     return row;
+}
+
+/**
+ * @param {any[]} row
+ * @param {{ col: string, colNum: number, desc: number }} parsedOrder
+ * @param {number} depth
+ */
+function getOrderingValue (row, parsedOrder, depth) {
+    let va = row['orderBy'][depth];
+                        
+    // The first time this row is visited (at this depth) we'll
+    // calculate its ordering value.
+    if (typeof va === "undefined") {
+        let v = parsedOrder.colNum === -1 ?
+            resolveValue(row['result'], parsedOrder.col) :
+            row[parsedOrder.colNum];
+
+        // Try to coerce into number if possible
+        const vn = parseFloat(v);
+        if (Number.isFinite(vn)) {
+            v = vn;
+        }
+
+        // Set value to save resolution next time
+        row['orderBy'][depth] = v;
+        va = v;
+    }
+
+    return va;
 }

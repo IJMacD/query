@@ -29,6 +29,7 @@ app.post('/query', (req, res) => {
         }
     }).catch(e => {
         res.status(400);
+        res.header("Content-Type", "text/plain");
         res.send(e.message);
         console.error(e.message);
     });

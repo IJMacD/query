@@ -3,7 +3,7 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY" ];
-const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL)\s*'?([^']*)'?/i;
+const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|LIKE)\s*'?([^']*)'?/i;
 const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
 
 const FUNCTIONS = {
@@ -14,7 +14,7 @@ const FUNCTIONS = {
     'MAX': maxResults,
 };
 
-const COMPARATORS = {
+const OPERATORS = {
     '=': (a,b) => a == b,
     '<': (a,b) => a < b,
     '>': (a,b) => a > b,
@@ -22,6 +22,7 @@ const COMPARATORS = {
     '>=': (a,b) => a >= b,
     'IS NULL': a => a === null || a === "",
     'IS NOT NULL': a => a !== null && a !== "",
+    'LIKE': (a,b) => new RegExp(b.replace(/\?/g, ".").replace(/%/g, ".*")).test(a),
 };
 
 let loggedIn = false;
@@ -76,7 +77,7 @@ function parseWhere (where) {
                 type: "OPERATOR",
                 operator: match[2],
                 operand1: match[1],
-                operand2: match[3],
+                operand2: match[3].trim(),
             });
         }
     });
@@ -196,7 +197,7 @@ async function runQuery (query) {
              ***************/
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
-                    const compare = COMPARATORS[child.operator];
+                    const compare = OPERATORS[child.operator];
                     if (compare) {
                         results = results.filter(r => {
                             const a = resolveValue(r, child.operand1);

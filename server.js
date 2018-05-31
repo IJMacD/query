@@ -20,8 +20,13 @@ app.post('/query', (req, res) => {
     console.log(`${new Date().toString().substr(16, 8)} ${query}`);
     
     Query(query).then(result => {
-        res.header("Content-Type", "text/plain");
-        res.send(result.map(row => row.join("\t")).join("\n"));
+        if (req.header("accept") === "application/json") {
+            res.header("Content-Type", "application/json");
+            res.send(JSON.stringify(result));
+        } else {
+            res.header("Content-Type", "text/plain");
+            res.send(result.map(row => row.join("\t")).join("\n"));
+        }
     }).catch(e => {
         res.status(400);
         res.send(e.message);

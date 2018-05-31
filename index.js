@@ -176,6 +176,8 @@ async function runQuery (query) {
             results = await iL.Term.all();
         } else if (table === "User") {
             results = await iL.User.all();
+        } else {
+            throw new Error("Table not recognised: `" + table + "`");
         }
 
         if (results) {

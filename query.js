@@ -3,6 +3,7 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY" ];
+const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL)\s*'?([^']*)'?/i;
 const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
 
 const FUNCTIONS = {
@@ -19,6 +20,8 @@ const COMPARATORS = {
     '>': (a,b) => a > b,
     '<=': (a,b) => a <= b,
     '>=': (a,b) => a >= b,
+    'IS NULL': a => a === null || a === "",
+    'IS NOT NULL': a => a !== null && a !== "",
 };
 
 let loggedIn = false;
@@ -67,7 +70,7 @@ function parseWhere (where) {
     };
 
     whereParts.forEach(part => {
-        const match = part.match(/([^\s]*)\s*([=><]+)\s*'?([^']*)'?/);
+        const match = part.match(CONDITION_REGEX);
         if (match) {
             out.children.push({
                 type: "OPERATOR",
@@ -97,6 +100,7 @@ async function runQuery (query) {
         // const parsedTables = table.split(",").map(s => s.trim());
         const where = parsedQuery.where;
         const parsedWhere = parseWhere(where);
+        // console.log(parsedWhere);
         const orderBy = parsedQuery['order by'];
         const groupBy = parsedQuery['group by'];
 
@@ -340,7 +344,10 @@ function resolveValue (row, col) {
         let val = row;
         for (const name of col.split(".")) {
             val = val[name];
-            if (typeof val === "undefined") break;
+            if (typeof val === "undefined") {
+                val = null;
+                break;
+            }
         }
         return val;
     }

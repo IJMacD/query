@@ -119,7 +119,7 @@ async function runQuery (query) {
             if (!results) {
                 results = await iL.Tutor.all();
             }
-        } else if (table === "Lesson") {
+        } else if (table === "Lesson" || table === "Attendance") {
             let start;
             let end;
             let needsLogin = false;
@@ -155,7 +155,8 @@ async function runQuery (query) {
                     needsLogin ||
                     cols.some(c => c.includes("attendees")) ||
                     groupBy && groupBy.includes("attendees") ||
-                    orderBy && orderBy.includes("attendees")
+                    orderBy && orderBy.includes("attendees") ||
+                    table === "Attendance"
                 )
             ) {
                 // If we are going to do anything with attendees, we need to be logged in
@@ -165,13 +166,14 @@ async function runQuery (query) {
 
             results = await iL.Lesson.find({ start, end, tutor });
 
-        } else if (table === "Attendance") {
-            await iL.login(process.env.IL_USER, process.env.IL_PASS);
-
-            results = [];
-            const lessons = await iL.Lesson.find({});
-            for (const lesson of lessons) {
-                results.push(...lesson.attendees);
+            if (table === "Attendance") {
+                // Convert Lessons into Attendances
+                // (Re-use all of Lesson searching logic)
+                const newResults = [];
+                for (const lesson of results) {
+                    newResults.push(...lesson.attendees);
+                }
+                results = newResults;
             }
         } else if (table === "Room") {
             results = await iL.Room.all();

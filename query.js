@@ -2,7 +2,7 @@ const moment = require('moment');
 
 module.exports = runQuery;
 
-const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET" ];
+const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING" ];
 const CONDITION_REGEX = /^([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP)\s*(.*)$/i;
 const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
 
@@ -111,6 +111,8 @@ async function runQuery (query) {
     const table = parsedTables && parsedTables[0];
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
+    const having = parsedQuery.having;
+    const parsedHaving = parseWhere(having);
     // console.log(parsedWhere);
     const orderBy = parsedQuery['order by'];
     const groupBy = parsedQuery['group by'];
@@ -357,6 +359,30 @@ async function runQuery (query) {
             ];
         }
 
+        /*******************
+         * Having Filtering
+         ******************/
+        if (parsedHaving) {
+            for (const child of parsedHaving.children) {
+                const compare = OPERATORS[child.operator];
+                if (!compare) {
+                    throw new Error("Unrecognised operator: " + child.operator);
+                }
+
+                rows = rows.filter(r => {
+                    // Having clause can only use constants and result-set columns
+                    // We don't have access to original `result` objects
+                    const ca = resolveConstant(child.operand1);
+                    const cb = resolveConstant(child.operand2);
+                    const a = typeof ca !== "undefined" ? ca : r[colAlias[child.operand1]];
+                    const b = typeof cb !== "undefined" ? cb : r[colAlias[child.operand2]];
+                    const na = parseFloat(a);
+                    const nb = parseFloat(b);
+                    return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
+                });
+            }
+        }
+
         /****************
          * Sorting
          ***************/
@@ -435,7 +461,7 @@ async function runQuery (query) {
             return n;
         }
 
-        return null;
+        return; // undefined
     }
 
     /**
@@ -447,7 +473,7 @@ async function runQuery (query) {
         // Check for constant values first
         const constant = resolveConstant(col);
 
-        if (constant !== null) {
+        if (typeof constant !== "undefined") {
             return constant;
         }
 

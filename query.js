@@ -120,7 +120,7 @@ async function runQuery (query) {
     if (table === "Tutor") {
         if (parsedWhere) {
             for (let child of parsedWhere.children){
-                const resolved2 = resolveValue(null, child.operand2);
+                const resolved2 = resolveConstant(child.operand2);
                 if (child.operand1 === "name" && child.operator === "=") {
                     results = [await iL.Tutor.find(resolved2)];
                     break;
@@ -142,7 +142,7 @@ async function runQuery (query) {
 
         if (parsedWhere) {
             for (const child of parsedWhere.children) {
-                const resolved2 = resolveValue(null, child.operand2);
+                const resolved2 = resolveConstant(child.operand2);
                 if (child.operand1 === "start" || child.operand1 == "end")  {
                     if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
                         start = moment(new Date(resolved2)).startOf("day").toDate();
@@ -196,7 +196,7 @@ async function runQuery (query) {
         let tutor;
         if (parsedWhere) {
             for (let child of parsedWhere.children){
-                const resolved2 = resolveValue(null, child.operand2);
+                const resolved2 = resolveConstant(child.operand2);
                 if (child.operand1 === "title" && child.operator === "=") {
                     title = resolved2;
                     break;
@@ -421,6 +421,22 @@ async function runQuery (query) {
         return output_buffer;
     }
 
+    function resolveConstant (str) {
+        // Check for quoted string
+        if ((str.startsWith("'") && str.endsWith("'")) ||
+        (str.startsWith('"') && str.endsWith('"'))) {
+            return str.substring(1, str.length-1);
+        }
+
+        // Check for numbers
+        const n = parseFloat(str);
+        if (!isNaN(n)) {
+            return n;
+        }
+
+        return null;
+    }
+
     /**
      *
      * @param {any} row
@@ -428,17 +444,10 @@ async function runQuery (query) {
      */
     function resolveValue (row, col) {
         // Check for constant values first
+        const constant = resolveConstant(col);
 
-        // Check for quoted string
-        if ((col.startsWith("'") && col.endsWith("'")) ||
-                (col.startsWith('"') && col.endsWith('"'))) {
-            return col.substring(1, col.length-1);
-        }
-
-        // Check for numbers
-        const n = parseFloat(col);
-        if (!isNaN(n)) {
-            return n;
+        if (constant !== null) {
+            return constant;
         }
 
         // If row is null, there's nothing left we can do

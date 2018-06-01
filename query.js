@@ -8,10 +8,10 @@ const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
 
 const FUNCTIONS = {
     'COUNT': a => a.length,
-    'SUM': sumResults,
-    'AVG': avgResults,
-    'MIN': minResults,
-    'MAX': maxResults,
+    'SUM': v => v.reduce((total,val) => total + parseFloat(val), 0),
+    'AVG': v => FUNCTIONS.SUM(v) / v.length,
+    'MIN': v => Math.min(...v),
+    'MAX': v => Math.max(...v),
 };
 
 const OPERATORS = {
@@ -106,8 +106,8 @@ async function runQuery (query) {
     }
 
     const cols = parsedQuery.select.split(",").map(s => s.trim());
-    const table = parsedQuery.from;
-    // const parsedTables = table.split(",").map(s => s.trim());
+    const parsedTables = parsedQuery.from && parsedQuery.from.split(",").map(s => s.trim());
+    const table = parsedTables && parsedTables[0];
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
     // console.log(parsedWhere);
@@ -226,46 +226,68 @@ async function runQuery (query) {
         throw new Error("Table not recognised: `" + table + "`");
     }
 
+    const colNames = [];
+    const colHeaders = [];
+    const colAlias = {};
+
     if (results) {
 
         /******************
          * Columns
          ******************/
-        const colNames = [];
-        const colHeaders = [];
+
         for (const c of cols) {
-            if (results.length > 0) {
-                const r = results[0];
-                if (c === "*") {
-                    // only add "primitive" columns
-                    let newCols = Object.keys(r).filter(k => formatCol(r[k]));
-                    colNames.push(...newCols);
-                    newCols.forEach(c => {
-                        const valLength = formatCol(r[c]).length;
-                        if (valLength > c.length) {
-                            colHeaders.push(c + repeat(" ", valLength - c.length));
-                        } else {
-                            colHeaders.push(c);
-                        }
-                    });
-                }
-                else {
-                    // This will calculate the length of the value in the first
-                    // row, but it might not end up in the result set if it gets
-                    // filtered out later.
-                    const val = resolveValue(r, c);
-                    const valLength = val ? formatCol(val).length : 0;
-                    if (valLength > c.length) {
-                        colHeaders.push(c + repeat(" ", valLength - c.length));
-                    } else {
-                        colHeaders.push(c);
-                    }
+            // Special Treatment for *
+            if (c === "*") {
+                if (results.length === 0) {
+                    // We don't have any results so we can't determine the cols
                     colNames.push(c);
+                    colHeaders.push(c);
+                    continue;
+                }
+
+                const r = results[0];
+
+                // only add "primitive" columns
+                let newCols = Object.keys(r).filter(k => formatCol(r[k]));
+
+                colNames.push(...newCols);
+                colHeaders.push(...newCols);
+
+                // Add all the scalar columns for secondary tables
+                for (let i = 1; i < parsedTables.length; i++) {
+                    const t = parsedTables[i].toLowerCase();
+
+                    // Check if the parent object has a property matching
+                    // the secondary table i.e. Tutor => result.tutor
+                    if (!r[t]) {
+                        // If not just skip
+                        continue;
+                    }
+
+                    // only add "primitive" columns
+                    let newCols = Object.keys(r[t]).filter(k => formatCol(r[t][k]));
+
+                    colNames.push(...newCols.map(c => `${t}.${c}`));
+                    colHeaders.push(...newCols);
                 }
             } else {
-                colNames.push(c);
-                colHeaders.push(c);
+                const [ c1, alias ] = c.split(" AS ");
+                colNames.push(c1);
+                colHeaders.push(alias || c1);
+
+                if (alias && typeof colAlias[alias] !== "undefined") {
+                    throw new Error("Alias already in use: " + alias);
+                }
+
+                colAlias[alias || c1] = colNames.length - 1;
             }
+
+            colHeaders.forEach((col, i) => {
+                if (typeof colAlias[col] === "undefined") {
+                    colAlias[col] = i;
+                }
+            });
         }
 
         output(colHeaders);
@@ -398,48 +420,122 @@ async function runQuery (query) {
 
         return output_buffer;
     }
-}
 
-/**
- *
- * @param {any} row
- * @param {string} col
- */
-function resolveValue (row, col) {
-    // Check for constant values first
+    /**
+     *
+     * @param {any} row
+     * @param {string} col
+     */
+    function resolveValue (row, col) {
+        // Check for constant values first
 
-    // Check for quoted string
-    if ((col.startsWith("'") && col.endsWith("'")) ||
-            (col.startsWith('"') && col.endsWith('"'))) {
-        return col.substring(1, col.length-1);
-    }
+        // Check for quoted string
+        if ((col.startsWith("'") && col.endsWith("'")) ||
+                (col.startsWith('"') && col.endsWith('"'))) {
+            return col.substring(1, col.length-1);
+        }
 
-    // Check for numbers
-    const n = parseFloat(col);
-    if (!isNaN(n)) {
-        return n;
-    }
+        // Check for numbers
+        const n = parseFloat(col);
+        if (!isNaN(n)) {
+            return n;
+        }
 
-    // If row is null, there's nothing left we can do
-    if (row === null) {
-        return;
-    }
+        // If row is null, there's nothing left we can do
+        if (row === null) {
+            return;
+        }
 
-    // If column is a path, then iteratively resolve
-    if (col.includes(".")) {
-        // resolve path
-        let val = row;
-        for (const name of col.split(".")) {
-            val = val[name];
-            if (typeof val === "undefined") {
-                val = null;
-                break;
+        // Now for the real column resolution
+        // We will try each of the tables in turn
+        for (let i = 0; i < parsedTables.length; i++) {
+            const prefix = i === 0 ? "" : parsedTables[i].toLowerCase() + ".";
+
+            // Resolve a possible alias
+            const colName = prefix + (colNames[colAlias[col]] || col);
+
+            if (i === 0 && typeof row[colName] !== "undefined") {
+                return row[colName];
+            }
+
+            // If column is a path, then iteratively resolve
+            if (colName.includes(".")) {
+                // resolve path
+                let val = row;
+                for (const name of colName.split(".")) {
+                    val = val[name];
+                    if (typeof val === "undefined") {
+                        val = null;
+                        break;
+                    }
+                }
+                if (val !== null && typeof val !== "undefined") {
+                    return val;
+                }
             }
         }
-        return val;
+
+        return null;
     }
 
-    return row[col];
+    /**
+     * Turns a group of rows into one aggregate row
+     * @param {any[][]} rows
+     * @param {string[]} colNames
+     * @return {any[]}
+     */
+    function computeAggregates (rows, colNames) {
+        // If there are no rows (i.e. due to filtering) then
+        // just return an empty row.
+        if (rows.length === 0) {
+            return [];
+        }
+
+        // Pick the first row from each group
+        const row = rows[0];
+
+        // Fill in aggregate values
+        colNames.forEach((col, i) => {
+            const match = FUNCTION_REGEX.exec(col);
+            if (match) {
+                const fn = FUNCTIONS[match[1]];
+                const values = rows.map(row => resolveValue(row['result'], match[2]))
+                row[i] = fn && fn(values);
+                return;
+            }
+        });
+
+        return row;
+    }
+
+    /**
+     * @param {any[]} row
+     * @param {{ col: string, colNum: number, desc: number }} parsedOrder
+     * @param {number} depth
+     */
+    function getOrderingValue (row, parsedOrder, depth) {
+        let va = row['orderBy'][depth];
+
+        // The first time this row is visited (at this depth) we'll
+        // calculate its ordering value.
+        if (typeof va === "undefined") {
+            let v = parsedOrder.colNum === -1 ?
+                resolveValue(row['result'], parsedOrder.col) :
+                row[parsedOrder.colNum];
+
+            // Try to coerce into number if possible
+            const vn = parseFloat(v);
+            if (Number.isFinite(vn)) {
+                v = vn;
+            }
+
+            // Set value to save resolution next time
+            row['orderBy'][depth] = v;
+            va = v;
+        }
+
+        return va;
+    }
 }
 
 /**
@@ -467,102 +563,4 @@ function formatCol (data) {
  */
 function repeat (char, n) {
     return Array(n + 1).join(char);
-}
-
-/**
- *
- * @param {Array} results
- * @param {string} col
- * @return {number}
- */
-function sumResults (results, col) {
-    return results.reduce((total,row) => total + parseFloat(resolveValue(row['result'], col)), 0)
-}
-
-/**
- *
- * @param {Array} results
- * @param {string} col
- * @return {number}
- */
-function avgResults (results, col) {
-    return sumResults(results, col) / results.length;
-}
-
-/**
- *
- * @param {Array} results
- * @param {string} col
- * @return {number}
- */
-function minResults (results, col) {
-    return Math.min(...results.map(row => resolveValue(row['result'], col)));
-}
-
-/**
- *
- * @param {Array} results
- * @param {string} col
- * @return {number}
- */
-function maxResults (results, col) {
-    return Math.max(...results.map(row => resolveValue(row['result'], col)));
-}
-
-/**
- * Turns a group of rows into one aggregate row
- * @param {any[][]} rows
- * @param {string[]} colNames
- * @return {any[]}
- */
-function computeAggregates (rows, colNames) {
-    // If there are no rows (i.e. due to filtering) then
-    // just return an empty row.
-    if (rows.length === 0) {
-        return [];
-    }
-
-    // Pick the first row from each group
-    const row = rows[0];
-
-    // Fill in aggregate values
-    colNames.forEach((col, i) => {
-        const match = FUNCTION_REGEX.exec(col);
-        if (match) {
-            const fn = FUNCTIONS[match[1]];
-            row[i] = fn && fn(rows, match[2]);
-            return;
-        }
-    });
-
-    return row;
-}
-
-/**
- * @param {any[]} row
- * @param {{ col: string, colNum: number, desc: number }} parsedOrder
- * @param {number} depth
- */
-function getOrderingValue (row, parsedOrder, depth) {
-    let va = row['orderBy'][depth];
-
-    // The first time this row is visited (at this depth) we'll
-    // calculate its ordering value.
-    if (typeof va === "undefined") {
-        let v = parsedOrder.colNum === -1 ?
-            resolveValue(row['result'], parsedOrder.col) :
-            row[parsedOrder.colNum];
-
-        // Try to coerce into number if possible
-        const vn = parseFloat(v);
-        if (Number.isFinite(vn)) {
-            v = vn;
-        }
-
-        // Set value to save resolution next time
-        row['orderBy'][depth] = v;
-        va = v;
-    }
-
-    return va;
 }

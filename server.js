@@ -4,6 +4,8 @@ const express = require('express');
 const app = express();
 const path = require('path');
 
+const port = 3000;
+
 const Query = require('./query');
 
 app.use(express.urlencoded({ extended: false }));
@@ -18,7 +20,7 @@ app.post('/query', (req, res) => {
 
     const query = req.body['query'];
     console.log(`${new Date().toString().substr(16, 8)} ${query}`);
-    
+
     Query(query).then(result => {
         if (req.header("accept") === "application/json") {
             res.header("Content-Type", "application/json");
@@ -31,8 +33,8 @@ app.post('/query', (req, res) => {
         res.status(400);
         res.header("Content-Type", "text/plain");
         res.send(e.message);
-        console.error(e.message);
+        console.error(e);
     });
 });
 
-app.listen(3000, () => console.log('Query server listening on port 3000!'));
+app.listen(port, () => console.log(`Query server listening on port ${port}!`));

@@ -43,7 +43,7 @@
     <body>
         <div style="display: flex; flex-direction: column; height: 100%;">
             <div style="display: flex; flex-direction: row; margin: 10px;">
-                <input type="text" id="input">
+                <input type="text" id="input" name="query">
                 <button id="query">Query</button>
             </div>
             <div id="output"></div>
@@ -102,11 +102,16 @@
             }
 
             function formatCell (cell) {
+                if (cell === null) {
+                    return "NULL";
+                }
+                // Special Formatting for colour
                 if (/^#[0-9a-f]{6}$/i.test(cell)) {
                     return `<div style="background-color: ${cell}; height: 20px; width: 20px;" title="${cell}"></div>`;
                 }
+                // Special formatting for date
                 if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/.test(cell)) {
-                    return new Date(cell).toLocaleString();
+                    return new Date(cell).toLocaleString(navigator.language);
                 }
                 return cell;
             }

@@ -3,7 +3,7 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET" ];
-const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|LIKE)\s*'?([^']*)'?/i;
+const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|LIKE)\s*(.*)/i;
 const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
 
 const FUNCTIONS = {
@@ -111,12 +111,13 @@ async function runQuery (query) {
         if (table === "Tutor") {
             if (parsedWhere) {
                 for (let child of parsedWhere.children){
+                    const resolved2 = resolveValue(null, child.operand2);
                     if (child.operand1 === "name" && child.operator === "=") {
-                        results = [await iL.Tutor.find(child.operand2)];
+                        results = [await iL.Tutor.find(resolved2)];
                         break;
                     }
                     if (child.operand1 === "id" && child.operator === "=") {
-                        results = [iL.Tutor.get(child.operand2)];
+                        results = [iL.Tutor.get(resolved2)];
                         break;
                     }
                 }
@@ -132,12 +133,13 @@ async function runQuery (query) {
 
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
+                    const resolved2 = resolveValue(null, child.operand2);
                     if (child.operand1 === "start" || child.operand1 == "end")  {
                         if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
-                            start = moment(new Date(child.operand2)).startOf("day").toDate();
+                            start = moment(new Date(resolved2)).startOf("day").toDate();
                             child.operand2 = start;
                         } else if (child.operator === "<" || child.operator === "<=" || child.operator === "=") {
-                            end = moment(new Date(child.operand2)).endOf("day").toDate();
+                            end = moment(new Date(resolved2)).endOf("day").toDate();
                             child.operand2 = end;
                         }
                     }
@@ -145,10 +147,10 @@ async function runQuery (query) {
                         needsLogin = true;
                     }
                     else if (child.operand1 === "tutor.id" && child.operator === "=") {
-                        tutor = iL.Tutor.get(child.operand2);
+                        tutor = iL.Tutor.get(resolved2);
                     }
                     else if (child.operand1 === "tutor.name" && child.operator === "=") {
-                        tutor = await iL.Tutor.find(child.operand2);
+                        tutor = await iL.Tutor.find(resolved2);
                     }
                 }
             }
@@ -359,7 +361,32 @@ async function runQuery (query) {
     }
 }
 
+/**
+ *
+ * @param {any} row
+ * @param {string} col
+ */
 function resolveValue (row, col) {
+    // Check for constant values first
+
+    // Check for quoted string
+    if ((col.startsWith("'") && col.endsWith("'")) ||
+            (col.startsWith('"') && col.endsWith('"'))) {
+        return col.substring(1, col.length-1);
+    }
+
+    // Check for numbers
+    const n = parseFloat(col);
+    if (!isNaN(n)) {
+        return n;
+    }
+
+    // If row is null, there's nothing left we can do
+    if (row === null) {
+        return;
+    }
+
+    // If column is a path, then iteratively resolve
     if (col.includes(".")) {
         // resolve path
         let val = row;
@@ -372,6 +399,7 @@ function resolveValue (row, col) {
         }
         return val;
     }
+
     return row[col];
 }
 

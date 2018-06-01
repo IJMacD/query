@@ -382,10 +382,7 @@ function resolveValue (row, col) {
  */
 function formatCol (data) {
     if (data === null || typeof data === "undefined") {
-        return "NULL";
-    }
-    if (data instanceof Date) {
-        return moment(data).format("ddd DD/MM HH:mm");
+        return null;
     }
     if (data.toString() === "[object Object]") {
         return "";
@@ -393,7 +390,7 @@ function formatCol (data) {
     if (Array.isArray(data)) {
         return "";
     }
-    return data.toString();
+    return data;
 }
 
 /**

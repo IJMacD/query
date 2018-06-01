@@ -105,6 +105,9 @@
                 if (/^#[0-9a-f]{6}$/i.test(cell)) {
                     return `<div style="background-color: ${cell}; height: 20px; width: 20px;" title="${cell}"></div>`;
                 }
+                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/.test(cell)) {
+                    return new Date(cell).toLocaleString();
+                }
                 return cell;
             }
         </script>

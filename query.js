@@ -3,20 +3,21 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING" ];
-const CONDITION_REGEX = /^([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP)\s*(.*)$/i;
+const CONDITION_REGEX = /^([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP)\s*(.*)$/i;
 const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
 
-const FUNCTIONS = {
+const AGGREGATE_FUNCTIONS = {
     'COUNT': a => a.length,
     'SUM': v => v.reduce((total,val) => total + parseFloat(val), 0),
-    'AVG': v => FUNCTIONS.SUM(v) / v.length,
+    'AVG': v => AGGREGATE_FUNCTIONS.SUM(v) / v.length,
     'MIN': v => Math.min(...v),
     'MAX': v => Math.max(...v),
-    'STRING_AGG': v => v.join(' '),
+    'STRING_AGG': v => v.join(),
 };
 
 const OPERATORS = {
     '=': (a,b) => a == b,
+    '!=': (a,b) => a != b,
     '<': (a,b) => a < b,
     '>': (a,b) => a > b,
     '<=': (a,b) => a <= b,
@@ -73,7 +74,7 @@ function parseWhere (where) {
     whereParts.forEach(part => {
         const match = part.match(CONDITION_REGEX);
         if (!match) {
-            throw new Error(`Unrecognised WHERE clause: \`${part}\``);
+            throw new Error(`Unrecognised WHERE/HAVING clause: \`${part}\``);
         }
 
         out.children.push({
@@ -534,8 +535,14 @@ async function runQuery (query) {
         colNames.forEach((col, i) => {
             const match = FUNCTION_REGEX.exec(col);
             if (match) {
-                const fn = FUNCTIONS[match[1]];
-                const values = rows.map(row => resolveValue(row['result'], match[2]))
+                const fn = AGGREGATE_FUNCTIONS[match[1]];
+                let values;
+                if (match[2] === "*") {
+                    values = rows.map(r => true);
+                } else {
+                    // All aggregate functions ignore null except COUNT(*)
+                    values = rows.map(row => resolveValue(row['result'], match[2])).filter(v => v !== null && v !== "");
+                }
                 row[i] = fn && fn(values);
                 return;
             }

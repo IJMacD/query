@@ -3,8 +3,8 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET" ];
-const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP)\s*(.*)/i;
-const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
+const CONDITION_REGEX = /^([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP)\s*(.*)$/i;
+const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
 
 const FUNCTIONS = {
     'COUNT': a => a.length,
@@ -12,6 +12,7 @@ const FUNCTIONS = {
     'AVG': v => FUNCTIONS.SUM(v) / v.length,
     'MIN': v => Math.min(...v),
     'MAX': v => Math.max(...v),
+    'STRING_AGG': v => v.join(' '),
 };
 
 const OPERATORS = {

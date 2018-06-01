@@ -194,24 +194,6 @@ async function runQuery (query) {
 
         if (results) {
 
-            /***************
-             * Filtering
-             ***************/
-            if (parsedWhere) {
-                for (const child of parsedWhere.children) {
-                    const compare = OPERATORS[child.operator];
-                    if (compare) {
-                        results = results.filter(r => {
-                            const a = resolveValue(r, child.operand1);
-                            const b = child.operand2; // Always constant
-                            const na = parseFloat(a);
-                            const nb = parseFloat(b);
-                            return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
-                        });
-                    }
-                }
-            }
-
             /******************
              * Columns
              ******************/
@@ -234,7 +216,11 @@ async function runQuery (query) {
                         });
                     }
                     else {
-                        const valLength = formatCol(resolveValue(r, c)).length;
+                        // This will calculate the length of the value in the first
+                        // row, but it might not end up in the result set if it gets
+                        // filtered out later.
+                        const val = resolveValue(r, c);
+                        const valLength = val ? formatCol(val).length : 0;
                         if (valLength > c.length) {
                             colHeaders.push(c + repeat(" ", valLength - c.length));
                         } else {
@@ -250,6 +236,24 @@ async function runQuery (query) {
 
             output(colHeaders);
             output(colHeaders.map(c => repeat("-", c.length)));
+
+            /***************
+             * Filtering
+             ***************/
+            if (parsedWhere) {
+                for (const child of parsedWhere.children) {
+                    const compare = OPERATORS[child.operator];
+                    if (compare) {
+                        results = results.filter(r => {
+                            const a = resolveValue(r, child.operand1);
+                            const b = resolveValue(r, child.operand2);
+                            const na = parseFloat(a);
+                            const nb = parseFloat(b);
+                            return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
+                        });
+                    }
+                }
+            }
 
             /*****************
              * Column Values

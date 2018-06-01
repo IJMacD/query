@@ -107,7 +107,7 @@
                 }
                 // Special Formatting for colour
                 if (/^#[0-9a-f]{6}$/i.test(cell)) {
-                    return `<div style="background-color: ${cell}; height: 20px; width: 20px;" title="${cell}"></div>`;
+                    return `<div style="background-color: ${cell}; height: 20px; width: 20px; margin: 0 auto;" title="${cell}"></div>`;
                 }
                 // Special formatting for date
                 if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/.test(cell)) {

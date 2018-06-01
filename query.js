@@ -368,9 +368,9 @@ async function runQuery (query) {
                 // Simplest case: col is actually a column index
                 let colNum = parseInt(col);
 
-                if (isNaN(colNum)) {
-                    // It's not a column index so check if its a named column in selection
-                    colNum = colNames.indexOf(col);
+                // If it's not a column index, check if its a named column in selection
+                if (isNaN(colNum) && typeof colAlias[col] !== "undefined") {
+                    colNum = colAlias[col]
                 }
 
                 return { colNum, col, desc };
@@ -519,7 +519,7 @@ async function runQuery (query) {
         // The first time this row is visited (at this depth) we'll
         // calculate its ordering value.
         if (typeof va === "undefined") {
-            let v = parsedOrder.colNum === -1 ?
+            let v = isNaN(parsedOrder.colNum) ?
                 resolveValue(row['result'], parsedOrder.col) :
                 row[parsedOrder.colNum];
 

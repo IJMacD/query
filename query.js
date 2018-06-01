@@ -338,10 +338,10 @@ async function runQuery (query) {
          * Grouping
          *************/
         if (groupBy) {
-            let groupByMap;
-            groupByMap = new Map();
+            const parsedGroupBy = groupBy.split(",").map(s => s.trim());
+            const groupByMap = new Map();
             for(const row of rows) {
-                const key = resolveValue(row['result'], groupBy);
+                const key = parsedGroupBy.map(g => resolveValue(row['result'], g)).join("|");
                 row['groupBy'] = key;
                 if (!groupByMap.has(key)) {
                     groupByMap.set(key, []);

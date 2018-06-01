@@ -69,9 +69,13 @@
                         "Accept": "application/json",
                     },
                 })
-                .then(result => result.json())
+                .then(result => result.ok ? result.json() : result.text().then(e => Promise.reject(e)))
                 .then(data => {
                     output.innerHTML = renderTable(data);
+                }, e => {
+                    output.innerHTML = `<p style="color: red;">${e}</p>`;
+                })
+                .then(() => {
                     input.disabled = false;
                 });
             }

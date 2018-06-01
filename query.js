@@ -3,7 +3,7 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET" ];
-const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|LIKE)\s*(.*)/i;
+const CONDITION_REGEX = /([^\s]*)\s*([=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP)\s*(.*)/i;
 const FUNCTION_REGEX = /([a-z]+)\(([^)]+)\)/i;
 
 const FUNCTIONS = {
@@ -22,7 +22,10 @@ const OPERATORS = {
     '>=': (a,b) => a >= b,
     'IS NULL': a => a === null || a === "",
     'IS NOT NULL': a => a !== null && a !== "",
-    'LIKE': (a,b) => new RegExp(b.replace(/\?/g, ".").replace(/%/g, ".*")).test(a),
+    'LIKE': (a,b) => new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a),
+    'NOT LIKE': (a,b) => !(new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a)),
+    'REGEXP': (a,b) => new RegExp(b, "i").test(a),
+    'NOT REGEXP': (a,b) => !(new RegExp(b, "i").test(a)),
 };
 
 let loggedIn = false;
@@ -52,15 +55,11 @@ function parseQuery (query) {
 
 /**
  * Parse a where clause into a tree
- * @param {string} where 
+ * @param {string} where
  */
 function parseWhere (where) {
     if (!where) {
         return;
-    }
-
-    if (where.includes("(")) {
-        throw new Error("Can't parse complicated where clauses.\n\t" + where + "\n\t" + repeat(" ", where.indexOf("(")) + "^");
     }
 
     const whereParts = where.split("AND");
@@ -72,14 +71,16 @@ function parseWhere (where) {
 
     whereParts.forEach(part => {
         const match = part.match(CONDITION_REGEX);
-        if (match) {
+        if (!match) {
+            throw new Error(`Unrecognised WHERE clause: \`${part}\``);
+        }
+
             out.children.push({
                 type: "OPERATOR",
                 operator: match[2],
                 operand1: match[1],
                 operand2: match[3].trim(),
             });
-        }
     });
 
     return out;
@@ -243,7 +244,10 @@ async function runQuery (query) {
             if (parsedWhere) {
                 for (const child of parsedWhere.children) {
                     const compare = OPERATORS[child.operator];
-                    if (compare) {
+                if (!compare) {
+                    throw new Error("Unrecognised operator: " + child.operator);
+                }
+
                         results = results.filter(r => {
                             const a = resolveValue(r, child.operand1);
                             const b = resolveValue(r, child.operand2);
@@ -253,14 +257,13 @@ async function runQuery (query) {
                         });
                     }
                 }
-            }
 
             /*****************
              * Column Values
              *****************/
             let rows = results.map(r => {
                 const values = colNames.map(col => {
-                    if (col.includes("(")) {
+                    if (FUNCTION_REGEX.test(col)) {
                         // Don't compute aggregate functions until after grouping
                         return null;
                     }
@@ -274,7 +277,7 @@ async function runQuery (query) {
             });
 
             /*************
-             * Grouping 
+             * Grouping
              *************/
             if (groupBy) {
                 let groupByMap;
@@ -330,16 +333,16 @@ async function runQuery (query) {
                         const va = getOrderingValue(a, o, i);
                         const vb = getOrderingValue(b, o, i);
 
-                        let sort = (Number.isFinite(va) && Number.isFinite(vb)) ? 
+                        let sort = (Number.isFinite(va) && Number.isFinite(vb)) ?
                             (va - vb) :
                             (va < vb ? -1 : va > vb ? 1 : 0);
-    
+
                         if (sort !== 0) {
                             sort *= o.desc;
 
                             return sort;
                         }
-    
+
                     }
 
                     return 0;
@@ -408,8 +411,8 @@ function resolveValue (row, col) {
 }
 
 /**
- * 
- * @param {any} data 
+ *
+ * @param {any} data
  * @return {string}
  */
 function formatCol (data) {
@@ -426,18 +429,18 @@ function formatCol (data) {
 }
 
 /**
- * 
- * @param {string} char 
- * @param {number} n 
+ *
+ * @param {string} char
+ * @param {number} n
  */
 function repeat (char, n) {
     return Array(n + 1).join(char);
 }
 
 /**
- *  
- * @param {Array} results 
- * @param {string} col 
+ *
+ * @param {Array} results
+ * @param {string} col
  * @return {number}
  */
 function sumResults (results, col) {
@@ -445,9 +448,9 @@ function sumResults (results, col) {
 }
 
 /**
- *  
- * @param {Array} results 
- * @param {string} col 
+ *
+ * @param {Array} results
+ * @param {string} col
  * @return {number}
  */
 function avgResults (results, col) {
@@ -455,9 +458,9 @@ function avgResults (results, col) {
 }
 
 /**
- *  
- * @param {Array} results 
- * @param {string} col 
+ *
+ * @param {Array} results
+ * @param {string} col
  * @return {number}
  */
 function minResults (results, col) {
@@ -465,9 +468,9 @@ function minResults (results, col) {
 }
 
 /**
- *  
- * @param {Array} results 
- * @param {string} col 
+ *
+ * @param {Array} results
+ * @param {string} col
  * @return {number}
  */
 function maxResults (results, col) {
@@ -476,8 +479,8 @@ function maxResults (results, col) {
 
 /**
  * Turns a group of rows into one aggregate row
- * @param {any[][]} rows 
- * @param {string[]} colNames 
+ * @param {any[][]} rows
+ * @param {string[]} colNames
  * @return {any[]}
  */
 function computeAggregates (rows, colNames) {
@@ -504,7 +507,7 @@ function computeAggregates (rows, colNames) {
  */
 function getOrderingValue (row, parsedOrder, depth) {
     let va = row['orderBy'][depth];
-                        
+
     // The first time this row is visited (at this depth) we'll
     // calculate its ordering value.
     if (typeof va === "undefined") {

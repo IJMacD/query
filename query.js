@@ -75,12 +75,12 @@ function parseWhere (where) {
             throw new Error(`Unrecognised WHERE clause: \`${part}\``);
         }
 
-            out.children.push({
-                type: "OPERATOR",
-                operator: match[2],
-                operand1: match[1],
-                operand2: match[3].trim(),
-            });
+        out.children.push({
+            type: "OPERATOR",
+            operator: match[2],
+            operand1: match[1],
+            operand2: match[3].trim(),
+        });
     });
 
     return out;
@@ -96,275 +96,286 @@ async function runQuery (query) {
 
     // console.log(parsedQuery);
 
-    if (parsedQuery.select && parsedQuery.from) {
-        const cols = parsedQuery.select.split(",").map(s => s.trim());
-        const table = parsedQuery.from;
-        // const parsedTables = table.split(",").map(s => s.trim());
-        const where = parsedQuery.where;
-        const parsedWhere = parseWhere(where);
-        // console.log(parsedWhere);
-        const orderBy = parsedQuery['order by'];
-        const groupBy = parsedQuery['group by'];
+    if (!parsedQuery.from && !parsedQuery.select) {
+        throw new Error("You must specify FROM or SELECT");
+    }
 
-        /** @type {Array} */
-        let results;
+    if (!parsedQuery.select) {
+        // Default to selecting all scalar values
+        parsedQuery.select = "*";
+    }
 
-        if (table === "Tutor") {
-            if (parsedWhere) {
-                for (let child of parsedWhere.children){
-                    const resolved2 = resolveValue(null, child.operand2);
-                    if (child.operand1 === "name" && child.operator === "=") {
-                        results = [await iL.Tutor.find(resolved2)];
-                        break;
-                    }
-                    if (child.operand1 === "id" && child.operator === "=") {
-                        results = [iL.Tutor.get(resolved2)];
-                        break;
-                    }
+    const cols = parsedQuery.select.split(",").map(s => s.trim());
+    const table = parsedQuery.from;
+    // const parsedTables = table.split(",").map(s => s.trim());
+    const where = parsedQuery.where;
+    const parsedWhere = parseWhere(where);
+    // console.log(parsedWhere);
+    const orderBy = parsedQuery['order by'];
+    const groupBy = parsedQuery['group by'];
+
+    /** @type {Array} */
+    let results;
+
+    if (table === "Tutor") {
+        if (parsedWhere) {
+            for (let child of parsedWhere.children){
+                const resolved2 = resolveValue(null, child.operand2);
+                if (child.operand1 === "name" && child.operator === "=") {
+                    results = [await iL.Tutor.find(resolved2)];
+                    break;
+                }
+                if (child.operand1 === "id" && child.operator === "=") {
+                    results = [iL.Tutor.get(resolved2)];
+                    break;
                 }
             }
-            if (!results) {
-                results = await iL.Tutor.all();
-            }
-        } else if (table === "Lesson" || table === "Attendance") {
-            let start;
-            let end;
-            let needsLogin = false;
-            let tutor;
+        }
+        if (!results) {
+            results = await iL.Tutor.all();
+        }
+    } else if (table === "Lesson" || table === "Attendance") {
+        let start;
+        let end;
+        let needsLogin = false;
+        let tutor;
 
-            if (parsedWhere) {
-                for (const child of parsedWhere.children) {
-                    const resolved2 = resolveValue(null, child.operand2);
-                    if (child.operand1 === "start" || child.operand1 == "end")  {
-                        if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
-                            start = moment(new Date(resolved2)).startOf("day").toDate();
-                            child.operand2 = start;
-                        } else if (child.operator === "<" || child.operator === "<=" || child.operator === "=") {
-                            end = moment(new Date(resolved2)).endOf("day").toDate();
-                            child.operand2 = end;
-                        }
-                    }
-                    else if (child.operand1.startsWith("attendees")) {
-                        needsLogin = true;
-                    }
-                    else if (child.operand1 === "tutor.id" && child.operator === "=") {
-                        tutor = iL.Tutor.get(resolved2);
-                    }
-                    else if (child.operand1 === "tutor.name" && child.operator === "=") {
-                        tutor = await iL.Tutor.find(resolved2);
+        if (parsedWhere) {
+            for (const child of parsedWhere.children) {
+                const resolved2 = resolveValue(null, child.operand2);
+                if (child.operand1 === "start" || child.operand1 == "end")  {
+                    if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
+                        start = moment(new Date(resolved2)).startOf("day").toDate();
+                        child.operand2 = start;
+                    } else if (child.operator === "<" || child.operator === "<=" || child.operator === "=") {
+                        end = moment(new Date(resolved2)).endOf("day").toDate();
+                        child.operand2 = end;
                     }
                 }
-            }
-
-            if (!start) { start = new Date(); }
-            if (!end) { end = start; }
-
-            if (!loggedIn && (
-                    needsLogin ||
-                    cols.some(c => c.includes("attendees")) ||
-                    groupBy && groupBy.includes("attendees") ||
-                    orderBy && orderBy.includes("attendees") ||
-                    table === "Attendance"
-                )
-            ) {
-                // If we are going to do anything with attendees, we need to be logged in
-                await iL.login(process.env.IL_USER, process.env.IL_PASS);
-                loggedIn = true;
-            }
-
-            results = await iL.Lesson.find({ start, end, tutor });
-
-            if (table === "Attendance") {
-                // Convert Lessons into Attendances
-                // (Re-use all of Lesson searching logic)
-                const newResults = [];
-                for (const lesson of results) {
-                    newResults.push(...lesson.attendees);
+                else if (child.operand1.startsWith("attendees")) {
+                    needsLogin = true;
                 }
-                results = newResults;
+                else if (child.operand1 === "tutor.id" && child.operator === "=") {
+                    tutor = iL.Tutor.get(resolved2);
+                }
+                else if (child.operand1 === "tutor.name" && child.operator === "=") {
+                    tutor = await iL.Tutor.find(resolved2);
+                }
             }
-        } else if (table === "Room") {
-            results = await iL.Room.all();
-        } else if (table === "Term") {
-            results = await iL.Term.all();
-        } else if (table === "User") {
-            results = await iL.User.all();
-        } else {
-            throw new Error("Table not recognised: `" + table + "`");
         }
 
-        if (results) {
+        if (!start) { start = new Date(); }
+        if (!end) { end = start; }
 
-            /******************
-             * Columns
-             ******************/
-            const colNames = [];
-            const colHeaders = [];
-            for (const c of cols) {
-                if (results.length > 0) {
-                    const r = results[0];
-                    if (c === "*") {
-                        // only add "primitive" columns
-                        let newCols = Object.keys(r).filter(k => formatCol(r[k]));
-                        colNames.push(...newCols);
-                        newCols.forEach(c => {
-                            const valLength = formatCol(r[c]).length;
-                            if (valLength > c.length) {
-                                colHeaders.push(c + repeat(" ", valLength - c.length));
-                            } else {
-                                colHeaders.push(c);
-                            }
-                        });
-                    }
-                    else {
-                        // This will calculate the length of the value in the first
-                        // row, but it might not end up in the result set if it gets
-                        // filtered out later.
-                        const val = resolveValue(r, c);
-                        const valLength = val ? formatCol(val).length : 0;
+        if (!loggedIn && (
+                needsLogin ||
+                cols.some(c => c.includes("attendees")) ||
+                groupBy && groupBy.includes("attendees") ||
+                orderBy && orderBy.includes("attendees") ||
+                table === "Attendance"
+            )
+        ) {
+            // If we are going to do anything with attendees, we need to be logged in
+            await iL.login(process.env.IL_USER, process.env.IL_PASS);
+            loggedIn = true;
+        }
+
+        results = await iL.Lesson.find({ start, end, tutor });
+
+        if (table === "Attendance") {
+            // Convert Lessons into Attendances
+            // (Re-use all of Lesson searching logic)
+            const newResults = [];
+            for (const lesson of results) {
+                newResults.push(...lesson.attendees);
+            }
+            results = newResults;
+        }
+    } else if (table === "Room") {
+        results = await iL.Room.all();
+    } else if (table === "Term") {
+        results = await iL.Term.all();
+    } else if (table === "User") {
+        results = await iL.User.all();
+    } else if (typeof table === "undefined") {
+        // If there is no table specified create one token row
+        // so that we can return constants etc.
+        results = [[]];
+    } else {
+        throw new Error("Table not recognised: `" + table + "`");
+    }
+
+    if (results) {
+
+        /******************
+         * Columns
+         ******************/
+        const colNames = [];
+        const colHeaders = [];
+        for (const c of cols) {
+            if (results.length > 0) {
+                const r = results[0];
+                if (c === "*") {
+                    // only add "primitive" columns
+                    let newCols = Object.keys(r).filter(k => formatCol(r[k]));
+                    colNames.push(...newCols);
+                    newCols.forEach(c => {
+                        const valLength = formatCol(r[c]).length;
                         if (valLength > c.length) {
                             colHeaders.push(c + repeat(" ", valLength - c.length));
                         } else {
                             colHeaders.push(c);
                         }
-                        colNames.push(c);
-                    }
-                } else {
-                    colNames.push(c);
-                    colHeaders.push(c);
+                    });
                 }
+                else {
+                    // This will calculate the length of the value in the first
+                    // row, but it might not end up in the result set if it gets
+                    // filtered out later.
+                    const val = resolveValue(r, c);
+                    const valLength = val ? formatCol(val).length : 0;
+                    if (valLength > c.length) {
+                        colHeaders.push(c + repeat(" ", valLength - c.length));
+                    } else {
+                        colHeaders.push(c);
+                    }
+                    colNames.push(c);
+                }
+            } else {
+                colNames.push(c);
+                colHeaders.push(c);
             }
+        }
 
-            output(colHeaders);
-            output(colHeaders.map(c => repeat("-", c.length)));
+        output(colHeaders);
+        output(colHeaders.map(c => repeat("-", c.length)));
 
-            /***************
-             * Filtering
-             ***************/
-            if (parsedWhere) {
-                for (const child of parsedWhere.children) {
-                    const compare = OPERATORS[child.operator];
+        /***************
+         * Filtering
+         ***************/
+        if (parsedWhere) {
+            for (const child of parsedWhere.children) {
+                const compare = OPERATORS[child.operator];
                 if (!compare) {
                     throw new Error("Unrecognised operator: " + child.operator);
                 }
 
-                        results = results.filter(r => {
-                            const a = resolveValue(r, child.operand1);
-                            const b = resolveValue(r, child.operand2);
-                            const na = parseFloat(a);
-                            const nb = parseFloat(b);
-                            return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
-                        });
-                    }
-                }
-
-            /*****************
-             * Column Values
-             *****************/
-            let rows = results.map(r => {
-                const values = colNames.map(col => {
-                    if (FUNCTION_REGEX.test(col)) {
-                        // Don't compute aggregate functions until after grouping
-                        return null;
-                    }
-                    return resolveValue(r, col);
+                results = results.filter(r => {
+                    const a = resolveValue(r, child.operand1);
+                    const b = resolveValue(r, child.operand2);
+                    const na = parseFloat(a);
+                    const nb = parseFloat(b);
+                    return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
                 });
+            }
+        }
 
-                // Save reference to original object for sorting
-                values['result'] = r;
-
-                return values;
+        /*****************
+         * Column Values
+         *****************/
+        let rows = results.map(r => {
+            const values = colNames.map(col => {
+                if (FUNCTION_REGEX.test(col)) {
+                    // Don't compute aggregate functions until after grouping
+                    return null;
+                }
+                return resolveValue(r, col);
             });
 
-            /*************
-             * Grouping
-             *************/
-            if (groupBy) {
-                let groupByMap;
-                groupByMap = new Map();
-                for(const row of rows) {
-                    const key = resolveValue(row['result'], groupBy);
-                    row['groupBy'] = key;
-                    if (!groupByMap.has(key)) {
-                        groupByMap.set(key, []);
-                    }
-                    groupByMap.get(key).push(row);
+            // Save reference to original object for sorting
+            values['result'] = r;
+
+            return values;
+        });
+
+        /*************
+         * Grouping
+         *************/
+        if (groupBy) {
+            let groupByMap;
+            groupByMap = new Map();
+            for(const row of rows) {
+                const key = resolveValue(row['result'], groupBy);
+                row['groupBy'] = key;
+                if (!groupByMap.has(key)) {
+                    groupByMap.set(key, []);
+                }
+                groupByMap.get(key).push(row);
+            }
+
+            rows = Array.from(groupByMap.values()).map(rows => computeAggregates(rows, colNames));
+
+        } else if (colNames.some(c => FUNCTION_REGEX.test(c))) {
+            // If we have any aggregate functions but we're not grouping,
+            // then apply aggregate functions to whole set
+            rows = [
+                computeAggregates(rows, colNames), // Single row result set
+            ];
+        }
+
+        /****************
+         * Sorting
+         ***************/
+        if (orderBy) {
+            // Parse the orderBy clause into an array of objects
+            const parsedOrders = orderBy.split(",").map(order => {
+                const [ col, asc_desc ] = order.split(" ");
+                const desc = asc_desc === "DESC" ? -1 : 1;
+
+                // Simplest case: col is actually a column index
+                let colNum = parseInt(col);
+
+                if (isNaN(colNum)) {
+                    // It's not a column index so check if its a named column in selection
+                    colNum = colNames.indexOf(col);
                 }
 
-                rows = Array.from(groupByMap.values()).map(rows => computeAggregates(rows, colNames));
+                return { colNum, col, desc };
+            });
 
-            } else if (colNames.some(c => FUNCTION_REGEX.test(c))) {
-                // If we have any aggregate functions but we're not grouping,
-                // then apply aggregate functions to whole set
-                rows = [
-                    computeAggregates(rows, colNames), // Single row result set
-                ];
-            }
+            // Pre-create ordering value array for each row
+            rows.forEach(row => {
+                row['orderBy'] = [];
+            });
 
-            /****************
-             * Sorting
-             ***************/
-            if (orderBy) {
-                // Parse the orderBy clause into an array of objects
-                const parsedOrders = orderBy.split(",").map(order => {
-                    const [ col, asc_desc ] = order.split(" ");
-                    const desc = asc_desc === "DESC" ? -1 : 1;
+            rows = rows.sort((a,b) => {
+                for (let i = 0; i < parsedOrders.length; i++) {
+                    const o = parsedOrders[i];
 
-                    // Simplest case: col is actually a column index
-                    let colNum = parseInt(col);
+                    const va = getOrderingValue(a, o, i);
+                    const vb = getOrderingValue(b, o, i);
 
-                    if (isNaN(colNum)) {
-                        // It's not a column index so check if its a named column in selection
-                        colNum = colNames.indexOf(col);
+                    let sort = (Number.isFinite(va) && Number.isFinite(vb)) ?
+                        (va - vb) :
+                        (va < vb ? -1 : va > vb ? 1 : 0);
+
+                    if (sort !== 0) {
+                        sort *= o.desc;
+
+                        return sort;
                     }
 
-                    return { colNum, col, desc };
-                });
+                }
 
-                // Pre-create ordering value array for each row
-                rows.forEach(row => {
-                    row['orderBy'] = [];
-                });
-
-                rows = rows.sort((a,b) => {
-                    for (let i = 0; i < parsedOrders.length; i++) {
-                        const o = parsedOrders[i];
-
-                        const va = getOrderingValue(a, o, i);
-                        const vb = getOrderingValue(b, o, i);
-
-                        let sort = (Number.isFinite(va) && Number.isFinite(vb)) ?
-                            (va - vb) :
-                            (va < vb ? -1 : va > vb ? 1 : 0);
-
-                        if (sort !== 0) {
-                            sort *= o.desc;
-
-                            return sort;
-                        }
-
-                    }
-
-                    return 0;
-                });
-            }
-
-            /******************
-             * Limit and Offset
-             ******************/
-            if (parsedQuery.limit || parsedQuery.offset) {
-                const start = parseInt(parsedQuery.offset) || 0;
-                const end = start + parseInt(parsedQuery.limit) || rows.length;
-                rows = rows.slice(start, end);
-            }
-
-            /*****************
-             * Output
-             ****************/
-            rows.forEach(r => output(r.map(formatCol)));
-
-            return output_buffer;
+                return 0;
+            });
         }
+
+        /******************
+         * Limit and Offset
+         ******************/
+        if (parsedQuery.limit || parsedQuery.offset) {
+            const start = parseInt(parsedQuery.offset) || 0;
+            const end = start + parseInt(parsedQuery.limit) || rows.length;
+            rows = rows.slice(start, end);
+        }
+
+        /*****************
+         * Output
+         ****************/
+        rows.forEach(r => output(r.map(formatCol)));
+
+        return output_buffer;
     }
 }
 
@@ -484,6 +495,12 @@ function maxResults (results, col) {
  * @return {any[]}
  */
 function computeAggregates (rows, colNames) {
+    // If there are no rows (i.e. due to filtering) then
+    // just return an empty row.
+    if (rows.length === 0) {
+        return [];
+    }
+
     // Pick the first row from each group
     const row = rows[0];
 

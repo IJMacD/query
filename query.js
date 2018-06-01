@@ -191,6 +191,27 @@ async function runQuery (query) {
             }
             results = newResults;
         }
+    } else if (table === "Course") {
+        let title;
+        let tutor;
+        if (parsedWhere) {
+            for (let child of parsedWhere.children){
+                const resolved2 = resolveValue(null, child.operand2);
+                if (child.operand1 === "title" && child.operator === "=") {
+                    title = resolved2;
+                    break;
+                }
+                if (child.operand1 === "tutor.id" && child.operator === "=") {
+                    tutor = iL.Tutor.get(resolved2);
+                    break;
+                }
+                if (child.operand1 === "tutor.name" && child.operator === "=") {
+                    tutor = await iL.Tutor.find(resolved2);
+                    break;
+                }
+            }
+        }
+        results = await iL.Course.find({ title, tutor });
     } else if (table === "Room") {
         results = await iL.Room.all();
     } else if (table === "Term") {

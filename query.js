@@ -340,24 +340,23 @@ async function runQuery (query) {
          *************/
         if (groupBy) {
             const parsedGroupBy = groupBy.split(",").map(s => s.trim());
-            const groupByMap = new Map();
-            for(const row of rows) {
-                const key = parsedGroupBy.map(g => resolveValue(row['result'], g)).join("|");
-                row['groupBy'] = key;
-                if (!groupByMap.has(key)) {
-                    groupByMap.set(key, []);
-                }
-                groupByMap.get(key).push(row);
+            rows = groupRows(rows, parsedGroupBy);
+        }
+
+        // Now see if there are any aggregate functions to apply
+        if (colNames.some(c => FUNCTION_REGEX.test(c))) {
+            if (!groupBy) {
+                // If we have aggregate functions but we're not grouping,
+                // then apply aggregate functions to whole set
+                const aggRow = rows[0];
+                aggRow['group'] = rows;
+
+                rows = [
+                    aggRow // Single row result set
+                ];
             }
 
-            rows = Array.from(groupByMap.values()).map(rows => computeAggregates(rows, colNames));
-
-        } else if (colNames.some(c => FUNCTION_REGEX.test(c))) {
-            // If we have any aggregate functions but we're not grouping,
-            // then apply aggregate functions to whole set
-            rows = [
-                computeAggregates(rows, colNames), // Single row result set
-            ];
+            rows = rows.map(row => computeAggregates(row['group'], colNames));
         }
 
         /*******************
@@ -371,15 +370,12 @@ async function runQuery (query) {
                 }
 
                 rows = rows.filter(r => {
-                    // Having clause can only use constants and result-set columns
+                    // Having clause can only use constants, result-set columns or aggregate functions
                     // We don't have access to original `result` objects
-                    const ca = resolveConstant(child.operand1);
-                    const cb = resolveConstant(child.operand2);
-                    const a = typeof ca !== "undefined" ? ca : r[colAlias[child.operand1]];
-                    const b = typeof cb !== "undefined" ? cb : r[colAlias[child.operand2]];
-                    const na = parseFloat(a);
-                    const nb = parseFloat(b);
-                    return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
+                    let a = resolveHavingValue(r, child.operand1);
+                    let b = resolveHavingValue(r, child.operand2);
+
+                    return compare(a, b);
                 });
             }
         }
@@ -515,6 +511,40 @@ async function runQuery (query) {
         return null;
     }
 
+    function resolveHavingValue (row, col) {
+
+        const la = row[colAlias[col]];
+        if (typeof la !== "undefined") {
+            const na = parseFloat(la);
+            if (!isNaN(la)) {
+                return la;
+            }
+            return la;
+        }
+
+        const ca = resolveConstant(col);
+        if (typeof ca !== "undefined") {
+            return ca;
+        }
+
+        const match = FUNCTION_REGEX.exec(col);
+        if (match) {
+            const fn = AGGREGATE_FUNCTIONS[match[1]];
+            if (!fn) {
+                throw new Error("Function not found: " + match[1]);
+            }
+
+            if (!row['group']) {
+                throw new Error("Aggregate function called on non-group of rows");
+            }
+
+            return fn(aggregateValues(row['group'], match[2]));
+        }
+
+        throw new Error("Invalid HAVING condition: " + col);
+
+    }
+
     /**
      * Turns a group of rows into one aggregate row
      * @param {any[][]} rows
@@ -536,19 +566,25 @@ async function runQuery (query) {
             const match = FUNCTION_REGEX.exec(col);
             if (match) {
                 const fn = AGGREGATE_FUNCTIONS[match[1]];
-                let values;
-                if (match[2] === "*") {
-                    values = rows.map(r => true);
+                if (fn) {
+                    row[i] = fn(aggregateValues(rows, match[2]));
                 } else {
-                    // All aggregate functions ignore null except COUNT(*)
-                    values = rows.map(row => resolveValue(row['result'], match[2])).filter(v => v !== null && v !== "");
+                    throw new Error("Function not found: " + match[1]);
                 }
-                row[i] = fn && fn(values);
                 return;
             }
         });
 
         return row;
+    }
+
+    function aggregateValues (rows, col) {
+        if (col === "*") {
+            return rows.map(r => true);
+        }
+
+        // All aggregate functions ignore null except COUNT(*)
+        return rows.map(row => resolveValue(row['result'], col)).filter(v => v !== null && v !== "" && !isNaN(v));
     }
 
     /**
@@ -578,6 +614,28 @@ async function runQuery (query) {
         }
 
         return va;
+    }
+
+    function groupRows (rows, parsedGroupBy) {
+        const groupByMap = new Map();
+        for(const row of rows) {
+            const key = parsedGroupBy.map(g => resolveValue(row['result'], g)).join("|");
+            row['groupBy'] = key;
+            if (!groupByMap.has(key)) {
+                groupByMap.set(key, []);
+            }
+            groupByMap.get(key).push(row);
+        }
+
+        return Array.from(groupByMap.values()).map(rows => {
+            // Just pick the first row from each group
+            const aggRow = rows[0];
+
+            // Save reference to original rows
+            aggRow['group'] = rows;
+
+            return aggRow;
+        });
     }
 }
 

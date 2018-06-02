@@ -3,12 +3,12 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING" ];
-const CONDITION_REGEX = /^([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP)\s*(.*)$/i;
+const CONDITION_REGEX = /(.*)([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
 const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
 
 const AGGREGATE_FUNCTIONS = {
     'COUNT': a => a.length,
-    'SUM': v => v.reduce((total,val) => total + parseFloat(val), 0),
+    'SUM': v => v.reduce((total,val) => total + (+val), 0), // Be sure to coerce into number
     'AVG': v => AGGREGATE_FUNCTIONS.SUM(v) / v.length,
     'MIN': v => Math.min(...v),
     'MAX': v => Math.max(...v),
@@ -22,12 +22,12 @@ const OPERATORS = {
     '>': (a,b) => a > b,
     '<=': (a,b) => a <= b,
     '>=': (a,b) => a >= b,
-    'IS NULL': a => a === null || a === "",
-    'IS NOT NULL': a => a !== null && a !== "",
+    'IS NULL': a => a === null || a === "" || Number.isNaN(a) || isNullDate(a),
+    'IS NOT NULL': a => !OPERATORS['IS NULL'](a),
     'LIKE': (a,b) => new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a),
-    'NOT LIKE': (a,b) => !(new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a)),
+    'NOT LIKE': (a,b) => !OPERATORS['LIKE'](a, b),
     'REGEXP': (a,b) => new RegExp(b, "i").test(a),
-    'NOT REGEXP': (a,b) => !(new RegExp(b, "i").test(a)),
+    'NOT REGEXP': (a,b) => !OPERATORS['REGEXP'](a, b),
 };
 
 let loggedIn = false;
@@ -79,8 +79,8 @@ function parseWhere (where) {
 
         out.children.push({
             type: "OPERATOR",
-            operator: match[2],
-            operand1: match[1],
+            operator: match[2].trim(),
+            operand1: match[1].trim(),
             operand2: match[3].trim(),
         });
     });
@@ -336,9 +336,7 @@ async function runQuery (query) {
                 results = results.filter(r => {
                     const a = resolveValue(r, child.operand1);
                     const b = resolveValue(r, child.operand2);
-                    const na = parseFloat(a);
-                    const nb = parseFloat(b);
-                    return (!isNaN(na) && !isNaN(b)) ? compare(na, nb) : compare(a, b);
+                    return compare(a, b);
                 });
             }
         }
@@ -497,6 +495,10 @@ async function runQuery (query) {
      * @returns {string|number}
      */
     function resolveConstant (str) {
+        if (!str) { // null, undefined, ""
+            return; // undefined
+        }
+
         // Check for quoted string
         if ((str.startsWith("'") && str.endsWith("'")) ||
         (str.startsWith('"') && str.endsWith('"'))) {
@@ -504,9 +506,8 @@ async function runQuery (query) {
         }
 
         // Check for numbers
-        const n = parseFloat(str);
-        if (!isNaN(n)) {
-            return n;
+        if (!isNaN(+str)) {
+            return +str;
         }
 
         return; // undefined
@@ -576,12 +577,10 @@ async function runQuery (query) {
     function resolveHavingValue (row, col) {
 
         const la = row[colAlias[col]];
+
         if (typeof la !== "undefined") {
-            const na = parseFloat(la);
-            if (!isNaN(la)) {
-                return la;
-            }
-            return la;
+            // Convert to number if possible
+            return !isNaN(+la) ? +la : la;
         }
 
         const ca = resolveConstant(col);
@@ -658,7 +657,7 @@ async function runQuery (query) {
         }
 
         // All aggregate functions ignore null except COUNT(*)
-        let values = rows.map(row => resolveValue(row['result'], col)).filter(v => v !== null && v !== "" && !Number.isNaN(v));
+        let values = rows.map(row => resolveValue(row['result'], col)).filter(OPERATORS['IS NOT NULL']);
 
         if (distinct) {
             values = Array.from(new Set(values));
@@ -683,10 +682,7 @@ async function runQuery (query) {
                 row[parsedOrder.colNum];
 
             // Try to coerce into number if possible
-            const vn = parseFloat(v);
-            if (Number.isFinite(vn)) {
-                v = vn;
-            }
+            v = isNaN(+v) ? v : +v;
 
             // Set value to save resolution next time
             row['orderBy'][depth] = v;
@@ -705,7 +701,9 @@ async function runQuery (query) {
     function groupRows (rows, parsedGroupBy) {
         const groupByMap = new Map();
         for(const row of rows) {
-            const key = parsedGroupBy.map(g => resolveValue(row['result'], g)).join("|");
+            const key = parsedGroupBy.length === 1 ?
+                resolveValue(row['result'], parsedGroupBy[0]) : // Group could actually be an object e.g. GROUP BY tutor
+                parsedGroupBy.map(g => resolveValue(row['result'], g)).join("|");
             if (!groupByMap.has(key)) {
                 groupByMap.set(key, []);
             }
@@ -749,4 +747,13 @@ function formatCol (data) {
  */
 function repeat (char, n) {
     return Array(n + 1).join(char);
+}
+
+/**
+ * Returns true iff param is Date object AND is invalid
+ * @param {any} date
+ * @returns {boolean}
+ */
+function isNullDate (date) {
+    return date instanceof Date && isNaN(+date);
 }

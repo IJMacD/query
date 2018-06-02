@@ -233,8 +233,35 @@ async function runQuery (query) {
     const colNames = [];
     const colHeaders = [];
     const colAlias = {};
+    const joins = [];
 
     if (results) {
+
+        /******************
+         * Joins
+         *****************/
+
+        // Explicitly list join connections
+        if (results.length > 0) {
+            const result = results[0];
+
+            parsedTables.forEach((table, i) => {
+                if (i === 0) {
+                    joins.push("");
+                    return;
+                }
+
+                const t = table.toLowerCase();
+
+                const path = findPath(result, t);
+
+                if (typeof path === "undefined") {
+                    throw new Error("Unable to join: " + t);
+                }
+
+                joins.push(path);
+            });
+        }
 
         /******************
          * Columns
@@ -259,20 +286,19 @@ async function runQuery (query) {
                 colHeaders.push(...newCols);
 
                 // Add all the scalar columns for secondary tables
-                for (let i = 1; i < parsedTables.length; i++) {
-                    const t = parsedTables[i].toLowerCase();
+                for (let i = 1; i < joins.length; i++) {
+                    const j = joins[i];
 
-                    // Check if the parent object has a property matching
-                    // the secondary table i.e. Tutor => result.tutor
-                    if (!r[t]) {
-                        // If not just skip
-                        continue;
+                    const tableObj = resolvePath(r, j);
+
+                    if (!tableObj) {
+                        throw Error("Problem with join: " + j);
                     }
 
                     // only add "primitive" columns
-                    let newCols = Object.keys(r[t]).filter(k => formatCol(r[t][k]));
+                    let newCols = Object.keys(tableObj).filter(k => formatCol(tableObj[k]));
 
-                    colNames.push(...newCols.map(c => `${t}.${c}`));
+                    colNames.push(...newCols.map(c => `${j}.${c}`));
                     colHeaders.push(...newCols);
                 }
             } else {
@@ -445,6 +471,31 @@ async function runQuery (query) {
         return output_buffer;
     }
 
+    /**
+     * Traverse a sample object to determine absolute path to given name
+     * Uses explicit join list.
+     * @param {any} result
+     * @param {string} name
+     * @returns {string}
+     */
+    function findPath (result, name) {
+        for (const prefix of joins) {
+            const path = prefix ? `${prefix}.${name}` : name;
+
+            // Check if the parent object has a property matching
+            // the secondary table i.e. Tutor => result.tutor
+            if (typeof resolvePath(result, path) !== "undefined") {
+                return path;
+            }
+        }
+    }
+
+    /**
+     * Returns a string or a number if the value is a constant.
+     * Returns undefined otherwise.
+     * @param {string} str
+     * @returns {string|number}
+     */
     function resolveConstant (str) {
         // Check for quoted string
         if ((str.startsWith("'") && str.endsWith("'")) ||
@@ -462,11 +513,11 @@ async function runQuery (query) {
     }
 
     /**
-     *
-     * @param {any} row
+     * Resolve a col into a concrete value (constant or from object)
+     * @param {any} result
      * @param {string} col
      */
-    function resolveValue (row, col) {
+    function resolveValue (result, col) {
         // Check for constant values first
         const constant = resolveConstant(col);
 
@@ -475,40 +526,51 @@ async function runQuery (query) {
         }
 
         // If row is null, there's nothing left we can do
-        if (row === null) {
+        if (result === null) {
             return;
         }
 
         // Now for the real column resolution
         // We will try each of the tables in turn
-        for (let i = 0; i < parsedTables.length; i++) {
-            const prefix = i === 0 ? "" : parsedTables[i].toLowerCase() + ".";
+        for (let i = 0; i < joins.length; i++) {
+            const prefix = i === 0 ? "" : joins[i] + ".";
 
-            // Resolve a possible alias
+                                    // Resolve a possible alias
             const colName = prefix + (colNames[colAlias[col]] || col);
+            // Prefix needs to be added even to aliases as colNames are
+            // not necessarily fully resolved.
 
-            if (i === 0 && typeof row[colName] !== "undefined") {
-                return row[colName];
-            }
+            const val = resolvePath(result, colName);
 
-            // If column is a path, then iteratively resolve
-            if (colName.includes(".")) {
-                // resolve path
-                let val = row;
-                for (const name of colName.split(".")) {
-                    val = val[name];
-                    if (typeof val === "undefined") {
-                        val = null;
-                        break;
-                    }
-                }
-                if (val !== null && typeof val !== "undefined") {
-                    return val;
-                }
+            if (typeof val !== "undefined") {
+                return val;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Traverse a dotted path to resolve a deep value
+     * @param {any} result
+     * @param {string} path
+     * @returns {any}
+     */
+    function resolvePath(result, path) {
+        // resolve path
+        let val = result;
+        for (const name of path.split(".")) {
+            val = val[name];
+            if (typeof val === "undefined") {
+                val = null;
+                break;
+            }
+        }
+        if (val !== null && typeof val !== "undefined") {
+            return val;
+        }
+
+        return; // undefined
     }
 
     function resolveHavingValue (row, col) {
@@ -634,11 +696,16 @@ async function runQuery (query) {
         return va;
     }
 
+    /**
+     * Collapse multiple rows into a single row
+     * @param {any[][]} rows
+     * @param {string[]} parsedGroupBy
+     * @returns {any[]}
+     */
     function groupRows (rows, parsedGroupBy) {
         const groupByMap = new Map();
         for(const row of rows) {
             const key = parsedGroupBy.map(g => resolveValue(row['result'], g)).join("|");
-            row['groupBy'] = key;
             if (!groupByMap.has(key)) {
                 groupByMap.set(key, []);
             }

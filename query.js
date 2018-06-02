@@ -245,21 +245,27 @@ async function runQuery (query) {
         if (results.length > 0) {
             const result = results[0];
 
-            parsedTables.forEach((table, i) => {
+            parsedTables.forEach((join, i) => {
                 if (i === 0) {
                     joins.push("");
                     return;
                 }
 
+                const [ table, on ] = join.split("ON").map(s => s.trim());
+
                 const t = table.toLowerCase();
 
-                const path = findPath(result, t);
+                if (on) {
+                    joins.push(on);
+                } else {
+                    const path = findPath(result, t);
 
-                if (typeof path === "undefined") {
-                    throw new Error("Unable to join: " + t);
+                    if (typeof path === "undefined") {
+                        throw new Error("Unable to join: " + t);
+                    }
+
+                    joins.push(path);
                 }
-
-                joins.push(path);
             });
         }
 
@@ -367,6 +373,9 @@ async function runQuery (query) {
             rows = groupRows(rows, parsedGroupBy);
         }
 
+        /**********************
+         * Aggregate Functions
+         *********************/
         // Now see if there are any aggregate functions to apply
         if (colNames.some(c => FUNCTION_REGEX.test(c))) {
             if (!groupBy) {

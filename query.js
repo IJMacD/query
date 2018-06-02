@@ -12,7 +12,7 @@ const AGGREGATE_FUNCTIONS = {
     'AVG': v => AGGREGATE_FUNCTIONS.SUM(v) / v.length,
     'MIN': v => Math.min(...v),
     'MAX': v => Math.max(...v),
-    'STRING_AGG': v => v.join(),
+    'LISTAGG': v => v.join(),
 };
 
 const OPERATORS = {
@@ -578,13 +578,31 @@ async function runQuery (query) {
         return row;
     }
 
+    /**
+     *
+     * @param {any[][]} rows
+     * @param {string} col
+     * @returns {any[]}
+     */
     function aggregateValues (rows, col) {
         if (col === "*") {
             return rows.map(r => true);
         }
 
+        let distinct = false;
+        if (col.startsWith("DISTINCT")) {
+            distinct = true;
+            col = col.substr(8).trim();
+        }
+
         // All aggregate functions ignore null except COUNT(*)
-        return rows.map(row => resolveValue(row['result'], col)).filter(v => v !== null && v !== "" && !isNaN(v));
+        let values = rows.map(row => resolveValue(row['result'], col)).filter(v => v !== null && v !== "" && !Number.isNaN(v));
+
+        if (distinct) {
+            values = Array.from(new Set(values));
+        }
+
+        return values;
     }
 
     /**

@@ -3,16 +3,46 @@
         <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
         <title>Admin Query</title>
         <style>
-            #input {
+            * {
+                font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            form {
+                margin: 0;
+            }
+            input {
                 flex: 1;
                 font-size: 1.1em;
                 border-top-left-radius: 5px;
                 border-bottom-left-radius: 5px;
                 border: 1px solid #999;
+                border-width: 1px 0 1px 1px;
                 padding: 5px;
             }
-            #query  {
+            button  {
                 font-size: 1.1em;
+                background-image: linear-gradient(to bottom, #FFF, #CCC);
+                border: 1px solid #999;
+                border-top-right-radius: 5px;
+                border-bottom-right-radius: 5px;
+            }
+            #query-suggest {
+                position: absolute;
+                top: 40px;
+                background: white;
+                padding: 20px 10px 20px 40px;
+                left: 20px;
+                border: 1px solid #999;
+                box-shadow: 2px 2px 9px 0px;
+            }
+            #query-suggest:empty {
+                display: none;
+            }
+            #query-suggest li {
+                cursor: pointer;
+                padding: 2px 20px 2px 10px;
+            }
+            #query-suggest li:hover {
+                background: rgb(254, 255, 213);
             }
             #output {
                 flex: 1;
@@ -42,23 +72,69 @@
     </head>
     <body>
         <div style="display: flex; flex-direction: column; height: 100%;">
-            <div style="display: flex; flex-direction: row; margin: 10px;">
-                <input type="text" id="input" name="query">
-                <button id="query">Query</button>
-            </div>
+            <form id="query-form">
+                <div style="display: flex; flex-direction: row; margin: 10px;">
+                    <input type="text" id="input" name="q">
+                    <button type="submit">Query</button>
+                </div>
+            </form>
+            <ol id="query-suggest"></ol>
             <div id="output"></div>
         </div>
         <script>
             const input = document.getElementById("input");
             const output = document.getElementById("output");
-            const query = document.getElementById("query");
+            const queryForm = document.getElementById("query-form");
+            const querySuggest = document.getElementById("query-suggest");
 
-            query.addEventListener("click", sendQuery);
+            const QUERY_HISTORY = "query_history";
+            let queryHistory = loadHistory();
+
+            queryForm.addEventListener("submit", e => {
+                e.preventDefault();
+                sendQuery();
+            });
             document.addEventListener("keydown", e => {
                 if (e.key === "Enter") sendQuery();
+                else if (e.key === "Escape") hideSuggestions();
+                else if (e.key === "Tab") {
+                    const suggestions = getSuggestions();
+                    if (suggestions.length >= 1) {
+                        e.preventDefault();
+                        input.value = suggestions[0];
+                    }
+                }
+            });
+            input.addEventListener("keyup", e => {
+                if (e.altKey && "1234567890".includes(e.key)) {
+                    e.preventDefault();
+                    const suggest = getSuggestions()["1234567890".indexOf(e.key)];
+                    if (typeof suggest !== "undefined") {
+                        input.value = suggest;
+                    }
+                }
+                else if (e.key === "Escape") return;
+                showSuggestions();
+            });
+            querySuggest.addEventListener("click", e => {
+                if (e.target.localName === "li") {
+                    input.value = e.target.textContent;
+                    showSuggestions();
+                    input.focus();
+                }
             });
 
+            if (location.search) {
+                const searchParams = new URLSearchParams(location.search);
+                if (searchParams.has("q")) {
+                    input.value = searchParams.get("q");
+                    sendQuery();
+                }
+            }
+            input.focus();
+
             function sendQuery () {
+                hideSuggestions();
                 output.innerHTML = "";
                 input.disabled = true;
                 fetch("/query", {
@@ -72,6 +148,7 @@
                 .then(result => result.ok ? result.json() : result.text().then(e => Promise.reject(e)))
                 .then(data => {
                     output.innerHTML = renderTable(data);
+                    saveHistory(input.value);
                 }, e => {
                     output.innerHTML = `<p style="color: red;">${e}</p>`;
                 })
@@ -114,6 +191,35 @@
                     return new Date(cell).toLocaleString(navigator.language);
                 }
                 return cell;
+            }
+
+            function getSuggestions () {
+                return queryHistory.filter(q => q && q != input.value && q.startsWith(input.value));
+            }
+
+            function showSuggestions () {
+                querySuggest.innerHTML = getSuggestions().map(m => `<li>${m}</li>`).join("");
+            }
+
+            function hideSuggestions () {
+                querySuggest.innerHTML = "";
+            }
+
+            function saveHistory (value) {
+                queryHistory = queryHistory.filter(q => q !== value);
+                queryHistory.unshift(input.value);
+                queryHistory.length = 20;
+                localStorage.setItem(QUERY_HISTORY, JSON.stringify(queryHistory));
+            }
+
+            function loadHistory () {
+                const saved = localStorage.getItem(QUERY_HISTORY);
+                if (saved) {
+                    try {
+                        return JSON.parse(saved);
+                    } catch (e) { }
+                }
+                return [];
             }
         </script>
     </body>

@@ -56,8 +56,18 @@ function parseQuery (query) {
 }
 
 /**
+ * @typedef WhereNode
+ * @prop {string} type
+ * @prop {WhereNode[]} [children]
+ * @prop {string} [operator]
+ * @prop {string} [operand1]
+ * @prop {string} [operand2]
+ */
+
+/**
  * Parse a where clause into a tree
  * @param {string} where
+ * @return {WhereNode}
  */
 function parseWhere (where) {
     if (!where) {
@@ -66,6 +76,7 @@ function parseWhere (where) {
 
     const whereParts = where.split("AND");
 
+    /** @type {WhereNode} */
     const out = {
         type: "AND",
         children: [],
@@ -126,11 +137,11 @@ async function runQuery (query) {
             for (let child of parsedWhere.children){
                 const resolved2 = resolveConstant(child.operand2);
                 if (child.operand1 === "name" && child.operator === "=") {
-                    results = [await iL.Tutor.find(resolved2)];
+                    results = [await iL.Tutor.find(String(resolved2))];
                     break;
                 }
                 if (child.operand1 === "id" && child.operator === "=") {
-                    results = [iL.Tutor.get(resolved2)];
+                    results = [iL.Tutor.get(String(resolved2))];
                     break;
                 }
             }
@@ -139,7 +150,9 @@ async function runQuery (query) {
             results = await iL.Tutor.all();
         }
     } else if (table === "Lesson" || table === "Attendance") {
+        /** @type Date */
         let start;
+        /** @type Date */
         let end;
         let needsLogin = false;
         let tutor;
@@ -147,23 +160,21 @@ async function runQuery (query) {
         if (parsedWhere) {
             for (const child of parsedWhere.children) {
                 const resolved2 = resolveConstant(child.operand2);
-                if (child.operand1 === "start" || child.operand1 == "end")  {
+                if ((child.operand1 === "start" || child.operand1 == "end") && resolved2 instanceof Date)  {
                     if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
-                        start = moment(new Date(resolved2)).startOf("day").toDate();
-                        child.operand2 = start;
+                        start = resolved2;
                     } else if (child.operator === "<" || child.operator === "<=" || child.operator === "=") {
-                        end = moment(new Date(resolved2)).endOf("day").toDate();
-                        child.operand2 = end;
+                        end = resolved2;
                     }
                 }
-                else if (child.operand1.startsWith("attendees")) {
+                else if (child.operand1.startsWith("attendees") || child.operand2.startsWith("attendees")) {
                     needsLogin = true;
                 }
                 else if (child.operand1 === "tutor.id" && child.operator === "=") {
-                    tutor = iL.Tutor.get(resolved2);
+                    tutor = iL.Tutor.get(String(resolved2));
                 }
                 else if (child.operand1 === "tutor.name" && child.operator === "=") {
-                    tutor = await iL.Tutor.find(resolved2);
+                    tutor = await iL.Tutor.find(String(resolved2));
                 }
             }
         }
@@ -183,7 +194,7 @@ async function runQuery (query) {
             await iL.login(process.env.IL_USER, process.env.IL_PASS);
             loggedIn = true;
         }
-
+        
         results = await iL.Lesson.find({ start, end, tutor });
 
         if (table === "Attendance") {
@@ -202,15 +213,15 @@ async function runQuery (query) {
             for (let child of parsedWhere.children){
                 const resolved2 = resolveConstant(child.operand2);
                 if (child.operand1 === "title" && child.operator === "=") {
-                    title = resolved2;
+                    title = String(resolved2);
                     break;
                 }
                 if (child.operand1 === "tutor.id" && child.operator === "=") {
-                    tutor = iL.Tutor.get(resolved2);
+                    tutor = iL.Tutor.get(String(resolved2));
                     break;
                 }
                 if (child.operand1 === "tutor.name" && child.operator === "=") {
-                    tutor = await iL.Tutor.find(resolved2);
+                    tutor = await iL.Tutor.find(String(resolved2));
                     break;
                 }
             }
@@ -501,7 +512,7 @@ async function runQuery (query) {
      * Returns a string or a number if the value is a constant.
      * Returns undefined otherwise.
      * @param {string} str
-     * @returns {string|number}
+     * @returns {string|number|Date}
      */
     function resolveConstant (str) {
         if (!str) { // null, undefined, ""
@@ -510,8 +521,18 @@ async function runQuery (query) {
 
         // Check for quoted string
         if ((str.startsWith("'") && str.endsWith("'")) ||
-        (str.startsWith('"') && str.endsWith('"'))) {
-            return str.substring(1, str.length-1);
+                (str.startsWith('"') && str.endsWith('"'))) {
+
+
+            const stripped = str.substring(1, str.length-1);
+
+            // Check for date
+            const d = new Date(stripped);
+            if (!isNullDate(d)) {
+                return d;
+            }
+
+            return stripped
         }
 
         // Check for numbers

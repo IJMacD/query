@@ -3,7 +3,7 @@ const moment = require('moment');
 module.exports = runQuery;
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING" ];
-const CONDITION_REGEX = /(.*)([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
+const CONDITION_REGEX = /([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
 const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
 
 const AGGREGATE_FUNCTIONS = {
@@ -159,6 +159,9 @@ async function runQuery (query) {
 
         if (parsedWhere) {
             for (const child of parsedWhere.children) {
+                /**
+                 * TODO: These should all be reversible
+                 */
                 const resolved2 = resolveConstant(child.operand2);
                 if ((child.operand1 === "start" || child.operand1 == "end") && resolved2 instanceof Date)  {
                     if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
@@ -170,10 +173,12 @@ async function runQuery (query) {
                 else if (child.operand1.startsWith("attendees") || child.operand2.startsWith("attendees")) {
                     needsLogin = true;
                 }
-                else if (child.operand1 === "tutor.id" && child.operator === "=") {
+                // Make sure second operand is actually a constant
+                else if (child.operand1 === "tutor.id" && child.operator === "=" && resolved2) {
                     tutor = iL.Tutor.get(String(resolved2));
                 }
-                else if (child.operand1 === "tutor.name" && child.operator === "=") {
+                // Make sure second operand is actually a constant
+                else if (child.operand1 === "tutor.name" && child.operator === "=" && resolved2) {
                     tutor = await iL.Tutor.find(String(resolved2));
                 }
             }
@@ -247,6 +252,8 @@ async function runQuery (query) {
     const joins = [];
 
     if (results) {
+
+        // console.log(`Initial data set: ${results.length} items`);
 
         /******************
          * Joins
@@ -606,9 +613,15 @@ async function runQuery (query) {
 
     function resolveHavingValue (row, col) {
 
-        const la = row[colAlias[col]];
+        // HAVING values must be in result set or constants (or aggregate function)
+        
+        let colNum = colAlias[col];
+        if (typeof colNum === "undefined") {
+            colNum = colNames.indexOf(col);
+        }
 
-        if (typeof la !== "undefined") {
+        if (colNum >= 0) {
+            const la = row[colNum];
             // Convert to number if possible
             return !isNaN(+la) ? +la : la;
         }

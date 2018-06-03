@@ -119,7 +119,7 @@ async function runQuery (query) {
     }
 
     const cols = parsedQuery.select.split(",").map(s => s.trim());
-    const parsedTables = parsedQuery.from && parsedQuery.from.split(",").map(s => s.trim());
+    const parsedTables = parsedQuery.from ? parsedQuery.from.split(",").map(s => s.trim()) : [];
     const table = parsedTables && parsedTables[0];
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
@@ -199,7 +199,7 @@ async function runQuery (query) {
             await iL.login(process.env.IL_USER, process.env.IL_PASS);
             loggedIn = true;
         }
-        
+
         results = await iL.Lesson.find({ start, end, tutor });
 
         if (table === "Attendance") {
@@ -614,7 +614,7 @@ async function runQuery (query) {
     function resolveHavingValue (row, col) {
 
         // HAVING values must be in result set or constants (or aggregate function)
-        
+
         let colNum = colAlias[col];
         if (typeof colNum === "undefined") {
             colNum = colNames.indexOf(col);

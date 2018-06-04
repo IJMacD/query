@@ -304,7 +304,7 @@ async function runQuery (query) {
                 const r = results[0];
 
                 // only add "primitive" columns
-                let newCols = Object.keys(r).filter(k => formatCol(r[k]));
+                let newCols = Object.keys(r).filter(k => typeof scalar(r[k]) !== "undefined");
 
                 colNames.push(...newCols);
                 colHeaders.push(...newCols);
@@ -320,7 +320,7 @@ async function runQuery (query) {
                     }
 
                     // only add "primitive" columns
-                    let newCols = Object.keys(tableObj).filter(k => formatCol(tableObj[k]));
+                    let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
                     colNames.push(...newCols.map(c => `${j}.${c}`));
                     colHeaders.push(...newCols);
@@ -491,7 +491,7 @@ async function runQuery (query) {
         /*****************
          * Output
          ****************/
-        rows.forEach(r => output(r.map(formatCol)));
+        rows.forEach(r => output(r.map(scalar)));
 
         return output_buffer;
     }
@@ -519,12 +519,17 @@ async function runQuery (query) {
      * Returns a string or a number if the value is a constant.
      * Returns undefined otherwise.
      * @param {string} str
-     * @returns {string|number|Date}
+     * @returns {string|number|boolean|Date}
      */
     function resolveConstant (str) {
         if (!str) { // null, undefined, ""
             return; // undefined
         }
+
+        if (str === "true") return true;
+        if (str === "false") return false;
+        if (str === "TRUE") return true;
+        if (str === "FALSE") return false;
 
         // Check for quoted string
         if ((str.startsWith("'") && str.endsWith("'")) ||
@@ -766,19 +771,21 @@ async function runQuery (query) {
 }
 
 /**
+ * Only returns scalar values.
  *
+ * If passed an object or array returns undefined
  * @param {any} data
- * @return {string}
+ * @return {number|string|boolean|Date}
  */
-function formatCol (data) {
+function scalar (data) {
     if (data === null || typeof data === "undefined") {
         return null;
     }
     if (data.toString() === "[object Object]") {
-        return "";
+        return; // undefined
     }
     if (Array.isArray(data)) {
-        return "";
+        return; // undefined
     }
     return data;
 }

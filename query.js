@@ -129,6 +129,11 @@ async function runQuery (query) {
     const orderBy = parsedQuery['order by'];
     const groupBy = parsedQuery['group by'];
 
+    const colNames = [];
+    const colHeaders = [];
+    const colAlias = {};
+    const joins = [];
+
     /** @type {Array} */
     let results;
 
@@ -208,7 +213,7 @@ async function runQuery (query) {
         }
 
         results = await iL.Lesson.find({ start, end, tutor });
-
+        
         if (onlyWithAttendees) {
             results = results.filter(iL.Util.hasAttendees);
         } else if (excludePlaceholders) {
@@ -259,11 +264,6 @@ async function runQuery (query) {
         throw new Error("Table not recognised: `" + table + "`");
     }
 
-    const colNames = [];
-    const colHeaders = [];
-    const colAlias = {};
-    const joins = [];
-
     if (results) {
 
         // console.log(`Initial data set: ${results.length} items`);
@@ -291,11 +291,46 @@ async function runQuery (query) {
                 } else {
                     const path = findPath(result, t);
 
-                    if (typeof path === "undefined") {
-                        throw new Error("Unable to join: " + t);
+                    if (typeof path !== "undefined") {
+                        joins.push(path);
+                    } else {
+
+                        // Try plural and hope for an array!
+                        const ts = `${t}s`;
+                        const pluralPath = findPath(result, ts);
+
+                        if (typeof pluralPath === "undefined") {
+                            throw new Error("Unable to join: " + t);
+                        }
+
+                        const valuePlural = resolvePath(result, pluralPath);
+
+                        if (!Array.isArray(valuePlural)) {
+                            throw new Error("Unable to join, found a plural but not an array: " + ts);
+                        }
+                    
+                        // We've been joined on an array! Wahooo!!
+                        // The number of results has just been multiplied!
+                        const newResults = [];
+                        const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
+
+                        results.forEach(r => {
+                            resolvePath(r, pluralPath).forEach(sr => {
+                                // Clone the row
+                                const newResult = deepClone(r, subPath);
+
+                                // attach the sub-array item to the singular name
+                                resolvePath(newResult, subPath)[t] = sr;
+
+                                newResults.push(newResult);
+                            });
+                        });
+
+                        results = newResults;
+
+                        joins.push(`${subPath}.${t}`);
                     }
 
-                    joins.push(path);
                 }
             });
         }
@@ -784,8 +819,8 @@ async function runQuery (query) {
 }
 
 /**
- * Only returns scalar values.
- *
+ * Only let scalar values through.
+ * 
  * If passed an object or array returns undefined
  * @param {any} data
  * @return {number|string|boolean|Date}
@@ -819,4 +854,21 @@ function repeat (char, n) {
  */
 function isNullDate (date) {
     return date instanceof Date && isNaN(+date);
+}
+
+/**
+ * Clone an object semi-deeply. 
+ * 
+ * All the objects on the specified path need to be deep cloned.
+ * Everything else can be shallow cloned.
+ * 
+ * @param {any} result
+ * @param {string} path
+ * @returns {any}
+ */
+function deepClone (result, path) {
+    // Could be deeper... more accurate
+    // At the moment it actually only clones one level deep
+    const pathParts = path.split(".");
+    return { ...result, [pathParts[0]]: { ...result[pathParts[0]] } };
 }

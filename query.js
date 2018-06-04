@@ -156,6 +156,11 @@ async function runQuery (query) {
         let end;
         let needsLogin = false;
         let tutor;
+        // By default only show real lessons
+        // TODO: Use some WHERE magic to include all lesson if requested
+        let excludePlaceholders = true;
+        // Even stricter: only show lessons with students actually attending 
+        let onlyWithAttendees = false;
 
         if (parsedWhere) {
             for (const child of parsedWhere.children) {
@@ -188,6 +193,8 @@ async function runQuery (query) {
         if (!end) { end = start; }
 
         if (!loggedIn && (
+                excludePlaceholders ||
+                onlyWithAttendees ||
                 needsLogin ||
                 cols.some(c => c.includes("attendees")) ||
                 groupBy && groupBy.includes("attendees") ||
@@ -202,6 +209,12 @@ async function runQuery (query) {
 
         results = await iL.Lesson.find({ start, end, tutor });
 
+        if (onlyWithAttendees) {
+            results = results.filter(iL.Util.hasAttendees);
+        } else if (excludePlaceholders) {
+            results = results.filter(iL.Util.isRealLesson);
+        }
+        
         if (table === "Attendance") {
             // Convert Lessons into Attendances
             // (Re-use all of Lesson searching logic)

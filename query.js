@@ -154,6 +154,8 @@ async function runQuery (query) {
     const colAlias = {};
     const joins = [];
 
+    let initialResultCount = 0;
+
     /** @type {Array} */
     let results;
 
@@ -284,8 +286,9 @@ async function runQuery (query) {
         throw new Error("Table not recognised: `" + table + "`");
     }
 
-    if (results) {
 
+    if (results) {
+        initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
 
         /******************
@@ -386,6 +389,8 @@ async function runQuery (query) {
                 table.join = newPath;
                 }
         }
+
+        // console.log(parsedTables);
 
         /******************
          * Columns
@@ -592,6 +597,7 @@ async function runQuery (query) {
          * Output
          ****************/
         rows.forEach(r => output(r.map(scalar)));
+        console.log(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
 
         return output_buffer;
     }
@@ -644,7 +650,7 @@ async function runQuery (query) {
                 return d;
             }
 
-            return stripped
+            return stripped;
         }
 
         // Check for numbers

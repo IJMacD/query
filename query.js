@@ -99,6 +99,26 @@ function parseWhere (where) {
     return out;
 }
 
+/**
+ * @typedef ParsedFrom
+ * @prop {string} name
+ * @prop {string} [join]
+ * @prop {string} [alias]
+ */
+
+/**
+ * @param {string} from
+ * @return {ParsedFrom[]}
+ */
+function parseFrom (from) {
+    const tables = from ? from.split(",").map(s => s.trim()) : [];
+    const parsedTables = tables.map(table => {
+        const [ name, join ] = table.split("ON").map(s => s.trim());
+        return { name, join };
+    });
+    return parsedTables;
+}
+
 async function runQuery (query) {
     await iL.init({ API_ROOT: process.env.API_ROOT });
 
@@ -119,8 +139,8 @@ async function runQuery (query) {
     }
 
     const cols = parsedQuery.select.split(",").map(s => s.trim());
-    const parsedTables = parsedQuery.from ? parsedQuery.from.split(",").map(s => s.trim()) : [];
-    const table = parsedTables && parsedTables[0];
+    const parsedTables = parseFrom(parsedQuery.from);
+    const table = parsedTables.length && parsedTables[0].name;
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
     const having = parsedQuery.having;
@@ -272,30 +292,48 @@ async function runQuery (query) {
          * Joins
          *****************/
 
-        // Explicitly list join connections
+        // We can only populate join connections list if we have results
         if (results.length > 0) {
-            const result = results[0];
 
-            parsedTables.forEach((join, i) => {
-                if (i === 0) {
+            // i === 0: Root table can't have joins
                     joins.push("");
-                    return;
-                }
 
-                const [ table, on ] = join.split("ON").map(s => s.trim());
+            for(let table of parsedTables.slice(1)) {
+                const result = results[0];
 
-                const t = table.toLowerCase();
+                const t = table.name.toLowerCase();
+                let path;
 
-                if (on) {
-                    joins.push(on);
+                if (table.join) {
+                    // If we have an explicit join, check it first.
+
+                    const val = resolveValue(result, table.join);
+
+                    if (typeof val !== "undefined") {
+                        // It's valid, so we'll push it and carry on
+                        joins.push(table.join);
+                        continue;
+                    }
+
+                    path = table.join;
                 } else {
-                    const path = findPath(result, t);
+                    // AUTO JOIN! (natural join, comma join, implicit join?)
+                    // We will find the path automatically
+                    path = findPath(result, t);
 
                     if (typeof path !== "undefined") {
                         joins.push(path);
-                    } else {
+                        table.join = path;
+                        continue;
+                    }
+                }
 
-                        // Try plural and hope for an array!
+                /*
+                 * Now for the really cool part!
+                 * This is like a legit one-to-many join!
+                 * We will search for the plural of the table name and
+                 * if that is an array we can do a multi-way join.
+                 */
                         const ts = `${t}s`;
                         const pluralPath = findPath(result, ts);
 
@@ -303,9 +341,7 @@ async function runQuery (query) {
                             throw new Error("Unable to join: " + t);
                         }
 
-                        const valuePlural = resolvePath(result, pluralPath);
-
-                        if (!Array.isArray(valuePlural)) {
+                if (!Array.isArray(resolvePath(result, pluralPath))) {
                             throw new Error("Unable to join, found a plural but not an array: " + ts);
                         }
                     
@@ -314,13 +350,29 @@ async function runQuery (query) {
                         const newResults = [];
                         const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
 
+                // Now iterate over each of the results expanding as necessary
                         results.forEach(r => {
-                            resolvePath(r, pluralPath).forEach(sr => {
+                    // Fetch the array
+                    const array = resolvePath(r, pluralPath);
+                    
+                    if (array.length === 0) {
+                        // We're going to implement as a LEFT JOIN so we should
+                        // still include this row even though the secondary table
+                        // will effectively be all nulls.
+                        newResults.push(r);
+                        return;
+                    }
+
+                    array.forEach(sr => {
                                 // Clone the row
                                 const newResult = deepClone(r, subPath);
 
                                 // attach the sub-array item to the singular name
+                        if (subPath.length === 0) {
+                            newResult[t] = sr;
+                        } else {
                                 resolvePath(newResult, subPath)[t] = sr;
+                        }
 
                                 newResults.push(newResult);
                             });
@@ -328,11 +380,11 @@ async function runQuery (query) {
 
                         results = newResults;
 
-                        joins.push(`${subPath}.${t}`);
-                    }
+                const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
 
+                joins.push(newPath);
+                table.join = newPath;
                 }
-            });
         }
 
         /******************
@@ -867,6 +919,9 @@ function isNullDate (date) {
  * @returns {any}
  */
 function deepClone (result, path) {
+    // Top level clone only
+    if (path.length === 0) return { ...result };
+
     // Could be deeper... more accurate
     // At the moment it actually only clones one level deep
     const pathParts = path.split(".");

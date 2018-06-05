@@ -328,7 +328,10 @@ async function runQuery (query) {
                 } else {
                     // AUTO JOIN! (natural join, comma join, implicit join?)
                     // We will find the path automatically
-                    path = findPath(result, t);
+                    for (const r of results) {
+                        path = findPath(r, t);
+                        if (typeof path !== "undefined") break;
+                    }
 
                     if (typeof path !== "undefined") {
                         joins.push(path);
@@ -424,7 +427,13 @@ async function runQuery (query) {
                 for (let i = 1; i < joins.length; i++) {
                     const j = joins[i];
 
-                    const tableObj = resolvePath(r, j);
+                    let tableObj;
+
+                    // We need to find a non-null row to extract columns from
+                    for (const tmpR of results) {
+                        tableObj = resolvePath(tmpR, j);
+                        if (tableObj) break;
+                    }
 
                     if (!tableObj) {
                         throw Error("Problem with join: " + j);

@@ -432,7 +432,8 @@ async function runQuery (query) {
                 }
             } else {
                 const [ c1, alias ] = c.split(" AS ");
-                colNames.push(c1);
+                const colName = results.length === 0 ? c1 : findPath(results[0], c1) || c1;
+                colNames.push(colName);
                 colHeaders.push(alias || c1);
 
                 if (alias && typeof colAlias[alias] !== "undefined") {

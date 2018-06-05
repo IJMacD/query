@@ -186,7 +186,7 @@ async function runQuery (query) {
         // By default only show real lessons
         // WHERE magic is used to include all lessons if requested
         let excludePlaceholders = true;
-        // Even stricter: only show lessons with students actually attending 
+        // Even stricter: only show lessons with students actually attending
         let onlyWithAttendees = false;
 
         if (parsedWhere) {
@@ -241,13 +241,13 @@ async function runQuery (query) {
         }
 
         results = await iL.Lesson.find({ start, end, tutor });
-        
+
         if (onlyWithAttendees) {
             results = results.filter(iL.Util.hasAttendees);
         } else if (excludePlaceholders) {
             results = results.filter(iL.Util.isRealLesson);
         }
-        
+
         if (table === "Attendance") {
             // Convert Lessons into Attendances
             // (Re-use all of Lesson searching logic)
@@ -297,6 +297,16 @@ async function runQuery (query) {
         initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
 
+        // Define a ROWID
+        for(const [i, result] of results.entries()) {
+            if (typeof result['ROWID'] === "undefined") {
+                Object.defineProperty(result, 'ROWID', { value: String(i), writable: true });
+            } else {
+                // This means we've infected the SDK
+                result['ROWID'] = String(i);
+            }
+        }
+
         /******************
          * Joins
          *****************/
@@ -305,7 +315,7 @@ async function runQuery (query) {
         if (results.length > 0) {
 
             // i === 0: Root table can't have joins
-                    joins.push("");
+            joins.push("");
 
             for(let table of parsedTables.slice(1)) {
                 const result = results[0];
@@ -346,57 +356,67 @@ async function runQuery (query) {
                  * We will search for the plural of the table name and
                  * if that is an array we can do a multi-way join.
                  */
-                        const ts = `${t}s`;
-                        const pluralPath = findPath(result, ts);
+                const ts = `${t}s`;
+                const pluralPath = findPath(result, ts);
 
-                        if (typeof pluralPath === "undefined") {
-                            throw new Error("Unable to join: " + t);
-                        }
+                if (typeof pluralPath === "undefined") {
+                    throw new Error("Unable to join: " + t);
+                }
 
                 if (!Array.isArray(resolvePath(result, pluralPath))) {
-                            throw new Error("Unable to join, found a plural but not an array: " + ts);
-                        }
-                    
-                        // We've been joined on an array! Wahooo!!
-                        // The number of results has just been multiplied!
-                        const newResults = [];
-                        const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
+                    throw new Error("Unable to join, found a plural but not an array: " + ts);
+                }
+
+                // We've been joined on an array! Wahooo!!
+                // The number of results has just been multiplied!
+                const newResults = [];
+                const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
 
                 // Now iterate over each of the results expanding as necessary
-                        results.forEach(r => {
+                results.forEach((r,i) => {
                     // Fetch the array
                     const array = resolvePath(r, pluralPath);
-                    
+
                     if (array.length === 0) {
-                        // We're going to implement as a LEFT JOIN so we should
-                        // still include this row even though the secondary table
-                        // will effectively be all nulls.
+                        /*
+                         * We're going to assume LEFT JOIN, this could be configured
+                         * in the future.
+                         * So for LEFT JOIN we should still include this row even
+                         * though the secondary table will effectively be all nulls.
+                         */
+
+                        // Update the ROWID to indicate there was no row in this particular table
+                        r['ROWID'] += ".-1";
+
                         newResults.push(r);
                         return;
                     }
 
-                    array.forEach(sr => {
-                                // Clone the row
-                                const newResult = deepClone(r, subPath);
+                    array.forEach((sr, si) => {
+                        // Clone the row
+                        const newResult = deepClone(r, subPath);
 
-                                // attach the sub-array item to the singular name
+                        // attach the sub-array item to the singular name
                         if (subPath.length === 0) {
                             newResult[t] = sr;
                         } else {
-                                resolvePath(newResult, subPath)[t] = sr;
+                            resolvePath(newResult, subPath)[t] = sr;
                         }
 
-                                newResults.push(newResult);
-                            });
-                        });
+                        // Set the ROWID again, this time including the subquery id too
+                        Object.defineProperty(newResult, 'ROWID', { value: `${r['ROWID']}.${si}` });
 
-                        results = newResults;
+                        newResults.push(newResult);
+                    });
+                });
+
+                results = newResults;
 
                 const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
 
                 joins.push(newPath);
                 table.join = newPath;
-                }
+            }
         }
 
         // console.log(parsedTables);
@@ -894,7 +914,7 @@ async function runQuery (query) {
 
 /**
  * Only let scalar values through.
- * 
+ *
  * If passed an object or array returns undefined
  * @param {any} data
  * @return {number|string|boolean|Date}
@@ -931,11 +951,11 @@ function isNullDate (date) {
 }
 
 /**
- * Clone an object semi-deeply. 
- * 
+ * Clone an object semi-deeply.
+ *
  * All the objects on the specified path need to be deep cloned.
  * Everything else can be shallow cloned.
- * 
+ *
  * @param {any} result
  * @param {string} path
  * @returns {any}

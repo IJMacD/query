@@ -286,7 +286,11 @@ async function runQuery (query) {
         throw new Error("Table not recognised: `" + table + "`");
     }
 
-
+    
+    // if (parsedTables.some(t => t.name === "Guardian")) {
+    //      iL.Student.fetch();
+    // }
+        
     if (results) {
         initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
@@ -297,10 +301,10 @@ async function runQuery (query) {
 
         // We can only populate join connections list if we have results
         if (results.length > 0) {
-
+            
             // i === 0: Root table can't have joins
-                    joins.push("");
-
+            joins.push("");
+            
             for(let table of parsedTables.slice(1)) {
                 const result = results[0];
 
@@ -337,24 +341,24 @@ async function runQuery (query) {
                  * We will search for the plural of the table name and
                  * if that is an array we can do a multi-way join.
                  */
-                        const ts = `${t}s`;
-                        const pluralPath = findPath(result, ts);
+                const ts = `${t}s`;
+                const pluralPath = findPath(result, ts);
 
-                        if (typeof pluralPath === "undefined") {
-                            throw new Error("Unable to join: " + t);
-                        }
+                if (typeof pluralPath === "undefined") {
+                    throw new Error("Unable to join: " + t);
+                }
 
                 if (!Array.isArray(resolvePath(result, pluralPath))) {
-                            throw new Error("Unable to join, found a plural but not an array: " + ts);
-                        }
-                    
-                        // We've been joined on an array! Wahooo!!
-                        // The number of results has just been multiplied!
-                        const newResults = [];
-                        const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
+                    throw new Error("Unable to join, found a plural but not an array: " + ts);
+                }
+            
+                // We've been joined on an array! Wahooo!!
+                // The number of results has just been multiplied!
+                const newResults = [];
+                const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
 
                 // Now iterate over each of the results expanding as necessary
-                        results.forEach(r => {
+                results.forEach(r => {
                     // Fetch the array
                     const array = resolvePath(r, pluralPath);
                     
@@ -367,27 +371,27 @@ async function runQuery (query) {
                     }
 
                     array.forEach(sr => {
-                                // Clone the row
-                                const newResult = deepClone(r, subPath);
+                        // Clone the row
+                        const newResult = deepClone(r, subPath);
 
-                                // attach the sub-array item to the singular name
+                        // attach the sub-array item to the singular name
                         if (subPath.length === 0) {
                             newResult[t] = sr;
                         } else {
-                                resolvePath(newResult, subPath)[t] = sr;
+                            resolvePath(newResult, subPath)[t] = sr;
                         }
 
-                                newResults.push(newResult);
-                            });
-                        });
+                        newResults.push(newResult);
+                    });
+                });
 
-                        results = newResults;
+                results = newResults;
 
                 const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
 
                 joins.push(newPath);
                 table.join = newPath;
-                }
+            }
         }
 
         // console.log(parsedTables);
@@ -452,6 +456,12 @@ async function runQuery (query) {
 
         output(colHeaders);
         output(colHeaders.map(c => repeat("-", c.length)));
+
+        if (colNames.some(col => col && col.includes("phone"))) {
+            const path = colNames.find(c => c.includes("student"));
+            const studentPath = path.substr(0, path.indexOf("student") + 7);
+            await Promise.all(results.map(r => iL.Student.fetch(resolveValue(r, studentPath))));
+        }
 
         /***************
          * Filtering

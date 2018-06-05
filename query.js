@@ -184,34 +184,40 @@ async function runQuery (query) {
         let needsLogin = false;
         let tutor;
         // By default only show real lessons
-        // TODO: Use some WHERE magic to include all lesson if requested
+        // WHERE magic is used to include all lessons if requested
         let excludePlaceholders = true;
         // Even stricter: only show lessons with students actually attending 
         let onlyWithAttendees = false;
 
         if (parsedWhere) {
-            for (const child of parsedWhere.children) {
+            for (const condition of parsedWhere.children) {
                 /**
                  * TODO: These should all be reversible
                  */
-                const resolved2 = resolveConstant(child.operand2);
-                if ((child.operand1 === "start" || child.operand1 == "end") && resolved2 instanceof Date)  {
-                    if (child.operator === ">" || child.operator === ">=" || child.operator === "=") {
+                const resolved2 = resolveConstant(condition.operand2);
+                if ((condition.operand1 === "start" || condition.operand1 == "end") && resolved2 instanceof Date)  {
+                    if (condition.operator === ">" || condition.operator === ">=" || condition.operator === "=") {
                         start = resolved2;
-                    } else if (child.operator === "<" || child.operator === "<=" || child.operator === "=") {
+                    } else if (condition.operator === "<" || condition.operator === "<=" || condition.operator === "=") {
                         end = resolved2;
                     }
                 }
-                else if (child.operand1.startsWith("attendees") || child.operand2.startsWith("attendees")) {
+                else if (condition.operand1.startsWith("attendees") || condition.operand2.startsWith("attendees")) {
                     needsLogin = true;
                 }
                 // Make sure second operand is actually a constant
-                else if (child.operand1 === "tutor.id" && child.operator === "=" && resolved2) {
+                else if (condition.operand1 === "tutor.id" && condition.operator === "=" && resolved2) {
                     tutor = iL.Tutor.get(String(resolved2));
                 }
                 // Make sure second operand is actually a constant
-                else if (child.operand1 === "tutor.name" && child.operator === "=" && resolved2) {
+                else if (condition.operand1 === "tutor.name" && condition.operator === "=" && resolved2) {
                     tutor = await iL.Tutor.find(String(resolved2));
+                }
+
+                // WHERE magic: if you mention attendees at all then you get unfiltered results
+                // i.e. to force unfiltered you could do attendees.length >= 0
+                if (condition.operand1.includes("attendees") || condition.operand2.includes("attendees")) {
+                    excludePlaceholders = false;
                 }
             }
         }

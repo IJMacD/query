@@ -68,6 +68,10 @@
             tfoot td {
                 font-weight: bold;
             }
+            img {
+                display: block;
+                margin: 0 auto;
+            }
         </style>
     </head>
     <body>
@@ -189,6 +193,14 @@
                 // Special formatting for date
                 if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/.test(cell)) {
                     return new Date(cell).toLocaleString(navigator.language);
+                }
+                // Special formatting for urls and images
+                if (/^https?:\/\//.test(cell)) {
+                    let content = cell;
+                    if (/\.(jpe?g|gif|png|webp)$/i.test(cell)) {
+                        content = `<img src="${cell}" height="64" onerror="this.style.display='none'" />`;
+                    }
+                    return `<a href="${cell}" target="_blank">${content}</a>`;
                 }
                 return cell;
             }

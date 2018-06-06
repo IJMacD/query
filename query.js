@@ -120,7 +120,7 @@ function parseFrom (from) {
 }
 
 async function runQuery (query) {
-    await iL.init({ API_ROOT: process.env.API_ROOT });
+    await iL.init({ API_ROOT: process.env.API_ROOT, PHOTO_URL: process.env.PHOTO_URL });
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);

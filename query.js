@@ -311,9 +311,9 @@ async function runQuery (query) {
         fetchStudents = true;
     }
     
-    // As an example, Students need to be fetched if the phone column is specified
+    // As an example, Students need to be fetched if the birthDate column is specified
     if (parsedTables.some(t => t.name === "Student")) {
-        if (cols.some(col => col && col.includes("phone"))) {
+        if (cols.some(col => col && col.includes("birthDate"))) {
             fetchStudents = true;
         }
     }

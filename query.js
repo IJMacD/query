@@ -152,9 +152,9 @@ async function runQuery (query) {
     const colNames = [];
     const colHeaders = [];
     const colAlias = {};
-    const joins = [];
 
     let initialResultCount = 0;
+    let fetchStudents = false;
 
     /** @type {Array} */
     let results;
@@ -292,351 +292,382 @@ async function runQuery (query) {
         throw new Error("Table not recognised: `" + table + "`");
     }
 
-
-    if (results) {
-        initialResultCount = results.length;
-        // console.log(`Initial data set: ${results.length} items`);
-
-        // Define a ROWID
-        for(const [i, result] of results.entries()) {
-            if (typeof result['ROWID'] === "undefined") {
-                Object.defineProperty(result, 'ROWID', { value: String(i), writable: true });
-            } else {
-                // This means we've infected the SDK
-                result['ROWID'] = String(i);
-            }
+    if (!results) {
+        // Nothing we can do
+        throw new Error("No results");
+    }
+    
+    initialResultCount = results.length;
+    // console.log(`Initial data set: ${results.length} items`);
+    
+    /**************
+     * Domain logic
+     *************/
+    // Students need to be fetched if Guardian table is specified
+    if (parsedTables.some(t => t.name === "Guardian")) {
+        if (!parsedTables.some(t => t.name === "Student")) {
+            throw new Error("Guardian table is dependant on Student table");
         }
+        fetchStudents = true;
+    }
+    
+    // As an example, Students need to be fetched if the phone column is specified
+    if (parsedTables.some(t => t.name === "Student")) {
+        if (cols.some(col => col && col.includes("phone"))) {
+            fetchStudents = true;
+        }
+    }
+
+    function joinCallback (table) {
+        // console.log({ msg: "Joined Table", table });
+        switch (table.name) {
+            case 'Student':
+                if (fetchStudents) {
+                    return Promise.all(results.map(r => iL.Student.fetch(resolvePath(r, table.join))));
+                }
+        }
+    }
+
+    // Define a ROWID
+    for(const [i, result] of results.entries()) {
+        if (typeof result['ROWID'] === "undefined") {
+            Object.defineProperty(result, 'ROWID', { value: String(i), writable: true });
+        } else {
+            // This means we've infected the SDK
+            result['ROWID'] = String(i);
+        }
+    }
+
+    // We can only process join connections if we have results
+    if (results.length > 0) {
 
         /******************
          * Joins
          *****************/
 
-        // We can only populate join connections list if we have results
-        if (results.length > 0) {
+        // i === 0: Root table can't have joins
+        parsedTables[0].join = "";
+        await joinCallback(parsedTables[0]);
+        
+        for(let table of parsedTables.slice(1)) {
+            const result = results[0];
 
-            // i === 0: Root table can't have joins
-            joins.push("");
+            const t = table.name.toLowerCase();
+            let path;
 
-            for(let table of parsedTables.slice(1)) {
-                const result = results[0];
+            if (table.join) {
+                // If we have an explicit join, check it first.
 
-                const t = table.name.toLowerCase();
-                let path;
+                const val = resolveValue(result, table.join);
 
-                if (table.join) {
-                    // If we have an explicit join, check it first.
-
-                    const val = resolveValue(result, table.join);
-
-                    if (typeof val !== "undefined") {
-                        // It's valid, so we'll push it and carry on
-                        joins.push(table.join);
-                        continue;
-                    }
-
-                    path = table.join;
-                } else {
-                    // AUTO JOIN! (natural join, comma join, implicit join?)
-                    // We will find the path automatically
-                    for (const r of results) {
-                        path = findPath(r, t);
-                        if (typeof path !== "undefined") break;
-                    }
-
-                    if (typeof path !== "undefined") {
-                        joins.push(path);
-                        table.join = path;
-                        continue;
-                    }
-                }
-
-                /*
-                 * Now for the really cool part!
-                 * This is like a legit one-to-many join!
-                 * We will search for the plural of the table name and
-                 * if that is an array we can do a multi-way join.
-                 */
-                const ts = `${t}s`;
-                const pluralPath = findPath(result, ts);
-
-                if (typeof pluralPath === "undefined") {
-                    throw new Error("Unable to join: " + t);
-                }
-
-                if (!Array.isArray(resolvePath(result, pluralPath))) {
-                    throw new Error("Unable to join, found a plural but not an array: " + ts);
-                }
-
-                // We've been joined on an array! Wahooo!!
-                // The number of results has just been multiplied!
-                const newResults = [];
-                const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
-
-                // Now iterate over each of the results expanding as necessary
-                results.forEach((r,i) => {
-                    // Fetch the array
-                    const array = resolvePath(r, pluralPath);
-
-                    if (array.length === 0) {
-                        /*
-                         * We're going to assume LEFT JOIN, this could be configured
-                         * in the future.
-                         * So for LEFT JOIN we should still include this row even
-                         * though the secondary table will effectively be all nulls.
-                         */
-
-                        // Update the ROWID to indicate there was no row in this particular table
-                        r['ROWID'] += ".-1";
-
-                        newResults.push(r);
-                        return;
-                    }
-
-                    array.forEach((sr, si) => {
-                        // Clone the row
-                        const newResult = deepClone(r, subPath);
-
-                        // attach the sub-array item to the singular name
-                        if (subPath.length === 0) {
-                            newResult[t] = sr;
-                        } else {
-                            resolvePath(newResult, subPath)[t] = sr;
-                        }
-
-                        // Set the ROWID again, this time including the subquery id too
-                        Object.defineProperty(newResult, 'ROWID', { value: `${r['ROWID']}.${si}` });
-
-                        newResults.push(newResult);
-                    });
-                });
-
-                results = newResults;
-
-                const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
-
-                joins.push(newPath);
-                table.join = newPath;
-            }
-        }
-
-        // console.log(parsedTables);
-
-        /******************
-         * Columns
-         ******************/
-
-        for (const c of cols) {
-            // Special Treatment for *
-            if (c === "*") {
-                if (results.length === 0) {
-                    // We don't have any results so we can't determine the cols
-                    colNames.push(c);
-                    colHeaders.push(c);
+                if (typeof val !== "undefined") {
+                    // It's valid, so we can carry on
+                    await joinCallback(table);
                     continue;
                 }
 
-                const r = results[0];
+                path = table.join;
+            } else {
+                // AUTO JOIN! (natural join, comma join, implicit join?)
+                // We will find the path automatically
+                for (const r of results) {
+                    path = findPath(r, t);
+                    if (typeof path !== "undefined") break;
+                }
+
+                if (typeof path !== "undefined") {
+                    table.join = path;
+                    await joinCallback(table);
+                    continue;
+                }
+            }
+
+            /*
+            * Now for the really cool part!
+            * This is like a legit one-to-many join!
+            * We will search for the plural of the table name and
+            * if that is an array we can do a multi-way join.
+            */
+            const ts = `${t}s`;
+            const pluralPath = findPath(result, ts);
+
+            if (typeof pluralPath === "undefined") {
+                throw new Error("Unable to join: " + t);
+            }
+
+            if (!Array.isArray(resolvePath(result, pluralPath))) {
+                throw new Error("Unable to join, found a plural but not an array: " + ts);
+            }
+        
+            // We've been joined on an array! Wahooo!!
+            // The number of results has just been multiplied!
+            const newResults = [];
+            const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
+
+            // Now iterate over each of the results expanding as necessary
+            results.forEach(r => {
+                // Fetch the array
+                const array = resolvePath(r, pluralPath);
+
+                if (array.length === 0) {
+                    /*
+                        * We're going to assume LEFT JOIN, this could be configured
+                        * in the future.
+                        * So for LEFT JOIN we should still include this row even
+                        * though the secondary table will effectively be all nulls.
+                        */
+
+                    // Update the ROWID to indicate there was no row in this particular table
+                    r['ROWID'] += ".-1";
+
+                    newResults.push(r);
+                    return;
+                }
+
+                array.forEach((sr, si) => {
+                    // Clone the row
+                    const newResult = deepClone(r, subPath);
+
+                    // attach the sub-array item to the singular name
+                    if (subPath.length === 0) {
+                        newResult[t] = sr;
+                    } else {
+                        resolvePath(newResult, subPath)[t] = sr;
+                    }
+
+                    // Set the ROWID again, this time including the subquery id too
+                    Object.defineProperty(newResult, 'ROWID', { value: `${r['ROWID']}.${si}` });
+
+                    newResults.push(newResult);
+                });
+            });
+
+            results = newResults;
+
+            const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
+
+            table.join = newPath;
+            await joinCallback(table);
+        }
+    }
+
+    // console.log(parsedTables);
+
+    /******************
+     * Columns
+     ******************/
+
+    for (const c of cols) {
+        // Special Treatment for *
+        if (c === "*") {
+            if (results.length === 0) {
+                // We don't have any results so we can't determine the cols
+                colNames.push(c);
+                colHeaders.push(c);
+                continue;
+            }
+
+            const r = results[0];
+
+            // only add "primitive" columns
+            let newCols = Object.keys(r).filter(k => typeof scalar(r[k]) !== "undefined");
+
+            colNames.push(...newCols);
+            colHeaders.push(...newCols);
+
+            // Add all the scalar columns for secondary tables
+            for (const table of parsedTables.slice(1)) {
+                const { join } = table;
+
+                let tableObj;
+
+                // We need to find a non-null row to extract columns from
+                for (const tmpR of results) {
+                    tableObj = resolvePath(tmpR, join);
+                    if (tableObj) break;
+                }
+
+                if (!tableObj) {
+                    throw Error("Problem with join: " + join);
+                }
 
                 // only add "primitive" columns
-                let newCols = Object.keys(r).filter(k => typeof scalar(r[k]) !== "undefined");
+                let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
-                colNames.push(...newCols);
+                colNames.push(...newCols.map(c => `${join}.${c}`));
                 colHeaders.push(...newCols);
+            }
+        } else {
+            const [ c1, alias ] = c.split(" AS ");
+            const colName = results.length === 0 ? c1 : findPath(results[0], c1) || c1;
+            colNames.push(colName);
+            colHeaders.push(alias || c1);
 
-                // Add all the scalar columns for secondary tables
-                for (let i = 1; i < joins.length; i++) {
-                    const j = joins[i];
-
-                    let tableObj;
-
-                    // We need to find a non-null row to extract columns from
-                    for (const tmpR of results) {
-                        tableObj = resolvePath(tmpR, j);
-                        if (tableObj) break;
-                    }
-
-                    if (!tableObj) {
-                        throw Error("Problem with join: " + j);
-                    }
-
-                    // only add "primitive" columns
-                    let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
-
-                    colNames.push(...newCols.map(c => `${j}.${c}`));
-                    colHeaders.push(...newCols);
-                }
-            } else {
-                const [ c1, alias ] = c.split(" AS ");
-                const colName = results.length === 0 ? c1 : findPath(results[0], c1) || c1;
-                colNames.push(colName);
-                colHeaders.push(alias || c1);
-
-                if (alias && typeof colAlias[alias] !== "undefined") {
-                    throw new Error("Alias already in use: " + alias);
-                }
-
-                colAlias[alias || c1] = colNames.length - 1;
+            if (alias && typeof colAlias[alias] !== "undefined") {
+                throw new Error("Alias already in use: " + alias);
             }
 
-            colHeaders.forEach((col, i) => {
-                if (typeof colAlias[col] === "undefined") {
-                    colAlias[col] = i;
-                }
-            });
+            colAlias[alias || c1] = colNames.length - 1;
         }
 
-        output(colHeaders);
-        output(colHeaders.map(c => repeat("-", c.length)));
-
-        /***************
-         * Filtering
-         ***************/
-        if (parsedWhere) {
-            for (const child of parsedWhere.children) {
-                const compare = OPERATORS[child.operator];
-                if (!compare) {
-                    throw new Error("Unrecognised operator: " + child.operator);
-                }
-
-                results = results.filter(r => {
-                    const a = resolveValue(r, child.operand1);
-                    const b = resolveValue(r, child.operand2);
-                    return compare(a, b);
-                });
+        colHeaders.forEach((col, i) => {
+            if (typeof colAlias[col] === "undefined") {
+                colAlias[col] = i;
             }
-        }
+        });
+    }
 
-        /*****************
-         * Column Values
-         *****************/
-        let rows = results.map(r => {
-            const values = colNames.map(col => {
-                if (FUNCTION_REGEX.test(col)) {
-                    // Don't compute aggregate functions until after grouping
-                    return null;
-                }
-                return resolveValue(r, col);
+    output(colHeaders);
+    output(colHeaders.map(c => repeat("-", c.length)));
+
+    /***************
+     * Filtering
+     ***************/
+    if (parsedWhere) {
+        for (const child of parsedWhere.children) {
+            const compare = OPERATORS[child.operator];
+            if (!compare) {
+                throw new Error("Unrecognised operator: " + child.operator);
+            }
+
+            results = results.filter(r => {
+                const a = resolveValue(r, child.operand1);
+                const b = resolveValue(r, child.operand2);
+                return compare(a, b);
             });
+        }
+    }
 
-            // Save reference to original object for sorting
-            values['result'] = r;
-
-            return values;
+    /*****************
+     * Column Values
+     *****************/
+    let rows = results.map(r => {
+        const values = colNames.map(col => {
+            if (FUNCTION_REGEX.test(col)) {
+                // Don't compute aggregate functions until after grouping
+                return null;
+            }
+            return resolveValue(r, col);
         });
 
-        /*************
-         * Grouping
-         *************/
-        if (groupBy) {
-            const parsedGroupBy = groupBy.split(",").map(s => s.trim());
-            rows = groupRows(rows, parsedGroupBy);
-        }
+        // Save reference to original object for sorting
+        values['result'] = r;
 
-        /**********************
-         * Aggregate Functions
-         *********************/
-        // Now see if there are any aggregate functions to apply
-        if (colNames.some(c => FUNCTION_REGEX.test(c))) {
-            if (!groupBy) {
-                // If we have aggregate functions but we're not grouping,
-                // then apply aggregate functions to whole set
-                const aggRow = rows[0];
-                aggRow['group'] = rows;
+        return values;
+    });
 
-                rows = [
-                    aggRow // Single row result set
-                ];
-            }
-
-            rows = rows.map(row => computeAggregates(row['group'], colNames));
-        }
-
-        /*******************
-         * Having Filtering
-         ******************/
-        if (parsedHaving) {
-            for (const child of parsedHaving.children) {
-                const compare = OPERATORS[child.operator];
-                if (!compare) {
-                    throw new Error("Unrecognised operator: " + child.operator);
-                }
-
-                rows = rows.filter(r => {
-                    // Having clause can only use constants, result-set columns or aggregate functions
-                    // We don't have access to original `result` objects
-                    let a = resolveHavingValue(r, child.operand1);
-                    let b = resolveHavingValue(r, child.operand2);
-
-                    return compare(a, b);
-                });
-            }
-        }
-
-        /****************
-         * Sorting
-         ***************/
-        if (orderBy) {
-            // Parse the orderBy clause into an array of objects
-            const parsedOrders = orderBy.split(",").map(order => {
-                const [ col, asc_desc ] = order.split(" ");
-                const desc = asc_desc === "DESC" ? -1 : 1;
-
-                // Simplest case: col is actually a column index
-                let colNum = parseInt(col);
-
-                // If it's not a column index, check if its a named column in selection
-                if (isNaN(colNum) && typeof colAlias[col] !== "undefined") {
-                    colNum = colAlias[col]
-                }
-
-                return { colNum, col, desc };
-            });
-
-            // Pre-create ordering value array for each row
-            rows.forEach(row => {
-                row['orderBy'] = [];
-            });
-
-            rows = rows.sort((a,b) => {
-                for (let i = 0; i < parsedOrders.length; i++) {
-                    const o = parsedOrders[i];
-
-                    const va = getOrderingValue(a, o, i);
-                    const vb = getOrderingValue(b, o, i);
-
-                    let sort = (Number.isFinite(va) && Number.isFinite(vb)) ?
-                        (va - vb) :
-                        (va < vb ? -1 : va > vb ? 1 : 0);
-
-                    if (sort !== 0) {
-                        sort *= o.desc;
-
-                        return sort;
-                    }
-
-                }
-
-                return 0;
-            });
-        }
-
-        /******************
-         * Limit and Offset
-         ******************/
-        if (parsedQuery.limit || parsedQuery.offset) {
-            const start = parseInt(parsedQuery.offset) || 0;
-            const end = start + parseInt(parsedQuery.limit) || rows.length;
-            rows = rows.slice(start, end);
-        }
-
-        /*****************
-         * Output
-         ****************/
-        rows.forEach(r => output(r.map(scalar)));
-        console.log(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
-
-        return output_buffer;
+    /*************
+     * Grouping
+     *************/
+    if (groupBy) {
+        const parsedGroupBy = groupBy.split(",").map(s => s.trim());
+        rows = groupRows(rows, parsedGroupBy);
     }
+
+    /**********************
+     * Aggregate Functions
+     *********************/
+    // Now see if there are any aggregate functions to apply
+    if (colNames.some(c => FUNCTION_REGEX.test(c))) {
+        if (!groupBy) {
+            // If we have aggregate functions but we're not grouping,
+            // then apply aggregate functions to whole set
+            const aggRow = rows[0];
+            aggRow['group'] = rows;
+
+            rows = [
+                aggRow // Single row result set
+            ];
+        }
+
+        rows = rows.map(row => computeAggregates(row['group'], colNames));
+    }
+
+    /*******************
+     * Having Filtering
+     ******************/
+    if (parsedHaving) {
+        for (const child of parsedHaving.children) {
+            const compare = OPERATORS[child.operator];
+            if (!compare) {
+                throw new Error("Unrecognised operator: " + child.operator);
+            }
+
+            rows = rows.filter(r => {
+                // Having clause can only use constants, result-set columns or aggregate functions
+                // We don't have access to original `result` objects
+                let a = resolveHavingValue(r, child.operand1);
+                let b = resolveHavingValue(r, child.operand2);
+
+                return compare(a, b);
+            });
+        }
+    }
+
+    /****************
+     * Sorting
+     ***************/
+    if (orderBy) {
+        // Parse the orderBy clause into an array of objects
+        const parsedOrders = orderBy.split(",").map(order => {
+            const [ col, asc_desc ] = order.split(" ");
+            const desc = asc_desc === "DESC" ? -1 : 1;
+
+            // Simplest case: col is actually a column index
+            let colNum = parseInt(col);
+
+            // If it's not a column index, check if its a named column in selection
+            if (isNaN(colNum) && typeof colAlias[col] !== "undefined") {
+                colNum = colAlias[col]
+            }
+
+            return { colNum, col, desc };
+        });
+
+        // Pre-create ordering value array for each row
+        rows.forEach(row => {
+            row['orderBy'] = [];
+        });
+
+        rows = rows.sort((a,b) => {
+            for (let i = 0; i < parsedOrders.length; i++) {
+                const o = parsedOrders[i];
+
+                const va = getOrderingValue(a, o, i);
+                const vb = getOrderingValue(b, o, i);
+
+                let sort = (Number.isFinite(va) && Number.isFinite(vb)) ?
+                    (va - vb) :
+                    (va < vb ? -1 : va > vb ? 1 : 0);
+
+                if (sort !== 0) {
+                    sort *= o.desc;
+
+                    return sort;
+                }
+
+            }
+
+            return 0;
+        });
+    }
+
+    /******************
+     * Limit and Offset
+     ******************/
+    if (parsedQuery.limit || parsedQuery.offset) {
+        const start = parseInt(parsedQuery.offset) || 0;
+        const end = start + parseInt(parsedQuery.limit) || rows.length;
+        rows = rows.slice(start, end);
+    }
+
+    /*****************
+     * Output
+     ****************/
+    rows.forEach(r => output(r.map(scalar)));
+    console.log(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
+
+    return output_buffer;
 
     /**
      * Traverse a sample object to determine absolute path to given name
@@ -646,8 +677,8 @@ async function runQuery (query) {
      * @returns {string}
      */
     function findPath (result, name) {
-        for (const prefix of joins) {
-            const path = prefix ? `${prefix}.${name}` : name;
+        for (const { join } of parsedTables) {
+            const path = join ? `${join}.${name}` : name;
 
             // Check if the parent object has a property matching
             // the secondary table i.e. Tutor => result.tutor
@@ -717,8 +748,8 @@ async function runQuery (query) {
 
         // Now for the real column resolution
         // We will try each of the tables in turn
-        for (let i = 0; i < joins.length; i++) {
-            const prefix = i === 0 ? "" : joins[i] + ".";
+        for (const { join } of parsedTables) {
+            const prefix = join ? `${join}.` : "";
 
                                     // Resolve a possible alias
             const colName = prefix + (colNames[colAlias[col]] || col);

@@ -323,7 +323,10 @@ async function runQuery (query) {
         switch (table.name) {
             case 'Student':
                 if (fetchStudents) {
-                    return Promise.all(results.map(r => iL.Student.fetch(resolvePath(r, table.join))));
+                    return Promise.all(results.map(r => {
+                        const student = resolvePath(r, table.join);
+                        return student && iL.Student.fetch(student);
+                    }));
                 }
         }
     }

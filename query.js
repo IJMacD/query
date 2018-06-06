@@ -152,9 +152,9 @@ async function runQuery (query) {
     const colNames = [];
     const colHeaders = [];
     const colAlias = {};
-    const joins = [];
 
     let initialResultCount = 0;
+    let fetchStudents = false;
 
     /** @type {Array} */
     let results;
@@ -286,24 +286,51 @@ async function runQuery (query) {
         throw new Error("Table not recognised: `" + table + "`");
     }
 
+    if (!results) {
+        // Nothing we can do
+        throw new Error("No results");
+    }
     
-    // if (parsedTables.some(t => t.name === "Guardian")) {
-    //      iL.Student.fetch();
-    // }
-        
-    if (results) {
         initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
+
+    /**************
+     * Domain logic
+     *************/
+    // Students need to be fetched if Guardian table is specified
+    if (parsedTables.some(t => t.name === "Guardian")) {
+        if (!parsedTables.some(t => t.name === "Student")) {
+            throw new Error("Guardian table is dependant on Student table");
+        }
+        fetchStudents = true;
+    }
+    
+    // As an example, Students need to be fetched if the phone column is specified
+    if (parsedTables.some(t => t.name === "Student")) {
+        if (cols.some(col => col && col.includes("phone"))) {
+            fetchStudents = true;
+        }
+    }
+
+    function joinCallback (table) {
+        // console.log({ msg: "Joined Table", table });
+        switch (table.name) {
+            case 'Student':
+                if (fetchStudents) {
+                    return Promise.all(results.map(r => iL.Student.fetch(resolvePath(r, table.join))));
+                }
+        }
+    }
+
+    // We can only populate join connections list if we have results
+    if (results.length > 0) {
 
         /******************
          * Joins
          *****************/
 
-        // We can only populate join connections list if we have results
-        if (results.length > 0) {
-            
             // i === 0: Root table can't have joins
-            joins.push("");
+        parsedTables[0].join = "";
             
             for(let table of parsedTables.slice(1)) {
                 const result = results[0];
@@ -317,8 +344,8 @@ async function runQuery (query) {
                     const val = resolveValue(result, table.join);
 
                     if (typeof val !== "undefined") {
-                        // It's valid, so we'll push it and carry on
-                        joins.push(table.join);
+                    // It's valid, so we can carry on
+                    await joinCallback(table);
                         continue;
                     }
 
@@ -329,8 +356,8 @@ async function runQuery (query) {
                     path = findPath(result, t);
 
                     if (typeof path !== "undefined") {
-                        joins.push(path);
                         table.join = path;
+                    await joinCallback(table);
                         continue;
                     }
                 }
@@ -389,8 +416,8 @@ async function runQuery (query) {
 
                 const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
 
-                joins.push(newPath);
                 table.join = newPath;
+            await joinCallback(table);
             }
         }
 
@@ -419,19 +446,19 @@ async function runQuery (query) {
                 colHeaders.push(...newCols);
 
                 // Add all the scalar columns for secondary tables
-                for (let i = 1; i < joins.length; i++) {
-                    const j = joins[i];
+            for (const table of parsedTables.slice(1)) {
+                const { join } = table;
 
-                    const tableObj = resolvePath(r, j);
+                const tableObj = resolvePath(r, join);
 
                     if (!tableObj) {
-                        throw Error("Problem with join: " + j);
+                    throw Error("Problem with join: " + join);
                     }
 
                     // only add "primitive" columns
                     let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
-                    colNames.push(...newCols.map(c => `${j}.${c}`));
+                colNames.push(...newCols.map(c => `${join}.${c}`));
                     colHeaders.push(...newCols);
                 }
             } else {
@@ -456,12 +483,6 @@ async function runQuery (query) {
 
         output(colHeaders);
         output(colHeaders.map(c => repeat("-", c.length)));
-
-        if (colNames.some(col => col && col.includes("phone"))) {
-            const path = colNames.find(c => c.includes("student"));
-            const studentPath = path.substr(0, path.indexOf("student") + 7);
-            await Promise.all(results.map(r => iL.Student.fetch(resolveValue(r, studentPath))));
-        }
 
         /***************
          * Filtering
@@ -611,7 +632,6 @@ async function runQuery (query) {
         console.log(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
 
         return output_buffer;
-    }
 
     /**
      * Traverse a sample object to determine absolute path to given name
@@ -621,8 +641,8 @@ async function runQuery (query) {
      * @returns {string}
      */
     function findPath (result, name) {
-        for (const prefix of joins) {
-            const path = prefix ? `${prefix}.${name}` : name;
+        for (const { join } of parsedTables) {
+            const path = join ? `${join}.${name}` : name;
 
             // Check if the parent object has a property matching
             // the secondary table i.e. Tutor => result.tutor
@@ -692,8 +712,8 @@ async function runQuery (query) {
 
         // Now for the real column resolution
         // We will try each of the tables in turn
-        for (let i = 0; i < joins.length; i++) {
-            const prefix = i === 0 ? "" : joins[i] + ".";
+        for (const { join } of parsedTables) {
+            const prefix = join ? `${join}.` : "";
 
                                     // Resolve a possible alias
             const colName = prefix + (colNames[colAlias[col]] || col);

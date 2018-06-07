@@ -122,40 +122,8 @@ function parseFrom (from) {
 async function runQuery (query) {
     await iL.init({ API_ROOT: process.env.API_ROOT, PHOTO_URL: process.env.PHOTO_URL });
 
-    const output_buffer = [];
-    const output = row => output_buffer.push(row);
+    return Query(query, { primaryTable, joinedTable: joinCallback });
 
-    const parsedQuery = parseQuery(query);
-
-    // console.log(parsedQuery);
-
-    if (!parsedQuery.from && !parsedQuery.select) {
-        throw new Error("You must specify FROM or SELECT");
-    }
-
-    if (!parsedQuery.select) {
-        // Default to selecting all scalar values
-        parsedQuery.select = "*";
-    }
-
-    const cols = parsedQuery.select.split(",").map(s => s.trim());
-    const parsedTables = parseFrom(parsedQuery.from);
-    const table = parsedTables.length && parsedTables[0].name;
-    const where = parsedQuery.where;
-    const parsedWhere = parseWhere(where);
-    const having = parsedQuery.having;
-    const parsedHaving = parseWhere(having);
-    // console.log(parsedWhere);
-    const orderBy = parsedQuery['order by'];
-    const groupBy = parsedQuery['group by'];
-
-    const colNames = [];
-    const colHeaders = [];
-    const colAlias = {};
-
-    let initialResultCount = 0;
-    let fetchStudents = false;
-    
     /**
      * @param {ParsedFrom} table
      * @returns {Promise<any[]>}
@@ -163,9 +131,9 @@ async function runQuery (query) {
     async function primaryTable (table) {
         switch (table.name) {
             case "Tutor":
-                if (parsedWhere) {
-                    for (let child of parsedWhere.children){
-                        const resolved2 = resolveConstant(child.operand2);
+                if (this.parsedWhere) {
+                    for (let child of this.parsedWhere.children){
+                        const resolved2 = this.resolveConstant(child.operand2);
                         if (child.operand1 === "name" && child.operator === "=") {
                             return [await iL.Tutor.find(String(resolved2))];
                         }
@@ -190,12 +158,12 @@ async function runQuery (query) {
                 // Even stricter: only show lessons with students actually attending
                 let onlyWithAttendees = false;
 
-                if (parsedWhere) {
-                    for (const condition of parsedWhere.children) {
+                if (this.parsedWhere) {
+                    for (const condition of this.parsedWhere.children) {
                         /**
                          * TODO: These should all be reversible
                          */
-                        const resolved2 = resolveConstant(condition.operand2);
+                        const resolved2 = this.resolveConstant(condition.operand2);
                         if ((condition.operand1 === "start" || condition.operand1 == "end") && resolved2 instanceof Date)  {
                             if (condition.operator === ">" || condition.operator === ">=" || condition.operator === "=") {
                                 start = resolved2;
@@ -230,9 +198,9 @@ async function runQuery (query) {
                         excludePlaceholders ||
                         onlyWithAttendees ||
                         needsLogin ||
-                        cols.some(c => c.includes("attendees")) ||
-                        groupBy && groupBy.includes("attendees") ||
-                        orderBy && orderBy.includes("attendees") ||
+                        this.cols.some(c => c.includes("attendees")) ||
+                        this.groupBy && this.groupBy.includes("attendees") ||
+                        this.orderBy && this.orderBy.includes("attendees") ||
                         table.name === "Attendance"
                     )
                 ) {
@@ -264,9 +232,9 @@ async function runQuery (query) {
             case "Course":
                 let title;
                 let tutor;
-                if (parsedWhere) {
-                    for (let child of parsedWhere.children){
-                        const resolved2 = resolveConstant(child.operand2);
+                if (this.parsedWhere) {
+                    for (let child of this.parsedWhere.children){
+                        const resolved2 = this.resolveConstant(child.operand2);
                         if (child.operand1 === "title" && child.operator === "=") {
                             title = String(resolved2);
                             break;
@@ -293,28 +261,96 @@ async function runQuery (query) {
         }
     }
 
-    function joinCallback (table) {
+    /**
+     * 
+     * @param {ParsedFrom} table 
+     * @param {any[]} results 
+     */
+    function joinCallback (table, results) {
         // console.log({ msg: "Joined Table", table });
         switch (table.name) {
             case 'Student':
-                if (cols.some(col => col && col.includes("birthDate"))) {
+                if (this.cols.some(col => col && col.includes("birthDate"))) {
                     return Promise.all(results.map(r => {
-                        const student = resolvePath(r, table.join);
+                        const student = this.resolvePath(r, table.join);
                         return student && iL.Student.fetch(student);
                     }));
                 }
                 break;
             case 'Guardian':
-                const studentTable = parsedTables.find(t => t.name === "Student");
+                const studentTable = this.parsedTables.find(t => t.name === "Student");
                 if (!studentTable) {
                     throw new Error("Guardian table is dependant on Student table");
                 }
                 return Promise.all(results.map(r => {
-                    const student = resolvePath(r, studentTable.join);
+                    const student = this.resolvePath(r, studentTable.join);
                     return student && iL.Student.fetch(student);
                 }));
         }
     }
+}
+
+/**
+ * @typedef QueryCallbacks
+ * @prop {(ParsedFrom) => Promise<any[]>} primaryTable
+ * @prop {(ParsedFrom, results: any[]) => Promise} joinedTable
+ */
+
+/**
+ * 
+ * @param {string} query 
+ * @param {QueryCallbacks} callbacks
+ */
+async function Query (query, callbacks) {
+
+    const { primaryTable, joinedTable } = callbacks;
+
+    const output_buffer = [];
+    const output = row => output_buffer.push(row);
+
+    const parsedQuery = parseQuery(query);
+
+    // console.log(parsedQuery);
+
+    if (!parsedQuery.from && !parsedQuery.select) {
+        throw new Error("You must specify FROM or SELECT");
+    }
+
+    if (!parsedQuery.select) {
+        // Default to selecting all scalar values
+        parsedQuery.select = "*";
+    }
+
+    const cols = parsedQuery.select.split(",").map(s => s.trim());
+    const parsedTables = parseFrom(parsedQuery.from);
+    const table = parsedTables.length && parsedTables[0].name;
+    const where = parsedQuery.where;
+    const parsedWhere = parseWhere(where);
+    const having = parsedQuery.having;
+    const parsedHaving = parseWhere(having);
+    // console.log(parsedWhere);
+    const orderBy = parsedQuery['order by'];
+    const groupBy = parsedQuery['group by'];
+
+    const self = {
+        cols,
+        parsedTables,
+        parsedWhere,
+        parsedHaving,
+        orderBy,
+        groupBy,
+
+        resolveConstant,
+        resolvePath,
+        resolveValue,
+    };
+
+    const colNames = [];
+    const colHeaders = [];
+    const colAlias = {};
+
+    let initialResultCount = 0;
+    let fetchStudents = false;
 
     /** @type {Array} */
     let results;
@@ -324,7 +360,7 @@ async function runQuery (query) {
         // so that we can return constants etc.
         results = [[]];
     } else {
-        results = await primaryTable(parsedTables[0]);
+        results = await primaryTable.call(self, parsedTables[0]);
     }
 
     if (!results) {
@@ -354,7 +390,7 @@ async function runQuery (query) {
 
         // i === 0: Root table can't have joins
         parsedTables[0].join = "";
-        await joinCallback(parsedTables[0]);
+        await joinedTable.call(self, parsedTables[0], results);
         
         for(let table of parsedTables.slice(1)) {
             const result = results[0];
@@ -369,7 +405,7 @@ async function runQuery (query) {
 
                 if (typeof val !== "undefined") {
                     // It's valid, so we can carry on
-                    await joinCallback(table);
+                    await joinedTable.call(self, table, results);
                     continue;
                 }
 
@@ -384,7 +420,7 @@ async function runQuery (query) {
 
                 if (typeof path !== "undefined") {
                     table.join = path;
-                    await joinCallback(table);
+                    await joinedTable.call(self, table, results);
                     continue;
                 }
             }
@@ -454,7 +490,7 @@ async function runQuery (query) {
             const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
 
             table.join = newPath;
-            await joinCallback(table);
+            await joinedTable.call(self, table, results);
         }
     }
 

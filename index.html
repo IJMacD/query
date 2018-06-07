@@ -182,10 +182,14 @@
                 if (cell === null) {
                     return "NULL";
                 }
+                
+                cell = String(cell);
+
                 // Special Formatting for colour
                 if (/^#[0-9a-f]{6}$/i.test(cell)) {
                     return `<div style="background-color: ${cell}; height: 20px; width: 20px; margin: 0 auto;" title="${cell}"></div>`;
                 }
+
                 // Special formatting for date
                 if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/.test(cell)) {
                     const d = new Date(cell);
@@ -194,14 +198,19 @@
                     }
                     return d.toLocaleString(navigator.language);
                 }
+
                 // Special formatting for urls and images
-                if (/^https?:\/\//.test(cell)) {
-                    let content = cell;
-                    if (/\.(jpe?g|gif|png|webp)$/i.test(cell)) {
-                        content = `<object data="${cell}" height="64" />`;
+                cell = cell.replace(/https?:\/\/[^,]+/g, url => {
+                    let content = url;
+                    if (/\.(jpe?g|gif|png|webp)$/i.test(url)) {
+                        content = `<object data="${url}" height="64"></object>`;
                     }
-                    return `<a href="${cell}" target="_blank">${content}</a>`;
-                }
+                    return `<a href="${url}" target="_blank">${content}</a>`;
+                });
+
+                // Special formatting for email addresses
+                cell = cell.replace(/[^@,\s]+@[^@,\s]+\.[^@,\s]+/g, email => `<a href="mailto:${email}">${email}</a>`);
+
                 return cell;
             }
 

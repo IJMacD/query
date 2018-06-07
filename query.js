@@ -155,141 +155,176 @@ async function runQuery (query) {
 
     let initialResultCount = 0;
     let fetchStudents = false;
+    
+    /**
+     * @param {ParsedFrom} table
+     * @returns {Promise<any[]>}
+     */
+    async function primaryTable (table) {
+        switch (table.name) {
+            case "Tutor":
+                if (parsedWhere) {
+                    for (let child of parsedWhere.children){
+                        const resolved2 = resolveConstant(child.operand2);
+                        if (child.operand1 === "name" && child.operator === "=") {
+                            return [await iL.Tutor.find(String(resolved2))];
+                        }
+                        if (child.operand1 === "id" && child.operator === "=") {
+                            return [iL.Tutor.get(String(resolved2))];
+                        }
+                    }
+                }
+                return await iL.Tutor.all();
+            case "Lesson":
+            case "Attendance": {
+                let results;
+                /** @type Date */
+                let start;
+                /** @type Date */
+                let end;
+                let needsLogin = false;
+                let tutor;
+                // By default only show real lessons
+                // WHERE magic is used to include all lessons if requested
+                let excludePlaceholders = true;
+                // Even stricter: only show lessons with students actually attending
+                let onlyWithAttendees = false;
+
+                if (parsedWhere) {
+                    for (const condition of parsedWhere.children) {
+                        /**
+                         * TODO: These should all be reversible
+                         */
+                        const resolved2 = resolveConstant(condition.operand2);
+                        if ((condition.operand1 === "start" || condition.operand1 == "end") && resolved2 instanceof Date)  {
+                            if (condition.operator === ">" || condition.operator === ">=" || condition.operator === "=") {
+                                start = resolved2;
+                            } else if (condition.operator === "<" || condition.operator === "<=" || condition.operator === "=") {
+                                end = resolved2;
+                            }
+                        }
+                        else if (condition.operand1.startsWith("attendees") || condition.operand2.startsWith("attendees")) {
+                            needsLogin = true;
+                        }
+                        // Make sure second operand is actually a constant
+                        else if (condition.operand1 === "tutor.id" && condition.operator === "=" && resolved2) {
+                            tutor = iL.Tutor.get(String(resolved2));
+                        }
+                        // Make sure second operand is actually a constant
+                        else if (condition.operand1 === "tutor.name" && condition.operator === "=" && resolved2) {
+                            tutor = await iL.Tutor.find(String(resolved2));
+                        }
+
+                        // WHERE magic: if you mention attendees at all then you get unfiltered results
+                        // i.e. to force unfiltered you could do attendees.length >= 0
+                        if (condition.operand1.includes("attendees") || condition.operand2.includes("attendees")) {
+                            excludePlaceholders = false;
+                        }
+                    }
+                }
+
+                if (!start) { start = new Date(); }
+                if (!end) { end = start; }
+
+                if (!loggedIn && (
+                        excludePlaceholders ||
+                        onlyWithAttendees ||
+                        needsLogin ||
+                        cols.some(c => c.includes("attendees")) ||
+                        groupBy && groupBy.includes("attendees") ||
+                        orderBy && orderBy.includes("attendees") ||
+                        table.name === "Attendance"
+                    )
+                ) {
+                    // If we are going to do anything with attendees, we need to be logged in
+                    await iL.login(process.env.IL_USER, process.env.IL_PASS);
+                    loggedIn = true;
+                }
+
+                results = await iL.Lesson.find({ start, end, tutor });
+
+                if (onlyWithAttendees) {
+                    results = results.filter(iL.Util.hasAttendees);
+                } else if (excludePlaceholders) {
+                    results = results.filter(iL.Util.isRealLesson);
+                }
+
+                if (table.name === "Attendance") {
+                    // Convert Lessons into Attendances
+                    // (Re-use all of Lesson searching logic)
+                    const newResults = [];
+                    for (const lesson of results) {
+                        newResults.push(...lesson.attendees);
+                    }
+                    results = newResults;
+                }
+
+                return results;
+            }
+            case "Course":
+                let title;
+                let tutor;
+                if (parsedWhere) {
+                    for (let child of parsedWhere.children){
+                        const resolved2 = resolveConstant(child.operand2);
+                        if (child.operand1 === "title" && child.operator === "=") {
+                            title = String(resolved2);
+                            break;
+                        }
+                        if (child.operand1 === "tutor.id" && child.operator === "=") {
+                            tutor = iL.Tutor.get(String(resolved2));
+                            break;
+                        }
+                        if (child.operand1 === "tutor.name" && child.operator === "=") {
+                            tutor = await iL.Tutor.find(String(resolved2));
+                            break;
+                        }
+                    }
+                }
+                return await iL.Course.find({ title, tutor });
+            case "Room":
+                return await iL.Room.all();
+            case "Term":
+                return await iL.Term.all();
+            case "User":
+                return await iL.User.all();
+            default:
+                throw new Error("Table not recognised: `" + table.name + "`");
+        }
+    }
+
+    function joinCallback (table) {
+        // console.log({ msg: "Joined Table", table });
+        switch (table.name) {
+            case 'Student':
+                if (cols.some(col => col && col.includes("birthDate"))) {
+                    return Promise.all(results.map(r => {
+                        const student = resolvePath(r, table.join);
+                        return student && iL.Student.fetch(student);
+                    }));
+                }
+                break;
+            case 'Guardian':
+                const studentTable = parsedTables.find(t => t.name === "Student");
+                if (!studentTable) {
+                    throw new Error("Guardian table is dependant on Student table");
+                }
+                return Promise.all(results.map(r => {
+                    const student = resolvePath(r, studentTable.join);
+                    return student && iL.Student.fetch(student);
+                }));
+        }
+    }
 
     /** @type {Array} */
     let results;
 
-    if (table === "Tutor") {
-        if (parsedWhere) {
-            for (let child of parsedWhere.children){
-                const resolved2 = resolveConstant(child.operand2);
-                if (child.operand1 === "name" && child.operator === "=") {
-                    results = [await iL.Tutor.find(String(resolved2))];
-                    break;
-                }
-                if (child.operand1 === "id" && child.operator === "=") {
-                    results = [iL.Tutor.get(String(resolved2))];
-                    break;
-                }
-            }
-        }
-        if (!results) {
-            results = await iL.Tutor.all();
-        }
-    } else if (table === "Lesson" || table === "Attendance") {
-        /** @type Date */
-        let start;
-        /** @type Date */
-        let end;
-        let needsLogin = false;
-        let tutor;
-        // By default only show real lessons
-        // WHERE magic is used to include all lessons if requested
-        let excludePlaceholders = true;
-        // Even stricter: only show lessons with students actually attending
-        let onlyWithAttendees = false;
-
-        if (parsedWhere) {
-            for (const condition of parsedWhere.children) {
-                /**
-                 * TODO: These should all be reversible
-                 */
-                const resolved2 = resolveConstant(condition.operand2);
-                if ((condition.operand1 === "start" || condition.operand1 == "end") && resolved2 instanceof Date)  {
-                    if (condition.operator === ">" || condition.operator === ">=" || condition.operator === "=") {
-                        start = resolved2;
-                    } else if (condition.operator === "<" || condition.operator === "<=" || condition.operator === "=") {
-                        end = resolved2;
-                    }
-                }
-                else if (condition.operand1.startsWith("attendees") || condition.operand2.startsWith("attendees")) {
-                    needsLogin = true;
-                }
-                // Make sure second operand is actually a constant
-                else if (condition.operand1 === "tutor.id" && condition.operator === "=" && resolved2) {
-                    tutor = iL.Tutor.get(String(resolved2));
-                }
-                // Make sure second operand is actually a constant
-                else if (condition.operand1 === "tutor.name" && condition.operator === "=" && resolved2) {
-                    tutor = await iL.Tutor.find(String(resolved2));
-                }
-
-                // WHERE magic: if you mention attendees at all then you get unfiltered results
-                // i.e. to force unfiltered you could do attendees.length >= 0
-                if (condition.operand1.includes("attendees") || condition.operand2.includes("attendees")) {
-                    excludePlaceholders = false;
-                }
-            }
-        }
-
-        if (!start) { start = new Date(); }
-        if (!end) { end = start; }
-
-        if (!loggedIn && (
-                excludePlaceholders ||
-                onlyWithAttendees ||
-                needsLogin ||
-                cols.some(c => c.includes("attendees")) ||
-                groupBy && groupBy.includes("attendees") ||
-                orderBy && orderBy.includes("attendees") ||
-                table === "Attendance"
-            )
-        ) {
-            // If we are going to do anything with attendees, we need to be logged in
-            await iL.login(process.env.IL_USER, process.env.IL_PASS);
-            loggedIn = true;
-        }
-
-        results = await iL.Lesson.find({ start, end, tutor });
-
-        if (onlyWithAttendees) {
-            results = results.filter(iL.Util.hasAttendees);
-        } else if (excludePlaceholders) {
-            results = results.filter(iL.Util.isRealLesson);
-        }
-
-        if (table === "Attendance") {
-            // Convert Lessons into Attendances
-            // (Re-use all of Lesson searching logic)
-            const newResults = [];
-            for (const lesson of results) {
-                newResults.push(...lesson.attendees);
-            }
-            results = newResults;
-        }
-    } else if (table === "Course") {
-        let title;
-        let tutor;
-        if (parsedWhere) {
-            for (let child of parsedWhere.children){
-                const resolved2 = resolveConstant(child.operand2);
-                if (child.operand1 === "title" && child.operator === "=") {
-                    title = String(resolved2);
-                    break;
-                }
-                if (child.operand1 === "tutor.id" && child.operator === "=") {
-                    tutor = iL.Tutor.get(String(resolved2));
-                    break;
-                }
-                if (child.operand1 === "tutor.name" && child.operator === "=") {
-                    tutor = await iL.Tutor.find(String(resolved2));
-                    break;
-                }
-            }
-        }
-        results = await iL.Course.find({ title, tutor });
-    } else if (table === "Room") {
-        results = await iL.Room.all();
-    } else if (table === "Term") {
-        results = await iL.Term.all();
-    } else if (table === "User") {
-        results = await iL.User.all();
-    } else if (typeof table === "undefined") {
+    if (parsedTables.length === 0) {
         // If there is no table specified create one token row
         // so that we can return constants etc.
         results = [[]];
     } else {
-        throw new Error("Table not recognised: `" + table + "`");
+        results = await primaryTable(parsedTables[0]);
     }
 
     if (!results) {
@@ -299,37 +334,6 @@ async function runQuery (query) {
     
     initialResultCount = results.length;
     // console.log(`Initial data set: ${results.length} items`);
-    
-    /**************
-     * Domain logic
-     *************/
-    // Students need to be fetched if Guardian table is specified
-    if (parsedTables.some(t => t.name === "Guardian")) {
-        if (!parsedTables.some(t => t.name === "Student")) {
-            throw new Error("Guardian table is dependant on Student table");
-        }
-        fetchStudents = true;
-    }
-    
-    // As an example, Students need to be fetched if the birthDate column is specified
-    if (parsedTables.some(t => t.name === "Student")) {
-        if (cols.some(col => col && col.includes("birthDate"))) {
-            fetchStudents = true;
-        }
-    }
-
-    function joinCallback (table) {
-        // console.log({ msg: "Joined Table", table });
-        switch (table.name) {
-            case 'Student':
-                if (fetchStudents) {
-                    return Promise.all(results.map(r => {
-                        const student = resolvePath(r, table.join);
-                        return student && iL.Student.fetch(student);
-                    }));
-                }
-        }
-    }
 
     // Define a ROWID
     for(const [i, result] of results.entries()) {

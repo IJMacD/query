@@ -22,7 +22,8 @@ module.exports = Query;
 /**
  * @typedef QueryCallbacks
  * @prop {(ParsedFrom) => Promise<any[]>} primaryTable
- * @prop {(ParsedFrom, results: any[]) => Promise} joinedTable
+ * @prop {(ParsedFrom, results: any[]) => Promise} [joinedTable]
+ * @prop {(ParsedFrom, results: any[]) => Promise} [beforeJoin]
  */
 
 /**
@@ -32,7 +33,7 @@ module.exports = Query;
  */
 async function Query (query, callbacks) {
 
-    const { primaryTable, joinedTable } = callbacks;
+    const { primaryTable, joinedTable, beforeJoin } = callbacks;
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
@@ -129,6 +130,9 @@ async function Query (query, callbacks) {
          * Joins
          *****************/
         jointables: for(let table of parsedTables.slice(1)) {
+            if (beforeJoin) {
+                await beforeJoin.call(self, table, rows);
+            }
 
             const t = table.name.toLowerCase();
 
@@ -146,7 +150,9 @@ async function Query (query, callbacks) {
                             row['ROWID'] += ".0";
                         }
 
-                        await joinedTable.call(self, table, rows);
+                        if (joinedTable) {
+                            await joinedTable.call(self, table, rows);
+                        }
                         continue jointables;
                     }
                 }
@@ -172,7 +178,9 @@ async function Query (query, callbacks) {
                     }
 
                     table.join = join;
-                    await joinedTable.call(self, table, rows);
+                    if (joinedTable) {
+                        await joinedTable.call(self, table, rows);
+                    }
 
                     continue;
                 }
@@ -252,7 +260,9 @@ async function Query (query, callbacks) {
             rows = newRows;
 
             table.join = newPath;
-            await joinedTable.call(self, table, rows);
+            if (joinedTable) {
+                await joinedTable.call(self, table, rows);
+            }
         }
     }
 

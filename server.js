@@ -32,7 +32,7 @@ app.post('/query', (req, res) => {
     }).catch(e => {
         res.status(400);
         res.header("Content-Type", "text/plain");
-        res.send(e.message);
+        res.send(e.message || e);
         console.error(e);
     });
 });

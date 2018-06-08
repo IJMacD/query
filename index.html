@@ -164,8 +164,7 @@
                 const headerRow = rows.shift();
                 const linesRow = rows.shift();
 
-                return `
-                    <table>
+                return `<table>
                         <thead>
                             <tr>${headerRow.map(cell => `<th>${cell}</th>`).join("")}</tr>
                         </thead>
@@ -182,7 +181,7 @@
                 if (cell === null) {
                     return "NULL";
                 }
-                
+
                 cell = String(cell);
 
                 // Special Formatting for colour

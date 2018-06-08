@@ -1,3 +1,5 @@
+const { isNullDate } = require('./util');
+
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING" ];
 const CONDITION_REGEX = /([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
 const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
@@ -18,7 +20,7 @@ const OPERATORS = {
     '>': (a,b) => a > b,
     '<=': (a,b) => a <= b,
     '>=': (a,b) => a >= b,
-    'IS NULL': a => a === null || a === "" || Number.isNaN(a) || isNullDate(a),
+    'IS NULL': a => typeof a === "undefined" || a === null || a === "" || Number.isNaN(a) || isNullDate(a),
     'IS NOT NULL': a => !OPERATORS['IS NULL'](a),
     'LIKE': (a,b) => new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a),
     'NOT LIKE': (a,b) => !OPERATORS['LIKE'](a, b),

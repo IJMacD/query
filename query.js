@@ -81,75 +81,99 @@ async function Query (query, callbacks) {
     let initialResultCount = 0;
     let fetchStudents = false;
 
-    /** @type {Array} */
-    let results;
+    /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
+
+    /** @type {ResultRow[]} */
+    let rows;
 
     if (parsedTables.length === 0) {
         // If there is no table specified create one token row
         // so that we can return constants etc.
-        results = [[]];
+        rows = [[]];
     } else {
-        results = await primaryTable.call(self, parsedTables[0]);
-    }
+        const table = parsedTables[0];
+        // i === 0: Root table can't have joins
+        table.join = "";
 
-    if (!results) {
-        // Nothing we can do
-        throw new Error("No results");
-    }
+        /** @type {Array} */
+        const results = await primaryTable.call(self, table);
 
-    initialResultCount = results.length;
-    // console.log(`Initial data set: ${results.length} items`);
-
-    // Define a ROWID
-    for(const [i, result] of results.entries()) {
-        if (typeof result['ROWID'] === "undefined") {
-            Object.defineProperty(result, 'ROWID', { value: String(i), writable: true });
-        } else {
-            // This means we've infected the SDK
-            result['ROWID'] = String(i);
+        if (!results) {
+            // Nothing we can do
+            throw new Error("No results");
         }
+
+        initialResultCount = results.length;
+        // console.log(`Initial data set: ${results.length} items`);
+
+
+        // Poulate inital rows
+        rows = results.map((r,i) => {
+            /** @type {ResultRow} */
+            const row = [];
+            row.data = {
+                [table.join]: r,
+            };
+            // Define a ROWID
+            Object.defineProperty(row, 'ROWID', { value: String(i), writable: true });
+            return row;
+        });
+
     }
+
 
     // We can only process join connections if we have results
-    if (results.length > 0) {
+    if (rows.length > 0) {
 
         /******************
          * Joins
          *****************/
-
-        // i === 0: Root table can't have joins
-        parsedTables[0].join = "";
-        await joinedTable.call(self, parsedTables[0], results);
-
-        for(let table of parsedTables.slice(1)) {
-            const result = results[0];
+        jointables: for(let table of parsedTables.slice(1)) {
 
             const t = table.name.toLowerCase();
-            let path;
 
             if (table.join) {
                 // If we have an explicit join, check it first.
 
-                const val = resolveValue(result, table.join);
+                // Iterate over rows until we find one that works
+                for (const row of rows) {
+                    const val = resolveValue(row, table.join);
 
-                if (typeof val !== "undefined") {
-                    // It's valid, so we can carry on
-                    await joinedTable.call(self, table, results);
-                    continue;
+                    if (typeof val !== "undefined") {
+
+                        for (let row of rows) {
+                            row['data'][table.join] = resolveValue(row, table.join);
+                            row['ROWID'] += ".0";
+                        }
+
+                        await joinedTable.call(self, table, rows);
+                        continue jointables;
+                    }
                 }
 
-                path = table.join;
+                throw new Error("Invalid ON clause: " + table.join);
+
             } else {
+                let path;
+
                 // AUTO JOIN! (natural join, comma join, implicit join?)
                 // We will find the path automatically
-                for (const r of results) {
+                for (const r of rows) {
                     path = findPath(r, t);
                     if (typeof path !== "undefined") break;
                 }
 
                 if (typeof path !== "undefined") {
-                    table.join = path;
-                    await joinedTable.call(self, table, results);
+                    const join = path.length === 0 ? t : `${path}.${t}`;
+
+                    for (let row of rows) {
+                        row['data'][join] = resolveValue(row, t);
+                        row['ROWID'] += ".0";
+                    }
+
+                    table.join = join;
+                    await joinedTable.call(self, table, rows);
+
                     continue;
                 }
             }
@@ -161,25 +185,42 @@ async function Query (query, callbacks) {
             * if that is an array we can do a multi-way join.
             */
             const ts = `${t}s`;
-            const pluralPath = findPath(result, ts);
+            let pluralPath;
+            let join;
+
+            for (const r of rows) {
+                join = findPath(r, ts);
+
+                if (typeof join !== "undefined") {
+                    const data = r['data'][join];
+                    pluralPath = join.length === 0 ? ts : `${join}.${ts}`;
+
+                    const array = resolvePath(data, pluralPath);
+
+                    if (!Array.isArray(array)) {
+                        throw new Error("Unable to join, found a plural but not an array: " + ts);
+                    }
+
+                    break;
+                }
+            }
 
             if (typeof pluralPath === "undefined") {
                 throw new Error("Unable to join: " + t);
             }
 
-            if (!Array.isArray(resolvePath(result, pluralPath))) {
-                throw new Error("Unable to join, found a plural but not an array: " + ts);
-            }
-
             // We've been joined on an array! Wahooo!!
             // The number of results has just been multiplied!
-            const newResults = [];
+            const newRows = [];
             const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
+            const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
+
 
             // Now iterate over each of the results expanding as necessary
-            results.forEach(r => {
+            rows.forEach(r => {
                 // Fetch the array
-                const array = resolvePath(r, pluralPath);
+                const data = r['data'][join];
+                const array = resolvePath(data, pluralPath);
 
                 if (array.length === 0) {
                     /*
@@ -192,38 +233,28 @@ async function Query (query, callbacks) {
                     // Update the ROWID to indicate there was no row in this particular table
                     r['ROWID'] += ".-1";
 
-                    newResults.push(r);
+                    newRows.push(r);
                     return;
                 }
 
                 array.forEach((sr, si) => {
                     // Clone the row
-                    const newResult = deepClone(r, subPath);
-
-                    // attach the sub-array item to the singular name
-                    if (subPath.length === 0) {
-                        newResult[t] = sr;
-                    } else {
-                        resolvePath(newResult, subPath)[t] = sr;
-                    }
+                    const newRow = [ ...r ];
+                    newRow['data'] = { ...r['data'], [newPath]: sr };
 
                     // Set the ROWID again, this time including the subquery id too
-                    Object.defineProperty(newResult, 'ROWID', { value: `${r['ROWID']}.${si}` });
+                    Object.defineProperty(newRow, 'ROWID', { value: `${r['ROWID']}.${si}`, writable: true });
 
-                    newResults.push(newResult);
+                    newRows.push(newRow);
                 });
             });
 
-            results = newResults;
-
-            const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
+            rows = newRows;
 
             table.join = newPath;
-            await joinedTable.call(self, table, results);
+            await joinedTable.call(self, table, rows);
         }
     }
-
-    // console.log(parsedTables);
 
     /******************
      * Columns
@@ -232,19 +263,20 @@ async function Query (query, callbacks) {
     for (const c of cols) {
         // Special Treatment for *
         if (c === "*") {
-            if (results.length === 0) {
+            if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
                 colNames.push(c);
                 colHeaders.push(c);
                 continue;
             }
 
-            const r = results[0];
+            const r = rows[0];
+            const data = r['data'][""];
 
             // only add "primitive" columns
-            let newCols = Object.keys(r).filter(k => typeof scalar(r[k]) !== "undefined");
+            let newCols = Object.keys(data).filter(k => typeof scalar(data[k]) !== "undefined");
 
-            colNames.push(...newCols);
+            colNames.push(...newCols.map(c => ["", c]));
             colHeaders.push(...newCols);
 
             // Add all the scalar columns for secondary tables
@@ -254,8 +286,8 @@ async function Query (query, callbacks) {
                 let tableObj;
 
                 // We need to find a non-null row to extract columns from
-                for (const tmpR of results) {
-                    tableObj = resolvePath(tmpR, join);
+                for (const tmpR of rows) {
+                    tableObj = tmpR['data'][join];
                     if (tableObj) break;
                 }
 
@@ -266,13 +298,14 @@ async function Query (query, callbacks) {
                 // only add "primitive" columns
                 let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
-                colNames.push(...newCols.map(c => `${join}.${c}`));
+                colNames.push(...newCols.map(c => [join, c]));
                 colHeaders.push(...newCols);
             }
         } else {
             const [ c1, alias ] = c.split(" AS ");
-            const colName = results.length === 0 ? c1 : findPath(results[0], c1) || c1;
-            colNames.push(colName);
+            const path = findPath(rows[0], c1);
+
+            colNames.push([path, c1]);
             colHeaders.push(alias || c1);
 
             if (alias && typeof colAlias[alias] !== "undefined") {
@@ -302,7 +335,7 @@ async function Query (query, callbacks) {
                 throw new Error("Unrecognised operator: " + child.operator);
             }
 
-            results = results.filter(r => {
+            rows = rows.filter(r => {
                 const a = resolveValue(r, child.operand1);
                 const b = resolveValue(r, child.operand2);
                 return compare(a, b);
@@ -313,20 +346,19 @@ async function Query (query, callbacks) {
     /*****************
      * Column Values
      *****************/
-    let rows = results.map(r => {
-        const values = colNames.map(col => {
+    for(const row of rows) {
+        for(const [i, [join, col]] of colNames.entries()) {
+            if (col === "ROWID") {
+                row[i] = row['ROWID'];
+                continue;
+            }
             if (FUNCTION_REGEX.test(col)) {
                 // Don't compute aggregate functions until after grouping
-                return null;
+                continue;
             }
-            return resolveValue(r, col);
-        });
-
-        // Save reference to original object for sorting
-        values['result'] = r;
-
-        return values;
-    });
+            row[i] = resolveValue(row, col);
+        }
+    }
 
     /*************
      * Grouping
@@ -340,7 +372,7 @@ async function Query (query, callbacks) {
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    if (colNames.some(c => FUNCTION_REGEX.test(c))) {
+    if (colNames.some(([p,c]) => FUNCTION_REGEX.test(c))) {
         if (!groupBy) {
             // If we have aggregate functions but we're not grouping,
             // then apply aggregate functions to whole set
@@ -352,7 +384,7 @@ async function Query (query, callbacks) {
             ];
         }
 
-        rows = rows.map(row => computeAggregates(row['group'], colNames));
+        rows = rows.map(row => computeAggregates(row['group'], colNames.map(([p,c])=>c)));
     }
 
     /*******************
@@ -382,7 +414,7 @@ async function Query (query, callbacks) {
     if (orderBy) {
         // Parse the orderBy clause into an array of objects
         const parsedOrders = orderBy.split(",").map(order => {
-            const [ col, asc_desc ] = order.split(" ");
+            const [ col, asc_desc ] = order.trim().split(" ");
             const desc = asc_desc === "DESC" ? -1 : 1;
 
             // Simplest case: col is actually a column index
@@ -442,20 +474,29 @@ async function Query (query, callbacks) {
     return output_buffer;
 
     /**
-     * Traverse a sample object to determine absolute path to given name
+     * Traverse a sample object to determine absolute path
+     * up to, but not including, given name.
      * Uses explicit join list.
-     * @param {any} result
+     * @param {ResultRow} row
      * @param {string} name
      * @returns {string}
      */
-    function findPath (result, name) {
+    function findPath (row, name) {
         for (const { join } of parsedTables) {
-            const path = join ? `${join}.${name}` : name;
+            if (typeof join === "undefined") {
+                continue;
+            }
+
+            const data = row.data[join];
+
+            if (typeof data === "undefined") {
+                throw new Error("Row is missing data: " + join);
+            }
 
             // Check if the parent object has a property matching
             // the secondary table i.e. Tutor => result.tutor
-            if (typeof resolvePath(result, path) !== "undefined") {
-                return path;
+            if (typeof resolvePath(data, name) !== "undefined") {
+                return join;
             }
         }
     }
@@ -502,10 +543,10 @@ async function Query (query, callbacks) {
 
     /**
      * Resolve a col into a concrete value (constant or from object)
-     * @param {any} result
+     * @param {ResultRow} row
      * @param {string} col
      */
-    function resolveValue (result, col) {
+    function resolveValue (row, col) {
         // Check for constant values first
         const constant = resolveConstant(col);
 
@@ -514,39 +555,61 @@ async function Query (query, callbacks) {
         }
 
         // If row is null, there's nothing left we can do
-        if (result === null) {
+        if (row === null) {
             return;
         }
 
         // Now for the real column resolution
-        // We will try each of the tables in turn
-        for (const { join } of parsedTables) {
-            const prefix = join ? `${join}.` : "";
 
-                                    // Resolve a possible alias
-            const colName = prefix + (colNames[colAlias[col]] || col);
-            // Prefix needs to be added even to aliases as colNames are
-            // not necessarily fully resolved.
+                            // Resolve a possible alias
+        let qualified = colNames[colAlias[col]];
+        if (typeof qualified !== "undefined") {
+            let [ join, colName ] = qualified;
 
-            const val = resolvePath(result, colName);
+            if (typeof join === "undefined") {
+                return; // undefined
+            }
+
+            const data = row.data[join];
+
+            const val = resolvePath(data, colName);
 
             if (typeof val !== "undefined") {
                 return val;
             }
         }
 
-        return null;
+        // We will try each of the tables in turn
+        for (const { join } of parsedTables) {
+            if (typeof join === "undefined") {
+                continue;
+            }
+
+            const data = row.data[join];
+
+            if (typeof data === "undefined") {
+                continue;
+            }
+
+            const val = resolvePath(data, col);
+
+            if (typeof val !== "undefined") {
+                return val;
+            }
+        }
+
+        return; // undefined
     }
 
     /**
      * Traverse a dotted path to resolve a deep value
-     * @param {any} result
+     * @param {any} data
      * @param {string} path
      * @returns {any}
      */
-    function resolvePath(result, path) {
+    function resolvePath(data, path) {
         // resolve path
-        let val = result;
+        let val = data;
         for (const name of path.split(".")) {
             val = val[name];
             if (typeof val === "undefined") {
@@ -567,7 +630,7 @@ async function Query (query, callbacks) {
 
         let colNum = colAlias[col];
         if (typeof colNum === "undefined") {
-            colNum = colNames.indexOf(col);
+            colNum = colNames.findIndex(([p,c]) => c === col);
         }
 
         if (colNum >= 0) {
@@ -671,8 +734,12 @@ async function Query (query, callbacks) {
         // calculate its ordering value.
         if (typeof va === "undefined") {
             let v = isNaN(parsedOrder.colNum) ?
-                resolveValue(row['result'], parsedOrder.col) :
+                resolveValue(row, parsedOrder.col) :
                 row[parsedOrder.colNum];
+
+            if (typeof v === "undefined") {
+                throw new Error("Order by unknown column: " + parsedOrder.col);
+            }
 
             // Try to coerce into number if possible
             v = isNaN(+v) ? v : +v;
@@ -695,8 +762,8 @@ async function Query (query, callbacks) {
         const groupByMap = new Map();
         for(const row of rows) {
             const key = parsedGroupBy.length === 1 ?
-                resolveValue(row['result'], parsedGroupBy[0]) : // Group could actually be an object e.g. GROUP BY tutor
-                parsedGroupBy.map(g => resolveValue(row['result'], g)).join("|");
+                resolveValue(row, parsedGroupBy[0]) : // Group could actually be an object e.g. GROUP BY tutor
+                parsedGroupBy.map(g => resolveValue(row, g)).join("|");
             if (!groupByMap.has(key)) {
                 groupByMap.set(key, []);
             }

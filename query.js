@@ -203,7 +203,7 @@ async function Query (query, callbacks) {
                     const data = r['data'][join];
                     pluralPath = join.length === 0 ? ts : `${join}.${ts}`;
 
-                    const array = resolvePath(data, pluralPath);
+                    const array = resolvePath(data, ts);
 
                     if (!Array.isArray(array)) {
                         throw new Error("Unable to join, found a plural but not an array: " + ts);
@@ -228,7 +228,7 @@ async function Query (query, callbacks) {
             rows.forEach(r => {
                 // Fetch the array
                 const data = r['data'][join];
-                const array = resolvePath(data, pluralPath);
+                const array = resolvePath(data, ts);
 
                 if (array.length === 0) {
                     /*
@@ -364,6 +364,11 @@ async function Query (query, callbacks) {
             }
             if (FUNCTION_REGEX.test(col)) {
                 // Don't compute aggregate functions until after grouping
+                continue;
+            }
+            if (typeof join !== "undefined") {
+                const data = row['data'][join];
+                row[i] = resolvePath(data, col);
                 continue;
             }
             row[i] = resolveValue(row, col);

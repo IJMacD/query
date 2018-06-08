@@ -1,294 +1,23 @@
-const moment = require('moment');
+const {
+    FUNCTION_REGEX,
+    AGGREGATE_FUNCTIONS,
+    OPERATORS,
+} = require('./const');
 
-module.exports = runQuery;
+const {
+    parseQuery,
+    parseFrom,
+    parseWhere,
+} = require('./parse');
 
-const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING" ];
-const CONDITION_REGEX = /([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
-const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
+const {
+    scalar,
+    repeat,
+    isNullDate,
+    deepClone,
+} = require('./util');
 
-const AGGREGATE_FUNCTIONS = {
-    'COUNT': a => a.length,
-    'SUM': v => v.reduce((total,val) => total + (+val), 0), // Be sure to coerce into number
-    'AVG': v => AGGREGATE_FUNCTIONS.SUM(v) / v.length,
-    'MIN': v => Math.min(...v),
-    'MAX': v => Math.max(...v),
-    'LISTAGG': v => v.join(),
-};
-
-const OPERATORS = {
-    '=': (a,b) => a == b,
-    '!=': (a,b) => a != b,
-    '<': (a,b) => a < b,
-    '>': (a,b) => a > b,
-    '<=': (a,b) => a <= b,
-    '>=': (a,b) => a >= b,
-    'IS NULL': a => a === null || a === "" || Number.isNaN(a) || isNullDate(a),
-    'IS NOT NULL': a => !OPERATORS['IS NULL'](a),
-    'LIKE': (a,b) => new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a),
-    'NOT LIKE': (a,b) => !OPERATORS['LIKE'](a, b),
-    'REGEXP': (a,b) => new RegExp(b, "i").test(a),
-    'NOT REGEXP': (a,b) => !OPERATORS['REGEXP'](a, b),
-};
-
-let loggedIn = false;
-
-/**
- * Break a flat text SQL query into its clauses
- * @param {string} query
- * @return {{ from?: string, select?: string, where?: string, ["order by"]?: string, limit?: string, ["group by"]?: string, [clause: string]: string }}
- */
-function parseQuery (query) {
-
-    const parts = CLAUSES
-        .map(clause => ({ clause, start: query.indexOf(clause) }))
-        .filter(o => o.start != -1)
-        .sort((a,b) => a.start - b.start);
-
-    const parsed = {};
-
-    for(let i = 0; i < parts.length; i++) {
-        const { clause, start } = parts[i];
-        const end = i < parts.length - 1 ? parts[i+1].start : query.length;
-        parsed[clause.toLowerCase()] = query.substring(start + clause.length, end).trim();
-    }
-
-    return parsed;
-}
-
-/**
- * @typedef WhereNode
- * @prop {string} type
- * @prop {WhereNode[]} [children]
- * @prop {string} [operator]
- * @prop {string} [operand1]
- * @prop {string} [operand2]
- */
-
-/**
- * Parse a where clause into a tree
- * @param {string} where
- * @return {WhereNode}
- */
-function parseWhere (where) {
-    if (!where) {
-        return;
-    }
-
-    const whereParts = where.split("AND");
-
-    /** @type {WhereNode} */
-    const out = {
-        type: "AND",
-        children: [],
-    };
-
-    whereParts.forEach(part => {
-        const match = part.match(CONDITION_REGEX);
-        if (!match) {
-            throw new Error(`Unrecognised WHERE/HAVING clause: \`${part}\``);
-        }
-
-        out.children.push({
-            type: "OPERATOR",
-            operator: match[2].trim(),
-            operand1: match[1].trim(),
-            operand2: match[3].trim(),
-        });
-    });
-
-    return out;
-}
-
-/**
- * @typedef ParsedFrom
- * @prop {string} name
- * @prop {string} [join]
- * @prop {string} [alias]
- */
-
-/**
- * @param {string} from
- * @return {ParsedFrom[]}
- */
-function parseFrom (from) {
-    const tables = from ? from.split(",").map(s => s.trim()) : [];
-    const parsedTables = tables.map(table => {
-        const [ name, join ] = table.split("ON").map(s => s.trim());
-        return { name, join };
-    });
-    return parsedTables;
-}
-
-async function runQuery (query) {
-    await iL.init({ API_ROOT: process.env.API_ROOT, PHOTO_URL: process.env.PHOTO_URL });
-
-    return Query(query, { primaryTable, joinedTable: joinCallback });
-
-    /**
-     * @param {ParsedFrom} table
-     * @returns {Promise<any[]>}
-     */
-    async function primaryTable (table) {
-        switch (table.name) {
-            case "Tutor":
-                if (this.parsedWhere) {
-                    for (let child of this.parsedWhere.children){
-                        const resolved2 = this.resolveConstant(child.operand2);
-                        if (child.operand1 === "name" && child.operator === "=") {
-                            return [await iL.Tutor.find(String(resolved2))];
-                        }
-                        if (child.operand1 === "id" && child.operator === "=") {
-                            return [iL.Tutor.get(String(resolved2))];
-                        }
-                    }
-                }
-                return await iL.Tutor.all();
-            case "Lesson":
-            case "Attendance": {
-                let results;
-                /** @type Date */
-                let start;
-                /** @type Date */
-                let end;
-                let needsLogin = false;
-                let tutor;
-                // By default only show real lessons
-                // WHERE magic is used to include all lessons if requested
-                let excludePlaceholders = true;
-                // Even stricter: only show lessons with students actually attending
-                let onlyWithAttendees = false;
-
-                if (this.parsedWhere) {
-                    for (const condition of this.parsedWhere.children) {
-                        /**
-                         * TODO: These should all be reversible
-                         */
-                        const resolved2 = this.resolveConstant(condition.operand2);
-                        if ((condition.operand1 === "start" || condition.operand1 == "end") && resolved2 instanceof Date)  {
-                            if (condition.operator === ">" || condition.operator === ">=" || condition.operator === "=") {
-                                start = resolved2;
-                            } else if (condition.operator === "<" || condition.operator === "<=" || condition.operator === "=") {
-                                end = resolved2;
-                            }
-                        }
-                        else if (condition.operand1.startsWith("attendees") || condition.operand2.startsWith("attendees")) {
-                            needsLogin = true;
-                        }
-                        // Make sure second operand is actually a constant
-                        else if (condition.operand1 === "tutor.id" && condition.operator === "=" && resolved2) {
-                            tutor = iL.Tutor.get(String(resolved2));
-                        }
-                        // Make sure second operand is actually a constant
-                        else if (condition.operand1 === "tutor.name" && condition.operator === "=" && resolved2) {
-                            tutor = await iL.Tutor.find(String(resolved2));
-                        }
-
-                        // WHERE magic: if you mention attendees at all then you get unfiltered results
-                        // i.e. to force unfiltered you could do attendees.length >= 0
-                        if (condition.operand1.includes("attendees") || condition.operand2.includes("attendees")) {
-                            excludePlaceholders = false;
-                        }
-                    }
-                }
-
-                if (!start) { start = new Date(); }
-                if (!end) { end = start; }
-
-                if (!loggedIn && (
-                        excludePlaceholders ||
-                        onlyWithAttendees ||
-                        needsLogin ||
-                        this.cols.some(c => c.includes("attendees")) ||
-                        this.groupBy && this.groupBy.includes("attendees") ||
-                        this.orderBy && this.orderBy.includes("attendees") ||
-                        table.name === "Attendance"
-                    )
-                ) {
-                    // If we are going to do anything with attendees, we need to be logged in
-                    await iL.login(process.env.IL_USER, process.env.IL_PASS);
-                    loggedIn = true;
-                }
-
-                results = await iL.Lesson.find({ start, end, tutor });
-
-                if (onlyWithAttendees) {
-                    results = results.filter(iL.Util.hasAttendees);
-                } else if (excludePlaceholders) {
-                    results = results.filter(iL.Util.isRealLesson);
-                }
-
-                if (table.name === "Attendance") {
-                    // Convert Lessons into Attendances
-                    // (Re-use all of Lesson searching logic)
-                    const newResults = [];
-                    for (const lesson of results) {
-                        newResults.push(...lesson.attendees);
-                    }
-                    results = newResults;
-                }
-
-                return results;
-            }
-            case "Course":
-                let title;
-                let tutor;
-                if (this.parsedWhere) {
-                    for (let child of this.parsedWhere.children){
-                        const resolved2 = this.resolveConstant(child.operand2);
-                        if (child.operand1 === "title" && child.operator === "=") {
-                            title = String(resolved2);
-                            break;
-                        }
-                        if (child.operand1 === "tutor.id" && child.operator === "=") {
-                            tutor = iL.Tutor.get(String(resolved2));
-                            break;
-                        }
-                        if (child.operand1 === "tutor.name" && child.operator === "=") {
-                            tutor = await iL.Tutor.find(String(resolved2));
-                            break;
-                        }
-                    }
-                }
-                return await iL.Course.find({ title, tutor });
-            case "Room":
-                return await iL.Room.all();
-            case "Term":
-                return await iL.Term.all();
-            case "User":
-                return await iL.User.all();
-            default:
-                throw new Error("Table not recognised: `" + table.name + "`");
-        }
-    }
-
-    /**
-     * 
-     * @param {ParsedFrom} table 
-     * @param {any[]} results 
-     */
-    function joinCallback (table, results) {
-        // console.log({ msg: "Joined Table", table });
-        switch (table.name) {
-            case 'Student':
-                if (this.cols.some(col => col && col.includes("birthDate"))) {
-                    return Promise.all(results.map(r => {
-                        const student = this.resolvePath(r, table.join);
-                        return student && iL.Student.fetch(student);
-                    }));
-                }
-                break;
-            case 'Guardian':
-                const studentTable = this.parsedTables.find(t => t.name === "Student");
-                if (!studentTable) {
-                    throw new Error("Guardian table is dependant on Student table");
-                }
-                return Promise.all(results.map(r => {
-                    const student = this.resolvePath(r, studentTable.join);
-                    return student && iL.Student.fetch(student);
-                }));
-        }
-    }
-}
+module.exports = Query;
 
 /**
  * @typedef QueryCallbacks
@@ -297,8 +26,8 @@ async function runQuery (query) {
  */
 
 /**
- * 
- * @param {string} query 
+ *
+ * @param {string} query
  * @param {QueryCallbacks} callbacks
  */
 async function Query (query, callbacks) {
@@ -367,7 +96,7 @@ async function Query (query, callbacks) {
         // Nothing we can do
         throw new Error("No results");
     }
-    
+
     initialResultCount = results.length;
     // console.log(`Initial data set: ${results.length} items`);
 
@@ -391,7 +120,7 @@ async function Query (query, callbacks) {
         // i === 0: Root table can't have joins
         parsedTables[0].join = "";
         await joinedTable.call(self, parsedTables[0], results);
-        
+
         for(let table of parsedTables.slice(1)) {
             const result = results[0];
 
@@ -441,7 +170,7 @@ async function Query (query, callbacks) {
             if (!Array.isArray(resolvePath(result, pluralPath))) {
                 throw new Error("Unable to join, found a plural but not an array: " + ts);
             }
-        
+
             // We've been joined on an array! Wahooo!!
             // The number of results has just been multiplied!
             const newResults = [];
@@ -984,62 +713,4 @@ async function Query (query, callbacks) {
             return aggRow;
         });
     }
-}
-
-/**
- * Only let scalar values through.
- *
- * If passed an object or array returns undefined
- * @param {any} data
- * @return {number|string|boolean|Date}
- */
-function scalar (data) {
-    if (data === null || typeof data === "undefined") {
-        return null;
-    }
-    if (data.toString() === "[object Object]") {
-        return; // undefined
-    }
-    if (Array.isArray(data)) {
-        return; // undefined
-    }
-    return data;
-}
-
-/**
- *
- * @param {string} char
- * @param {number} n
- */
-function repeat (char, n) {
-    return Array(n + 1).join(char);
-}
-
-/**
- * Returns true iff param is Date object AND is invalid
- * @param {any} date
- * @returns {boolean}
- */
-function isNullDate (date) {
-    return date instanceof Date && isNaN(+date);
-}
-
-/**
- * Clone an object semi-deeply.
- *
- * All the objects on the specified path need to be deep cloned.
- * Everything else can be shallow cloned.
- *
- * @param {any} result
- * @param {string} path
- * @returns {any}
- */
-function deepClone (result, path) {
-    // Top level clone only
-    if (path.length === 0) return { ...result };
-
-    // Could be deeper... more accurate
-    // At the moment it actually only clones one level deep
-    const pathParts = path.split(".");
-    return { ...result, [pathParts[0]]: { ...result[pathParts[0]] } };
 }

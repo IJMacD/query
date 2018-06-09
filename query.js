@@ -107,19 +107,23 @@ async function Query (query, callbacks) {
         initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
 
-
         // Poulate inital rows
         rows = results.map((r,i) => {
             /** @type {ResultRow} */
             const row = [];
+
+            // Set inital data object
             row.data = {
                 [table.join]: r,
             };
+
             // Define a ROWID
             Object.defineProperty(row, 'ROWID', { value: String(i), writable: true });
+
             return row;
         });
 
+        rows = filterRows(rows);
     }
 
 
@@ -150,6 +154,7 @@ async function Query (query, callbacks) {
                             row['ROWID'] += ".0";
                         }
 
+                        rows = filterRows(rows);
                         if (joinedTable) {
                             await joinedTable.call(self, table, rows);
                         }
@@ -176,6 +181,8 @@ async function Query (query, callbacks) {
                         row['data'][join] = resolveValue(row, t);
                         row['ROWID'] += ".0";
                     }
+
+                    rows = filterRows(rows);
 
                     table.join = join;
                     if (joinedTable) {
@@ -257,7 +264,7 @@ async function Query (query, callbacks) {
                 });
             });
 
-            rows = newRows;
+            rows = filterRows(newRows);
 
             table.join = newPath;
             if (joinedTable) {
@@ -313,7 +320,10 @@ async function Query (query, callbacks) {
             }
         } else {
             const [ c1, alias ] = c.split(" AS ");
-            const path = findPath(rows[0], c1);
+            let path;
+            if (rows.length > 0) {
+                path = findPath(rows[0], c1);
+            }
 
             colNames.push([path, c1]);
             colHeaders.push(alias || c1);
@@ -334,24 +344,6 @@ async function Query (query, callbacks) {
 
     output(colHeaders);
     output(colHeaders.map(c => repeat("-", c.length)));
-
-    /***************
-     * Filtering
-     ***************/
-    if (parsedWhere) {
-        for (const child of parsedWhere.children) {
-            const compare = OPERATORS[child.operator];
-            if (!compare) {
-                throw new Error("Unrecognised operator: " + child.operator);
-            }
-
-            rows = rows.filter(r => {
-                const a = resolveValue(r, child.operand1);
-                const b = resolveValue(r, child.operand2);
-                return compare(a, b);
-            });
-        }
-    }
 
     /*****************
      * Column Values
@@ -489,6 +481,35 @@ async function Query (query, callbacks) {
     return output_buffer;
 
     /**
+     * Function to filter rows based on WHERE clause
+     * @param {ResultRow[]} rows
+     * @return {ResultRow[]}
+     */
+    function filterRows (rows) {
+        if (parsedWhere) {
+            for (const child of parsedWhere.children) {
+                const compare = OPERATORS[child.operator];
+                if (!compare) {
+                    throw new Error("Unrecognised operator: " + child.operator);
+                }
+
+                rows = rows.filter(r => {
+                    const a = resolveValue(r, child.operand1);
+                    const b = resolveValue(r, child.operand2);
+
+                    // We don't have enough information to process this yet
+                    if (typeof a === "undefined" || typeof b === "undefined") {
+                        return true;
+                    }
+
+                    return compare(a, b);
+                });
+            }
+        }
+        return rows;
+    }
+
+    /**
      * Traverse a sample object to determine absolute path
      * up to, but not including, given name.
      * Uses explicit join list.
@@ -623,6 +644,9 @@ async function Query (query, callbacks) {
      * @returns {any}
      */
     function resolvePath(data, path) {
+        if (process.env.NODE_ENV !== "production" && typeof data['ROWID'] !== "undefined") {
+            console.error("It looks like you passed a row to resolvePath");
+        }
         // resolve path
         let val = data;
         for (const name of path.split(".")) {

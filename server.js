@@ -10,6 +10,8 @@ const Query = require('./query');
 
 app.use(express.urlencoded({ extended: false }));
 
+app.use(express.static("static"));
+
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
 app.post('/query', (req, res) => {

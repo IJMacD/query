@@ -1,13 +1,16 @@
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Admin Query</title>
         <style>
             * {
                 font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             }
             form {
-                margin: 0;
+                display: flex;
+                flex-direction: row;
+                margin: 10px;
             }
             input {
                 flex: 1;
@@ -49,13 +52,13 @@
                 border: 1px solid #999;
                 border-radius: 5px;
                 margin: 10px;
-                padding: 20px;
                 white-space: pre;
                 font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
                 overflow-y: auto;
             }
             table {
                 border-collapse: collapse;
+                margin: -1px;
             }
             th {
                 background-image: linear-gradient(to bottom, #FFF, #CCC)
@@ -68,15 +71,19 @@
             tfoot td {
                 font-weight: bold;
             }
+            @media (max-width: 480px) {
+                form,
+                #output {
+                    margin: 3px;
+                }
+            }
         </style>
     </head>
     <body>
         <div style="display: flex; flex-direction: column; height: 100%;">
             <form id="query-form">
-                <div style="display: flex; flex-direction: row; margin: 10px;">
-                    <input type="text" id="input" name="q">
-                    <button type="submit">Query</button>
-                </div>
+                <input type="text" id="input" name="q">
+                <button type="submit">Query</button>
             </form>
             <ol id="query-suggest"></ol>
             <div id="output"></div>
@@ -104,6 +111,9 @@
                         input.value = suggestions[0];
                     }
                 }
+            });
+            document.addEventListener("click", e => {
+                hideSuggestions();
             });
             input.addEventListener("keyup", e => {
                 if (e.altKey && "1234567890".includes(e.key)) {
@@ -150,7 +160,7 @@
                     output.innerHTML = renderTable(data);
                     saveHistory(input.value);
                 }, e => {
-                    output.innerHTML = `<p style="color: red;">${e}</p>`;
+                    output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;
                 })
                 .then(() => {
                     input.disabled = false;

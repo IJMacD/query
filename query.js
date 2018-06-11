@@ -73,6 +73,9 @@ async function Query (query, callbacks) {
         resolveConstant,
         resolvePath,
         resolveValue,
+
+        findTable,
+        findWhere,
     };
 
     const colNames = [];
@@ -818,5 +821,13 @@ async function Query (query, callbacks) {
 
             return aggRow;
         });
+    }
+
+    function findTable (name) {
+        return parsedTables.find(t => t.name === name && t.join !== undefined);
+    }
+
+    function findWhere (condition) {
+        return parsedWhere.children.find(w => w.operand1 === condition || w.operand2 === condition);
     }
 }

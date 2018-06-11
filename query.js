@@ -361,11 +361,13 @@ async function Query (query, callbacks) {
                 // Don't compute aggregate functions until after grouping
                 continue;
             }
+            // Fill values from result data
             if (typeof join !== "undefined") {
                 const data = row['data'][join];
-                row[i] = resolvePath(data, col);
+                row[i] = data ? resolvePath(data, col) : null;
                 continue;
             }
+            // This should just be constants
             row[i] = resolveValue(row, col);
         }
     }
@@ -647,6 +649,9 @@ async function Query (query, callbacks) {
      * @returns {any}
      */
     function resolvePath(data, path) {
+        if (typeof data === "undefined" || data === null) {
+            throw new Error("Trying to resolve a path on a null object: " + path)
+        }
         if (process.env.NODE_ENV !== "production" && typeof data['ROWID'] !== "undefined") {
             console.error("It looks like you passed a row to resolvePath");
         }

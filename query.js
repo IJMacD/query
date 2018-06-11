@@ -100,12 +100,7 @@ async function Query (query, callbacks) {
         table.join = "";
 
         /** @type {Array} */
-        const results = await primaryTable.call(self, table);
-
-        if (!results) {
-            // Nothing we can do
-            throw new Error("No results");
-        }
+        const results = await primaryTable.call(self, table) || [];
 
         initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
@@ -297,17 +292,8 @@ async function Query (query, callbacks) {
                 continue;
             }
 
-            const r = rows[0];
-            const data = r['data'][""];
-
-            // only add "primitive" columns
-            let newCols = Object.keys(data).filter(k => typeof scalar(data[k]) !== "undefined");
-
-            colNames.push(...newCols.map(c => ["", c]));
-            colHeaders.push(...newCols);
-
-            // Add all the scalar columns for secondary tables
-            for (const table of parsedTables.slice(1)) {
+            // Add all the scalar columns for all tables
+            for (const table of parsedTables) {
                 const { join } = table;
 
                 let tableObj;
@@ -319,7 +305,15 @@ async function Query (query, callbacks) {
                 }
 
                 if (!tableObj) {
-                    throw Error("Problem with join: " + join);
+                    // No results to extract column data from
+
+                    // If we're not the root table, then add placeholder headers
+                    if (table.join != "") {
+                        colNames.push([join, null]);
+                        colHeaders.push(`${table.name}.*`);
+                    }
+
+                    continue;
                 }
 
                 // only add "primitive" columns
@@ -636,7 +630,7 @@ async function Query (query, callbacks) {
 
             const data = row.data[join];
 
-            if (typeof data === "undefined") {
+            if (typeof data === "undefined" || data === null) {
                 continue;
             }
 

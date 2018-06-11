@@ -81,6 +81,7 @@ function parseWhere (where) {
 * @prop {string} name
 * @prop {string} [join]
 * @prop {string} [alias]
+* @prop {boolean} [inner]
 */
 
 /**
@@ -89,9 +90,9 @@ function parseWhere (where) {
 */
 function parseFrom (from) {
   const tables = from ? from.split(",").map(s => s.trim()) : [];
-  const parsedTables = tables.map(table => {
-      const [ name, join ] = table.split("ON").map(s => s.trim());
-      return { name, join };
+  return tables.map(table => {
+      const inner = table.includes("INNER");
+      const [ name, join ] = table.replace("INNER", "").split("ON").map(s => s.trim());
+      return { name, join, inner };
   });
-  return parsedTables;
 }

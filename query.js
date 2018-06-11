@@ -241,17 +241,19 @@ async function Query (query, callbacks) {
                 const array = resolvePath(data, ts);
 
                 if (array.length === 0) {
+                    
                     /*
-                        * We're going to assume LEFT JOIN, this could be configured
-                        * in the future.
-                        * So for LEFT JOIN we should still include this row even
-                        * though the secondary table will effectively be all nulls.
-                        */
+                     * If this is an inner join, we do nothing.
+                     * In the case it is not an INNER JOIN (i.e it is a LEFT JOIN),
+                     * we need to add a null row. 
+                     */
+                    if (!table.inner) {
+                        // Update the ROWID to indicate there was no row in this particular table
+                        r['ROWID'] += ".-1";
 
-                    // Update the ROWID to indicate there was no row in this particular table
-                    r['ROWID'] += ".-1";
+                        newRows.push(r);
+                    }
 
-                    newRows.push(r);
                     return;
                 }
 

@@ -136,7 +136,7 @@ async function Query (query, callbacks) {
         /******************
          * Joins
          *****************/
-        jointables: for(let table of parsedTables.slice(1)) {
+        for(let table of parsedTables.slice(1)) {
             if (beforeJoin) {
                 await beforeJoin.call(self, table, rows);
             }
@@ -147,22 +147,24 @@ async function Query (query, callbacks) {
                 // If we have an explicit join, check it first.
 
                 // Iterate over rows until we find one that works
+                let val;
                 for (const row of rows) {
-                    const val = resolveValue(row, table.join);
+                    val = resolveValue(row, table.join);
+                    if (typeof val !== "undefined") break;
+                }
 
-                    if (typeof val !== "undefined") {
+                if (typeof val !== "undefined") {
 
-                        for (let row of rows) {
-                            row['data'][table.join] = resolveValue(row, table.join);
-                            row['ROWID'] += ".0";
-                        }
-
-                        rows = filterRows(rows);
-                        if (joinedTable) {
-                            await joinedTable.call(self, table, rows);
-                        }
-                        continue jointables;
+                    for (let row of rows) {
+                        row['data'][table.join] = resolveValue(row, table.join);
+                        row['ROWID'] += ".0";
                     }
+
+                    rows = filterRows(rows);
+                    if (joinedTable) {
+                        await joinedTable.call(self, table, rows);
+                    }
+                    continue;
                 }
 
                 throw new Error("Invalid ON clause: " + table.join);
@@ -233,15 +235,17 @@ async function Query (query, callbacks) {
             const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
             const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
 
-
             // Now iterate over each of the results expanding as necessary
             rows.forEach(r => {
                 // Fetch the array
                 const data = r['data'][join];
-                const array = resolvePath(data, ts);
+                let array;
 
-                if (array.length === 0) {
-                    
+                if (typeof data !== "undefined" && data !== null) {
+                    array = resolvePath(data, ts);
+                }
+
+                if (!array || array.length === 0) {
                     /*
                      * If this is an inner join, we do nothing.
                      * In the case it is not an INNER JOIN (i.e it is a LEFT JOIN),
@@ -250,6 +254,7 @@ async function Query (query, callbacks) {
                     if (!table.inner) {
                         // Update the ROWID to indicate there was no row in this particular table
                         r['ROWID'] += ".-1";
+                        r['data'] = { ...r['data'], [newPath]: null }
 
                         newRows.push(r);
                     }
@@ -532,8 +537,9 @@ async function Query (query, callbacks) {
 
             const data = row.data[join];
 
-            if (typeof data === "undefined") {
-                throw new Error("Row is missing data: " + join);
+            if (typeof data === "undefined" || data === null) {
+                // Could be missing data because of a LEFT JOIN on null row
+                continue;
             }
 
             // Check if the parent object has a property matching

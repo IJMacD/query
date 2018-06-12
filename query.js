@@ -51,7 +51,16 @@ async function Query (query, callbacks) {
         parsedQuery.select = "*";
     }
 
+    /**
+    * @typedef ParsedTable
+    * @prop {string} name
+    * @prop {string} [join]
+    * @prop {string} [alias]
+    * @prop {boolean} [inner]
+    */
+
     const cols = parsedQuery.select.split(",").map(s => s.trim());
+    /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
     const table = parsedTables.length && parsedTables[0].name;
     const where = parsedQuery.where;
@@ -136,142 +145,16 @@ async function Query (query, callbacks) {
                 await beforeJoin.call(self, table, rows);
             }
 
-            const t = table.name.toLowerCase();
+            table.join = findJoin(table, rows);
 
-            if (table.join) {
-                // If we have an explicit join, check it first.
-
-                // Iterate over rows until we find one that works
-                let val;
-                for (const row of rows) {
-                    val = resolveValue(row, table.join);
-                    if (typeof val !== "undefined") break;
-                }
-
-                if (typeof val !== "undefined") {
-
-                    for (let row of rows) {
-                        row['data'][table.join] = resolveValue(row, table.join);
-                        row['ROWID'] += ".0";
-                    }
-
-                    rows = filterRows(rows);
-                    if (joinedTable) {
-                        await joinedTable.call(self, table, rows);
-                    }
-                    continue;
-                }
-
-                throw new Error("Invalid ON clause: " + table.join);
-
-            } else {
-                let path;
-
-                // AUTO JOIN! (natural join, comma join, implicit join?)
-                // We will find the path automatically
-                for (const r of rows) {
-                    path = findPath(r, t);
-                    if (typeof path !== "undefined") break;
-                }
-
-                if (typeof path !== "undefined") {
-                    const join = path.length === 0 ? t : `${path}.${t}`;
-
-                    for (let row of rows) {
-                        row['data'][join] = resolveValue(row, t);
-                        row['ROWID'] += ".0";
-                    }
-
-                    rows = filterRows(rows);
-
-                    table.join = join;
-                    if (joinedTable) {
-                        await joinedTable.call(self, table, rows);
-                    }
-
-                    continue;
-                }
+            if (typeof table.join === "undefined") {
+                throw new Error("All attempts at joining failed: " + table.name);
             }
 
-            /*
-            * Now for the really cool part!
-            * This is like a legit one-to-many join!
-            * We will search for the plural of the table name and
-            * if that is an array we can do a multi-way join.
-            */
-            const ts = `${t}s`;
-            let pluralPath;
-            let join;
+            rows = applyJoin(table, rows);
 
-            for (const r of rows) {
-                join = findPath(r, ts);
+            rows = filterRows(rows);
 
-                if (typeof join !== "undefined") {
-                    const data = r['data'][join];
-                    pluralPath = join.length === 0 ? ts : `${join}.${ts}`;
-
-                    const array = resolvePath(data, ts);
-
-                    if (!Array.isArray(array)) {
-                        throw new Error("Unable to join, found a plural but not an array: " + ts);
-                    }
-
-                    break;
-                }
-            }
-
-            if (typeof pluralPath === "undefined") {
-                throw new Error("Unable to join: " + t);
-            }
-
-            // We've been joined on an array! Wahooo!!
-            // The number of results has just been multiplied!
-            const newRows = [];
-            const subPath = pluralPath.substr(0, pluralPath.lastIndexOf("."));
-            const newPath = subPath.length > 0 ? `${subPath}.${t}` : t;
-
-            // Now iterate over each of the results expanding as necessary
-            rows.forEach(r => {
-                // Fetch the array
-                const data = r['data'][join];
-                let array;
-
-                if (typeof data !== "undefined" && data !== null) {
-                    array = resolvePath(data, ts);
-                }
-
-                if (!array || array.length === 0) {
-                    /*
-                     * If this is an inner join, we do nothing.
-                     * In the case it is not an INNER JOIN (i.e it is a LEFT JOIN),
-                     * we need to add a null row. 
-                     */
-                    if (!table.inner) {
-                        // Update the ROWID to indicate there was no row in this particular table
-                        r['ROWID'] += ".-1";
-                        r['data'] = { ...r['data'], [newPath]: null }
-
-                        newRows.push(r);
-                    }
-
-                    return;
-                }
-
-                array.forEach((sr, si) => {
-                    // Clone the row
-                    const newRow = [ ...r ];
-                    newRow['data'] = { ...r['data'], [newPath]: sr };
-
-                    // Set the ROWID again, this time including the subquery id too
-                    Object.defineProperty(newRow, 'ROWID', { value: `${r['ROWID']}.${si}`, writable: true });
-
-                    newRows.push(newRow);
-                });
-            });
-
-            rows = filterRows(newRows);
-
-            table.join = newPath;
             if (joinedTable) {
                 await joinedTable.call(self, table, rows);
             }
@@ -622,6 +505,19 @@ async function Query (query, callbacks) {
             }
         }
 
+        let head = col;
+        let tail;
+        while(head.length > 0) {
+            const data = row['data'][head];
+
+            if (typeof data !== "undefined" && data != null) {
+                return resolvePath(data, tail);
+            }
+
+            head = head.substr(0, head.lastIndexOf("."));
+            tail = col.substr(head.length + 1);
+        }
+
         // We will try each of the tables in turn
         for (const { join } of parsedTables) {
             if (typeof join === "undefined") {
@@ -836,5 +732,155 @@ async function Query (query, callbacks) {
 
     function findWhere (condition) {
         return parsedWhere.children.find(w => w.operand1 === condition || w.operand2 === condition);
+    }
+
+    function findJoin (table, rows) {
+        const t = table.name.toLowerCase();
+
+        /** Some sample data we can use to detrmine the nature of the join */
+        let data;
+
+        if (table.join) {
+            // If we have an explicit join, check it first.
+
+            // First check of explicit join check is in data object.
+            // This may already have been set for us by a beforeJoin callback.
+            for (const row of rows) {
+                data = row['data'][table.join] || row['data'][table.join + "s"];
+                if (typeof data !== "undefined" && data !== null) break;
+            }
+
+            if (typeof data !== "undefined") {
+                // Data was set correctly, exit early! 
+                return table.join;
+            }
+
+            // We didn't have the data set for us, so let's search ourselves
+                
+            // Iterate over rows until we find one that works
+            let val;
+            for (const row of rows) {
+                val = resolveValue(row, table.join);
+                if (typeof val !== "undefined") break;
+            }
+
+            if (typeof val === "undefined") {
+                throw new Error("Invalid ON clause: " + table.join);
+            }
+
+            // If we found `val` that means `table.join` is correct
+            return table.join;
+
+
+        } else {
+            let path;
+
+            // AUTO JOIN! (natural join, comma join, implicit join?)
+            // We will find the path automatically
+            for (const r of rows) {
+                path = findPath(r, t);
+                if (typeof path !== "undefined") break;
+            }
+
+            // If path is not undefined it means we got a match - update
+            // table.join to this path
+            if (typeof path !== "undefined"){
+                return path.length === 0 ? t : `${path}.${t}`;
+            }
+
+            /*
+            * This will search for the plural of the table name and
+            * if that is an array we can do a multi-way join.
+            */
+
+            const ts = `${t}s`;
+            let pluralPath;
+            let join;
+
+            for (const r of rows) {
+                join = findPath(r, ts);
+
+                if (typeof join !== "undefined") {
+                    data = r['data'][join];
+                    pluralPath = join.length === 0 ? ts : `${join}.${ts}`;
+
+                    data = resolvePath(data, ts);
+
+                    if (!Array.isArray(data)) {
+                        throw new Error("Unable to join, found a plural but not an array: " + ts);
+                    }
+
+                    break;
+                }
+            }
+
+            return pluralPath; // May be correct, or may be undefined
+            // Either way it's our last hope
+        }
+    }
+
+    /**
+     * This function first makes sure every row has a data object
+     * for this table.
+     * 
+     * Then if the data object is an array, it will split the row as necessary.
+     * 
+     * Finally this function will update ROWIDs
+     * @param {ParsedTable} table 
+     * @param {ResultRow[]} rows 
+     * @returns {ResultRow[]}
+     */
+    function applyJoin (table, rows) {
+        const newRows = [];
+
+        for (let row of rows) {
+            // Check to make sure we have data object saved,
+            // if not fill in the data object of each row now
+            if (typeof row['data'][table.join] === "undefined") {
+                row['data'][table.join] = resolveValue(row, table.join);
+            }
+
+            const data = row['data'][table.join];
+
+            if (Array.isArray(data)) {
+                // We've been joined on an array! Wahooo!!
+                // The number of results has just been multiplied!
+
+                if (!data || data.length === 0) {
+                    /*
+                    * If this is an inner join, we do nothing.
+                    * In the case it is not an INNER JOIN (i.e it is a LEFT JOIN),
+                    * we need to add a null row. 
+                    */
+                    if (!table.inner) {
+                        // Update the ROWID to indicate there was no row in this particular table
+                        row['ROWID'] += ".-1";
+                        row['data'] = { ...row['data'], [table.join]: null }
+
+                        newRows.push(row);
+                    }
+
+                    continue;
+                }
+
+                data.forEach((sr, si) => {
+                    // Clone the row
+                    const newRow = [ ...row ];
+                    newRow['data'] = { ...row['data'], [table.join]: sr };
+
+                    // Set the ROWID again, this time including the subquery id too
+                    Object.defineProperty(newRow, 'ROWID', { value: `${row['ROWID']}.${si}`, writable: true });
+
+                    newRows.push(newRow);
+                });
+            } else {
+                // Update all the row IDs for one-to-one JOIN
+                row['ROWID'] += ".0";
+                    
+                newRows.push(row);
+            }
+        }
+
+        return newRows;
     }
 }

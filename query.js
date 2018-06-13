@@ -737,86 +737,69 @@ async function Query (query, callbacks) {
     function findJoin (table, rows) {
         const t = table.name.toLowerCase();
 
-        /** Some sample data we can use to detrmine the nature of the join */
-        let data;
-
         if (table.join) {
             // If we have an explicit join, check it first.
 
             // First check of explicit join check is in data object.
             // This may already have been set for us by a beforeJoin callback.
             for (const row of rows) {
-                data = row['data'][table.join] || row['data'][table.join + "s"];
-                if (typeof data !== "undefined" && data !== null) break;
-            }
+                const data = row['data'][table.join];
 
-            if (typeof data !== "undefined") {
-                // Data was set correctly, exit early! 
-                return table.join;
+                if (typeof data !== "undefined" && data !== null) {
+                    return table.join;
+                }
             }
 
             // We didn't have the data set for us, so let's search ourselves
                 
             // Iterate over rows until we find one that works
-            let val;
             for (const row of rows) {
-                val = resolveValue(row, table.join);
-                if (typeof val !== "undefined") break;
+                const val = resolveValue(row, table.join);
+
+                if (typeof val !== "undefined") {
+                    // If we found `val` that means `table.join` is correct
+                    return table.join;
+                }
             }
 
-            if (typeof val === "undefined") {
-                throw new Error("Invalid ON clause: " + table.join);
-            }
-
-            // If we found `val` that means `table.join` is correct
-            return table.join;
-
+            throw new Error("Invalid ON clause: " + table.join);
 
         } else {
-            let path;
-
             // AUTO JOIN! (natural join, comma join, implicit join?)
             // We will find the path automatically
+            
             for (const r of rows) {
-                path = findPath(r, t);
-                if (typeof path !== "undefined") break;
-            }
+                const path = findPath(r, t);
 
-            // If path is not undefined it means we got a match - update
-            // table.join to this path
-            if (typeof path !== "undefined"){
-                return path.length === 0 ? t : `${path}.${t}`;
+                if (typeof path !== "undefined"){
+                    return path.length === 0 ? t : `${path}.${t}`;
+                }
             }
 
             /*
             * This will search for the plural of the table name and
             * if that is an array we can do a multi-way join.
             */
-
             const ts = `${t}s`;
-            let pluralPath;
-            let join;
 
             for (const r of rows) {
-                join = findPath(r, ts);
+                const join = findPath(r, ts);
 
                 if (typeof join !== "undefined") {
-                    data = r['data'][join];
-                    pluralPath = join.length === 0 ? ts : `${join}.${ts}`;
+                    const data = r['data'][join];
 
-                    data = resolvePath(data, ts);
+                    const array = resolvePath(data, ts);
 
-                    if (!Array.isArray(data)) {
-                        throw new Error("Unable to join, found a plural but not an array: " + ts);
+                    if (Array.isArray(array)) {
+                        return join.length === 0 ? ts : `${join}.${ts}`;
                     }
-
-                    break;
+                    
+                    throw new Error("Unable to join, found a plural but not an array: " + ts);
                 }
             }
-
-            return pluralPath; // May be correct, or may be undefined
-            // Either way it's our last hope
         }
+
+        // return undefined
     }
 
     /**
@@ -847,6 +830,7 @@ async function Query (query, callbacks) {
                 // The number of results has just been multiplied!
 
                 if (!data || data.length === 0) {
+
                     /*
                     * If this is an inner join, we do nothing.
                     * In the case it is not an INNER JOIN (i.e it is a LEFT JOIN),

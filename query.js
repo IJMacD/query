@@ -162,6 +162,14 @@ async function Query (query, callbacks) {
     }
 
     /******************
+     * Filtering
+     *****************/
+
+    // One last filter, this time strict because there should be
+    // anything slipping through since we have all the data now.
+    rows = filterRows(rows, true);
+
+    /******************
      * Columns
      ******************/
 
@@ -374,7 +382,7 @@ async function Query (query, callbacks) {
      * @param {ResultRow[]} rows
      * @return {ResultRow[]}
      */
-    function filterRows (rows) {
+    function filterRows (rows, strict = false) {
         if (parsedWhere) {
             for (const child of parsedWhere.children) {
                 const compare = OPERATORS[child.operator];
@@ -386,8 +394,9 @@ async function Query (query, callbacks) {
                     const a = resolveValue(r, child.operand1);
                     const b = resolveValue(r, child.operand2);
 
-                    // We don't have enough information to process this yet
-                    if (typeof a === "undefined" || typeof b === "undefined") {
+                    // Check to see if we have enough information to process this yet
+                    if (typeof a === "undefined" && !strict) {
+                        // n.b. `b` can be undefined (e.g. a IS NULL)
                         return true;
                     }
 

@@ -22,8 +22,8 @@ module.exports = Query;
 /**
  * @typedef QueryCallbacks
  * @prop {(ParsedFrom) => Promise<any[]>} primaryTable
- * @prop {(ParsedFrom, results: any[]) => Promise} [joinedTable]
  * @prop {(ParsedFrom, results: any[]) => Promise} [beforeJoin]
+ * @prop {(ParsedFrom, results: any[]) => Promise} [afterJoin]
  */
 
 /**
@@ -33,7 +33,7 @@ module.exports = Query;
  */
 async function Query (query, callbacks) {
 
-    const { primaryTable, joinedTable, beforeJoin } = callbacks;
+    const { primaryTable, afterJoin, beforeJoin } = callbacks;
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
@@ -155,8 +155,8 @@ async function Query (query, callbacks) {
 
             rows = filterRows(rows);
 
-            if (joinedTable) {
-                await joinedTable.call(self, table, rows);
+            if (afterJoin) {
+                await afterJoin.call(self, table, rows);
             }
         }
     }

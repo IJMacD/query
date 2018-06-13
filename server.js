@@ -27,6 +27,9 @@ app.post('/query', (req, res) => {
         if (req.header("accept") === "application/json") {
             res.header("Content-Type", "application/json");
             res.send(JSON.stringify(result));
+        } else if (req.header("accept") === "text/csv") {
+            res.header("Content-Type", "text/csv");
+            res.send(result.map(row => row.map(d => String(d).replace(",", "\\,")).join(",")).join("\n"));
         } else {
             res.header("Content-Type", "text/plain");
             res.send(result.map(row => row.join("\t")).join("\n"));

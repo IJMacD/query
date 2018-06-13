@@ -236,9 +236,6 @@ async function Query (query, callbacks) {
         });
     }
 
-    output(colHeaders);
-    output(colHeaders.map(c => repeat("-", c.length)));
-
     /*****************
      * Column Values
      *****************/
@@ -371,6 +368,8 @@ async function Query (query, callbacks) {
     /*****************
      * Output
      ****************/
+
+    output(colHeaders);
     rows.forEach(r => output(r.map(scalar)));
     console.log(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
 

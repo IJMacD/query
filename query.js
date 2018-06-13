@@ -92,7 +92,6 @@ async function Query (query, callbacks) {
     const colAlias = {};
 
     let initialResultCount = 0;
-    let fetchStudents = false;
 
     /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
 
@@ -165,7 +164,7 @@ async function Query (query, callbacks) {
      * Filtering
      *****************/
 
-    // One last filter, this time strict because there should be
+    // One last filter, this time strict because there shouldn't be
     // anything slipping through since we have all the data now.
     rows = filterRows(rows, true);
 
@@ -460,9 +459,13 @@ async function Query (query, callbacks) {
             const stripped = str.substring(1, str.length-1);
 
             // Check for date
-            const d = new Date(stripped);
-            if (!isNullDate(d)) {
-                return d;
+            if (/^\d/.test(stripped)) {
+                // Must start with a number - for some reason
+                // 'Room 2' parses as a valid date
+                const d = new Date(stripped);
+                if (!isNullDate(d)) {
+                    return d;
+                }
             }
 
             return stripped;
@@ -506,6 +509,11 @@ async function Query (query, callbacks) {
             }
 
             const data = row.data[join];
+
+            if (typeof data === "undefined") {
+                // Possibly the result of a LEFT JOIN of a null row
+                return; // undefined
+            }
 
             const val = resolvePath(data, colName);
 
@@ -561,6 +569,9 @@ async function Query (query, callbacks) {
         }
         if (process.env.NODE_ENV !== "production" && typeof data['ROWID'] !== "undefined") {
             console.error("It looks like you passed a row to resolvePath");
+        }
+        if (typeof path === "undefined") {
+            throw new Error("No path provided");
         }
         // resolve path
         let val = data;
@@ -635,13 +646,16 @@ async function Query (query, callbacks) {
         // Fill in aggregate values
         colNames.forEach((col, i) => {
             const match = FUNCTION_REGEX.exec(col);
+
             if (match) {
                 const fn = AGGREGATE_FUNCTIONS[match[1]];
+
                 if (fn) {
                     row[i] = fn(aggregateValues(rows, match[2]));
                 } else {
                     throw new Error("Function not found: " + match[1]);
                 }
+
                 return;
             }
         });
@@ -667,7 +681,9 @@ async function Query (query, callbacks) {
         }
 
         // All aggregate functions ignore null except COUNT(*)
-        let values = rows.map(row => resolveValue(row['result'], col)).filter(OPERATORS['IS NOT NULL']);
+        // We'll use our convenient 'IS NOT NULL' function to do the
+        // filtering for us.
+        let values = rows.map(row => resolveValue(row, col)).filter(OPERATORS['IS NOT NULL']);
 
         if (distinct) {
             values = Array.from(new Set(values));
@@ -740,7 +756,7 @@ async function Query (query, callbacks) {
     }
 
     function findWhere (condition) {
-        return parsedWhere.children.find(w => w.operand1 === condition || w.operand2 === condition);
+        return parsedWhere && parsedWhere.children.find(w => w.operand1 === condition || w.operand2 === condition);
     }
 
     function findJoin (table, rows) {
@@ -848,7 +864,7 @@ async function Query (query, callbacks) {
                     if (!table.inner) {
                         // Update the ROWID to indicate there was no row in this particular table
                         row['ROWID'] += ".-1";
-                        row['data'] = { ...row['data'], [table.join]: null }
+                        row['data'] = { ...row['data'], [table.join]: undefined }
 
                         newRows.push(row);
                     }

@@ -148,6 +148,7 @@
                 hideSuggestions();
                 output.innerHTML = "";
                 input.disabled = true;
+                const start = Date.now();
                 fetch("/query", {
                     method: 'POST',
                     body: "query="+encodeURIComponent(input.value),
@@ -158,7 +159,8 @@
                 })
                 .then(result => result.ok ? result.json() : result.text().then(e => Promise.reject(e)))
                 .then(data => {
-                    output.innerHTML = renderTable(data);
+                    const duration = (Date.now() - start) / 1000;
+                    output.innerHTML = renderTable({ rows: data, duration });
                     saveHistory(input.value);
                 }, e => {
                     output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;
@@ -171,7 +173,7 @@
             /**
              * @param {any[][]} rows
              */
-            function renderTable(rows) {
+            function renderTable({ rows, duration }) {
                 const headerRow = rows.shift();
                 const linesRow = rows.shift();
 
@@ -181,14 +183,14 @@
                         </thead>
                         <tbody>
                             ${rows.map(row => `
-                                <tr>${row.map(cell => `<td>${formatCell(cell)}</td>`).join("")}</tr>
+                                <tr>${row.map(cell => `<td>${formatCell({ cell })}</td>`).join("")}</tr>
                             `).join("")}
                         </tbody>
-                        <tfoot><tr><td colspan="${headerRow.length}">${rows.length} rows</td></tr></tfoot>
+                        <tfoot><tr><td colspan="${headerRow.length}">${rows.length} rows, ${duration} seconds</td></tr></tfoot>
                     </table>`;
             }
 
-            function formatCell (cell) {
+            function formatCell ({ cell }) {
                 if (cell === null) {
                     return "NULL";
                 }

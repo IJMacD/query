@@ -18,16 +18,38 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 app.post('/query', (req, res) => {
     const query = req.body['query'];
 
-    handleQuery(query, req, res);
+    handleQuery(req, res, query);
+});
+
+app.get('/query.:type', (req, res) => {
+    const query = req.query['q'];
+    const type = req.params['type'];
+    let mime;
+    switch (type) {
+        case "json":
+            mime = "application/json";
+            break;
+        case "csv":
+            mime = "text/csv";
+            break;
+        case "html":
+            mime = "text/html";
+            break;
+        case "txt":
+            mime = "text/plain";
+            break;
+    }
+
+    handleQuery(req, res, query, mime);
 });
 
 app.get('/query', (req, res) => {
     const query = req.query['q'];
 
-    handleQuery(query, req, res);
+    handleQuery(req, res, query);
 });
 
-function handleQuery (query, req, res) {
+function handleQuery (req, res, query, type) {
     console.log(`${new Date().toString().substr(16, 8)} ${query}`);
 
     if (req.header("origin")) {
@@ -36,9 +58,11 @@ function handleQuery (query, req, res) {
     }
 
     Query(query).then(result => {
-        const mime = determineMimeType(req.header("accept"));
+        const mime = type || determineMimeType(req.header("accept"));
+        const acceptLanguage = req.header("Accept-Language");
+        const locale = acceptLanguage && acceptLanguage.split(",")[0];
         res.header("Content-Type", mime);
-        res.send(Formatter.format(result, mime));
+        res.send(Formatter.format(result, { mime, locale }));
     }).catch(e => {
         res.status(400);
         res.header("Content-Type", "text/plain");
@@ -55,7 +79,7 @@ app.listen(port, () => console.log(`Query server listening on port ${port}!`));
  * @returns {string}
  */
 function determineMimeType (mime) {
-    const accepted = ["application/json", "text/csv", "text/plain"];
+    const accepted = ["application/json", "text/csv", "text/html", "text/plain"];
 
     for (const type of accepted) {
         if (mime.includes(type)) {

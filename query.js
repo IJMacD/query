@@ -190,7 +190,7 @@ async function Query (query, callbacks) {
 
                 // We need to find a non-null row to extract columns from
                 for (const tmpR of rows) {
-                    tableObj = tmpR['data'][join];
+                    tableObj = tmpR && tmpR['data'][join];
                     if (tableObj) break;
                 }
 
@@ -775,7 +775,7 @@ async function Query (query, callbacks) {
             }
 
             // We didn't have the data set for us, so let's search ourselves
-                
+
             // Iterate over rows until we find one that works
             for (const row of rows) {
                 const val = resolveValue(row, table.join);
@@ -791,7 +791,7 @@ async function Query (query, callbacks) {
         } else {
             // AUTO JOIN! (natural join, comma join, implicit join?)
             // We will find the path automatically
-            
+
             for (const r of rows) {
                 const path = findPath(r, t);
 
@@ -817,7 +817,7 @@ async function Query (query, callbacks) {
                     if (Array.isArray(array)) {
                         return join.length === 0 ? ts : `${join}.${ts}`;
                     }
-                    
+
                     throw new Error("Unable to join, found a plural but not an array: " + ts);
                 }
             }
@@ -829,12 +829,12 @@ async function Query (query, callbacks) {
     /**
      * This function first makes sure every row has a data object
      * for this table.
-     * 
+     *
      * Then if the data object is an array, it will split the row as necessary.
-     * 
+     *
      * Finally this function will update ROWIDs
-     * @param {ParsedTable} table 
-     * @param {ResultRow[]} rows 
+     * @param {ParsedTable} table
+     * @param {ResultRow[]} rows
      * @returns {ResultRow[]}
      */
     function applyJoin (table, rows) {
@@ -858,7 +858,7 @@ async function Query (query, callbacks) {
                     /*
                     * If this is an inner join, we do nothing.
                     * In the case it is not an INNER JOIN (i.e it is a LEFT JOIN),
-                    * we need to add a null row. 
+                    * we need to add a null row.
                     */
                     if (!table.inner) {
                         // Update the ROWID to indicate there was no row in this particular table
@@ -884,7 +884,7 @@ async function Query (query, callbacks) {
             } else {
                 // Update all the row IDs for one-to-one JOIN
                 row['ROWID'] += ".0";
-                    
+
                 newRows.push(row);
             }
         }

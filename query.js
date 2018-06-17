@@ -354,7 +354,7 @@ async function Query (query, callbacks) {
 
                 let sort = (Number.isFinite(va) && Number.isFinite(vb)) ?
                     (va - vb) :
-                    (va < vb ? -1 : va > vb ? 1 : 0);
+                    String(va).localeCompare(vb);
 
                 if (sort !== 0) {
                     sort *= o.desc;

@@ -77,22 +77,24 @@ function parseWhere (where) {
 }
 
 /**
-* @typedef ParsedTable
-* @prop {string} name
-* @prop {string} [join]
-* @prop {string} [alias]
-* @prop {boolean} [inner]
-*/
+ * @typedef ParsedTable
+ * @prop {string} name
+ * @prop {string} [join]
+ * @prop {string} [alias]
+ * @prop {boolean} [inner]
+ * @prop {string} [explain]
+ * @prop {number} [rowCount]
+ */
 
 /**
-* @param {string} from
-* @return {ParsedTable[]}
-*/
+ * @param {string} from
+ * @return {ParsedTable[]}
+ */
 function parseFrom (from) {
   const tables = from ? from.split(",").map(s => s.trim()) : [];
   return tables.map(table => {
       const inner = table.includes("INNER");
       const [ name, join ] = table.replace("INNER", "").split("ON").map(s => s.trim());
-      return { name, join, inner };
+      return { name, join, inner, explain: "", rowCount: 0 };
   });
 }

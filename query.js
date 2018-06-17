@@ -12,9 +12,7 @@ const {
 
 const {
     scalar,
-    repeat,
     isNullDate,
-    deepClone,
 } = require('./util');
 
 module.exports = Query;
@@ -57,12 +55,13 @@ async function Query (query, callbacks) {
     * @prop {string} [join]
     * @prop {string} [alias]
     * @prop {boolean} [inner]
+    * @prop {string} [explain]
+    * @prop {number} [rowCount]
     */
 
     const cols = parsedQuery.select.split(",").map(s => s.trim());
     /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
-    const table = parsedTables.length && parsedTables[0].name;
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
     const having = parsedQuery.having;
@@ -106,6 +105,7 @@ async function Query (query, callbacks) {
         const table = parsedTables[0];
         // i === 0: Root table can't have joins
         table.join = "";
+        table.inner = false;
 
         /** @type {Array} */
         const results = await primaryTable.call(self, table) || [];
@@ -130,6 +130,8 @@ async function Query (query, callbacks) {
         });
 
         rows = filterRows(rows);
+
+        table.rowCount = rows.length;
     }
 
 
@@ -154,10 +156,20 @@ async function Query (query, callbacks) {
 
             rows = filterRows(rows);
 
+            table.rowCount = rows.length;
+
             if (afterJoin) {
                 await afterJoin.call(self, table, rows);
             }
         }
+    }
+
+    if (typeof parsedQuery.explain !== "undefined") {
+        output([ "index", ...Object.keys(parsedTables[0]) ]);
+        for (const [i,table] of parsedTables.entries()) {
+            output([ i, ...Object.values(table) ]);
+        }
+        return output_buffer;
     }
 
     /******************
@@ -839,6 +851,7 @@ async function Query (query, callbacks) {
      */
     function applyJoin (table, rows) {
         const newRows = [];
+        let one2many = false;
 
         for (let row of rows) {
             // Check to make sure we have data object saved,
@@ -852,6 +865,9 @@ async function Query (query, callbacks) {
             if (Array.isArray(data)) {
                 // We've been joined on an array! Wahooo!!
                 // The number of results has just been multiplied!
+
+                // For EXPLAIN
+                one2many = true;
 
                 if (!data || data.length === 0) {
 
@@ -887,6 +903,10 @@ async function Query (query, callbacks) {
 
                 newRows.push(row);
             }
+        }
+
+        if (one2many) {
+            table.explain += ` one-to-many`;
         }
 
         return newRows;

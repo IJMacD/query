@@ -1,5 +1,6 @@
 const {
     FUNCTION_REGEX,
+    VALUE_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
     OPERATORS,
 } = require('./const');
@@ -258,8 +259,17 @@ async function Query (query, callbacks) {
                 continue;
             }
             if (FUNCTION_REGEX.test(col)) {
-                // Don't compute aggregate functions until after grouping
-                continue;
+                const match = FUNCTION_REGEX.exec(col);
+                const fnName = match[1];
+                const vals = match[2].split(",").map(p => resolveValue(row, p));
+                if (fnName in AGGREGATE_FUNCTIONS) {
+                    // Don't compute aggregate functions until after grouping
+                    continue;
+                }
+                if (fnName in VALUE_FUNCTIONS) {
+                    row[i] = VALUE_FUNCTIONS[fnName].apply(null, vals);
+                    continue;
+                }
             }
             // Fill values from result data
             if (typeof join !== "undefined") {
@@ -284,7 +294,10 @@ async function Query (query, callbacks) {
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    if (colNames.some(([p,c]) => FUNCTION_REGEX.test(c))) {
+    if (colNames.some(([p,c]) => {
+        const m = FUNCTION_REGEX.exec(c);
+        return m && m[1] in AGGREGATE_FUNCTIONS;
+    })) {
         if (!groupBy) {
             // If we have aggregate functions but we're not grouping,
             // then apply aggregate functions to whole set
@@ -658,7 +671,7 @@ async function Query (query, callbacks) {
         colNames.forEach((col, i) => {
             const match = FUNCTION_REGEX.exec(col);
 
-            if (match) {
+            if (match && match[1] in AGGREGATE_FUNCTIONS) {
                 const fn = AGGREGATE_FUNCTIONS[match[1]];
 
                 if (fn) {

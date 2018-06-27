@@ -2,7 +2,12 @@ const { isNullDate } = require('./util');
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING", "EXPLAIN" ];
 const CONDITION_REGEX = /([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
-const FUNCTION_REGEX = /^([a-z_]+)\(([^)]+)\)$/i;
+const FUNCTION_REGEX = /^([a-z_]+)\(([^)]*)\)$/i;
+
+const VALUE_FUNCTIONS = {
+    'WEEKDAY': v => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][v],
+    'RAND': Math.random,
+};
 
 const AGGREGATE_FUNCTIONS = {
     'COUNT': a => a.length,
@@ -32,6 +37,7 @@ module.exports = {
     CLAUSES,
     CONDITION_REGEX,
     FUNCTION_REGEX,
+    VALUE_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
     OPERATORS,
 };

@@ -3,6 +3,8 @@ const {
   CONDITION_REGEX,
 } = require('./const');
 
+const { matchAll } = require('./util');
+
 module.exports = {
   parseQuery,
   parseSelect,
@@ -44,8 +46,8 @@ function parseQuery (query) {
  * @returns {ParsedColumn[]}
  */
 function parseSelect (select) {
-    return select.split(",").map(s => {
-        const [ value, alias ] = s.trim().split(" AS ");
+    return matchAll(select, /([^,()]+(?:\([^\)]*\))?[^,()]*),?/g).map(s => {
+        const [ value, alias ] = s[1].trim().split(" AS ");
         return { value, alias };
     });
 }

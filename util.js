@@ -3,6 +3,7 @@ module.exports = {
   repeat,
   isNullDate,
   deepClone,
+  matchAll,
 };
 
 /**
@@ -61,4 +62,26 @@ function deepClone (result, path) {
   // At the moment it actually only clones one level deep
   const pathParts = path.split(".");
   return { ...result, [pathParts[0]]: { ...result[pathParts[0]] } };
+}
+
+/**
+ * @param {string} string
+ * @param {RegExp} regex
+ * @returns {RegExpExecArray[]}
+ */
+function matchAll(string, regex) {
+	/** @type {RegExpExecArray[]} */
+	const out = [];
+
+	let match;
+
+	do {
+		match = regex.exec(string);
+
+		if (match) {
+			out.push(match);
+		}
+	} while (match || !regex.global);
+
+	return out;
 }

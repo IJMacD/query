@@ -7,6 +7,7 @@ const FUNCTION_REGEX = /^([a-z_]+)\(([^)]*)\)$/i;
 const VALUE_FUNCTIONS = {
     'WEEKDAY': v => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][v],
     'RAND': Math.random,
+    'CONCAT': (...vs) => vs.join(""),
 };
 
 const AGGREGATE_FUNCTIONS = {

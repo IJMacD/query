@@ -5,6 +5,7 @@ const {
 
 module.exports = {
   parseQuery,
+  parseSelect,
   parseWhere,
   parseFrom,
 };
@@ -30,6 +31,23 @@ function parseQuery (query) {
   }
 
   return parsed;
+}
+
+/**
+* @typedef ParsedColumn
+* @prop {string} value
+* @prop {string} [alias]
+*/
+
+/**
+ * @param {string} select
+ * @returns {ParsedColumn[]}
+ */
+function parseSelect (select) {
+    return select.split(",").map(s => {
+        const [ value, alias ] = s.trim().split(" AS ");
+        return { value, alias };
+    });
 }
 
 /**

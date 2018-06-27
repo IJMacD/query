@@ -7,6 +7,7 @@ const {
 
 const {
     parseQuery,
+    parseSelect,
     parseFrom,
     parseWhere,
 } = require('./parse');
@@ -51,6 +52,12 @@ async function Query (query, callbacks) {
     }
 
     /**
+    * @typedef ParsedColumn
+    * @prop {string} value
+    * @prop {string} [alias]
+    */
+
+    /**
     * @typedef ParsedTable
     * @prop {string} name
     * @prop {string} [join]
@@ -60,7 +67,8 @@ async function Query (query, callbacks) {
     * @prop {number} [rowCount]
     */
 
-    const cols = parsedQuery.select.split(",").map(s => s.trim());
+    /** @type {ParsedColumn[]} */
+    const cols = parseSelect(parsedQuery.select);
     /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
     const where = parsedQuery.where;
@@ -185,13 +193,14 @@ async function Query (query, callbacks) {
      * Columns
      ******************/
 
-    for (const c of cols) {
+    for (const { value, alias } of cols) {
+
         // Special Treatment for *
-        if (c === "*") {
+        if (value === "*") {
             if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
-                colNames.push(c);
-                colHeaders.push(c);
+                colNames.push(value);
+                colHeaders.push(value);
                 continue;
             }
 
@@ -226,20 +235,19 @@ async function Query (query, callbacks) {
                 colHeaders.push(...newCols);
             }
         } else {
-            const [ c1, alias ] = c.split(" AS ");
             let path;
             if (rows.length > 0) {
-                path = findPath(rows[0], c1);
+                path = findPath(rows[0], value);
             }
 
-            colNames.push([path, c1]);
-            colHeaders.push(alias || c1);
+            colNames.push([path, value]);
+            colHeaders.push(alias || value);
 
             if (alias && typeof colAlias[alias] !== "undefined") {
                 throw new Error("Alias already in use: " + alias);
             }
 
-            colAlias[alias || c1] = colNames.length - 1;
+            colAlias[alias || value] = colNames.length - 1;
         }
 
         colHeaders.forEach((col, i) => {
@@ -261,7 +269,7 @@ async function Query (query, callbacks) {
             if (FUNCTION_REGEX.test(col)) {
                 const match = FUNCTION_REGEX.exec(col);
                 const fnName = match[1];
-                const vals = match[2].split(",").map(p => resolveValue(row, p));
+                const vals = match[2].split(",").map(p => resolveValue(row, p.trim()));
                 if (fnName in AGGREGATE_FUNCTIONS) {
                     // Don't compute aggregate functions until after grouping
                     continue;

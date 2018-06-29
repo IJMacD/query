@@ -1,3 +1,5 @@
+const moment = require('moment');
+
 const { isNullDate } = require('./util');
 
 const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING", "EXPLAIN" ];
@@ -8,6 +10,11 @@ const VALUE_FUNCTIONS = {
     'WEEKDAY': v => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][v],
     'RAND': Math.random,
     'CONCAT': (...vs) => vs.join(""),
+    'CHAR': String.fromCodePoint,
+    'UNICODE': s => s.codePointAt(0),
+    'DATE': d => moment(d).format("YYYY-MM-DD"),
+    'TIME': d => moment(d).format("HH:mm:ss"),
+    'DATETIME': d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
 };
 
 const AGGREGATE_FUNCTIONS = {

@@ -10,6 +10,7 @@ const {
     parseSelect,
     parseFrom,
     parseWhere,
+    parseArgumentList,
 } = require('./parse');
 
 const {
@@ -269,7 +270,7 @@ async function Query (query, callbacks) {
             if (FUNCTION_REGEX.test(col)) {
                 const match = FUNCTION_REGEX.exec(col);
                 const fnName = match[1];
-                const vals = match[2].split(",").map(p => resolveValue(row, p.trim()));
+                const vals = parseArgumentList(match[2]).map(p => resolveValue(row, p));
                 if (fnName in AGGREGATE_FUNCTIONS) {
                     // Don't compute aggregate functions until after grouping
                     continue;

@@ -10,6 +10,7 @@ module.exports = {
   parseSelect,
   parseWhere,
   parseFrom,
+  parseArgumentList,
 };
 
 /**
@@ -107,6 +108,7 @@ function parseWhere (where) {
  */
 
 /**
+ *
  * @param {string} from
  * @return {ParsedTable[]}
  */
@@ -117,4 +119,13 @@ function parseFrom (from) {
       const [ name, join ] = table.replace("INNER", "").split("ON").map(s => s.trim());
       return { name, join, inner, explain: "", rowCount: 0 };
   });
+}
+
+/**
+ *
+ * @param {string} list
+ * @return {string[]}
+ */
+function parseArgumentList (list) {
+    return list.split(",").map(p => p.trim());
 }

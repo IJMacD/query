@@ -127,5 +127,5 @@ function parseFrom (from) {
  * @return {string[]}
  */
 function parseArgumentList (list) {
-    return list.split(",").map(p => p.trim());
+    return matchAll(list, /([^,']+|'[^']*'),?/g).map(s => s[1].trim());
 }

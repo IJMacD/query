@@ -20,8 +20,12 @@ module.exports = {
  */
 function parseQuery (query) {
 
+  // There are times where clause keywords might occur in parentheses. To avoid
+  // false matches we'll null out everything in parentheses when looking for clauses
+  const redacted = query.replace(/\([^()]*\)/g, s => " ".repeat(s.length));
+
   const parts = CLAUSES
-      .map(clause => ({ clause, start: query.indexOf(clause) }))
+    .map(clause => ({ clause, start: redacted.indexOf(clause) }))
       .filter(o => o.start != -1)
       .sort((a,b) => a.start - b.start);
 

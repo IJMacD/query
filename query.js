@@ -174,6 +174,10 @@ async function Query (query, callbacks) {
         }
     }
 
+    /*************
+     * EXPLAIN
+     ************/
+
     if (typeof parsedQuery.explain !== "undefined") {
         output([ "index", ...Object.keys(parsedTables[0]) ]);
         for (const [i,table] of parsedTables.entries()) {
@@ -270,12 +274,19 @@ async function Query (query, callbacks) {
             if (FUNCTION_REGEX.test(col)) {
                 const match = FUNCTION_REGEX.exec(col);
                 const fnName = match[1];
-                const vals = parseArgumentList(match[2]).map(p => resolveValue(row, p));
+                if (fnName === "EXTRACT") {
+                    // Special treatment for EXTRACT with its special syntax
+                    // i.e. EXTRACT(<part> FROM <value>)
+                    const [ part, v ] = match[2].split(" FROM ");
+                    row[i] = v && VALUE_FUNCTIONS.EXTRACT(part, resolveValue(row, v.trim()));
+                    continue;
+                }
                 if (fnName in AGGREGATE_FUNCTIONS) {
                     // Don't compute aggregate functions until after grouping
                     continue;
                 }
                 if (fnName in VALUE_FUNCTIONS) {
+                    const vals = parseArgumentList(match[2]).map(p => resolveValue(row, p));
                     row[i] = VALUE_FUNCTIONS[fnName].apply(null, vals);
                     continue;
                 }
@@ -526,13 +537,13 @@ async function Query (query, callbacks) {
         }
 
         // If row is null, there's nothing left we can do
-        if (row === null) {
+        if (row === null || !row['data']) {
             return;
         }
 
         // Now for the real column resolution
 
-                            // Resolve a possible alias
+                        // Resolve a possible alias
         let qualified = colNames[colAlias[col]];
         if (typeof qualified !== "undefined") {
             let [ join, colName ] = qualified;

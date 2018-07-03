@@ -15,6 +15,33 @@ const VALUE_FUNCTIONS = {
     'DATE': d => moment(d).format("YYYY-MM-DD"),
     'TIME': d => moment(d).format("HH:mm:ss"),
     'DATETIME': d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
+
+    EXTRACT (part, v) {
+        const m = moment(v);
+        switch (part) {
+            case 'CENTURY': return Math.ceil(m.year() / 100);
+            case 'DAY': return m.date();
+            case 'DECADE': return Math.floor(m.year() / 10);
+            case 'DOW': return m.day();
+            case 'DOY': return m.dayOfYear();
+            case 'EPOCH': return Math.floor(+m / 1000);
+            case 'HOUR': return m.hour();
+            case 'ISODOW': m.isoWeekday();
+            case 'ISOYEAR': return m.isoWeekYear();
+            case 'MICROSECONDS': return m.second() * 1000000 + m.millisecond() * 1000;
+            case 'MILLENNIUM': return Math.ceil(m.year() / 1000);
+            case 'MILLISECONDS': return m.second() * 1000 + m.millisecond();
+            case 'MINUTE': return m.minute();
+            case 'MONTH': return m.month() + 1;
+            case 'QUARTER': return m.quarter();
+            case 'SECOND': return m.second() + m.millisecond() / 1000;
+            case 'TIMEZONE': return m.utcOffset() * 60;
+            case 'TIMEZONE_HOUR': return Math.floor(m.utcOffset() / 60);
+            case 'TIMEZONE_MINUTE': return m.utcOffset() % 60;
+            case 'WEEK': return m.isoWeek();
+            case 'YEAR': return m.year();
+        }
+    }
 };
 
 const AGGREGATE_FUNCTIONS = {

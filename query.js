@@ -58,10 +58,19 @@ async function Query (query, callbacks) {
             const headers = subQuery[0];
             const dummyArray = Array(subQuery.length - 1).fill("");
 
-            out.push(['headers', ...dummyArray.map((x,i) => `row ${i}`)]);
+            if (headers[0] !== "headers") {
+                // Try to make this invertable
+                out.push(['headers', ...dummyArray.map((x,i) => `row ${i}`)]);
+            }
 
             for (let i = 0; i < headers.length; i++) {
-                out.push([headers[i], ...dummyArray.map((x, j) => subQuery[j+1][i])]);
+                if (headers[0] === "headers") {
+                    // If header 0 is "headers" it probably means we're inverting a transpose
+                    // So ignore the column containing "headers", "row 0", "row 1" etc.
+                    out.push([...dummyArray.map((x, j) => subQuery[j+1][i])]);
+                } else {
+                    out.push([headers[i], ...dummyArray.map((x, j) => subQuery[j+1][i])]);
+                }
             }
 
             return out;

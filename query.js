@@ -193,7 +193,17 @@ async function Query (query, callbacks) {
             table.join = findJoin(table, rows);
 
             if (typeof table.join === "undefined") {
-                throw new Error("All attempts at joining failed: " + table.name);
+                // All attempts at joining failed, intead we're going to do a
+                // CROSS JOIN!
+
+                const results = await primaryTable.call(self, table) || [];
+
+                table.join = table.name.toLowerCase();
+                table.explain += " cross-join";
+
+                for (const row of rows) {
+                    row['data'][table.join] = results;
+                }
             }
 
             rows = applyJoin(table, rows);

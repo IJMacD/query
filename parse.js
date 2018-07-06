@@ -22,7 +22,12 @@ function parseQuery (query) {
 
   // There are times where clause keywords might occur in parentheses. To avoid
   // false matches we'll null out everything in parentheses when looking for clauses
-  const redacted = query.replace(/\([^()]*\)/g, s => " ".repeat(s.length));
+  const redacted = query
+    .replace(/\([^()]*\)/g, s => " ".repeat(s.length))
+    .replace(/\([^()]*\)/g, s => " ".repeat(s.length))
+    .replace(/\([^()]*\)/g, s => " ".repeat(s.length)); // Three Levels of parentheses deep
+
+  // TODO: Real Lexer/Parser!
 
   const parts = CLAUSES
     .map(clause => ({ clause, start: redacted.indexOf(clause) }))

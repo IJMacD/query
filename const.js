@@ -2,7 +2,7 @@ const moment = require('moment');
 
 const { isNullDate } = require('./util');
 
-const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING", "EXPLAIN" ];
+const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING", "EXPLAIN", "TRANSPOSE" ];
 const CONDITION_REGEX = /([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
 const FUNCTION_REGEX = /^([a-z_]+)\(([^)]*)\)$/i;
 
@@ -26,7 +26,7 @@ const VALUE_FUNCTIONS = {
             case 'DOY': return m.dayOfYear();
             case 'EPOCH': return Math.floor(+m / 1000);
             case 'HOUR': return m.hour();
-            case 'ISODOW': m.isoWeekday();
+            case 'ISODOW': return m.isoWeekday();
             case 'ISOYEAR': return m.isoWeekYear();
             case 'MICROSECONDS': return m.second() * 1000000 + m.millisecond() * 1000;
             case 'MILLENNIUM': return Math.ceil(m.year() / 1000);

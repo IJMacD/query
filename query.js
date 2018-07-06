@@ -43,6 +43,31 @@ async function Query (query, callbacks) {
 
     // console.log(parsedQuery);
 
+    if (parsedQuery.transpose) {
+        const m = /^\s*\((.*)\)\s*$/.exec(parsedQuery.transpose);
+
+        if (!m) {
+            throw new Error(`Empty TRANSPOSE body "${parsedQuery.transpose}"`);
+        }
+
+        const subQuery = await Query(m[1], callbacks);
+
+        const out = [];
+
+        if (subQuery.length > 0) {
+            const headers = subQuery[0];
+            const dummyArray = Array(subQuery.length - 1).fill("");
+
+            out.push(['headers', ...dummyArray.map((x,i) => `row ${i}`)]);
+
+            for (let i = 0; i < headers.length; i++) {
+                out.push([headers[i], ...dummyArray.map((x, j) => subQuery[j+1][i])]);
+            }
+
+            return out;
+        }
+    }
+
     if (!parsedQuery.from && !parsedQuery.select) {
         throw new Error("You must specify FROM or SELECT");
     }

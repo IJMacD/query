@@ -115,7 +115,8 @@ module.exports = {
                             return { type: NODE_TYPES.SYMBOL, id: "*" };
                         }
                     }
-                    else if (t.value !== "IS NULL" &&
+
+                    if (t.value !== "IS NULL" &&
                         t.value !== "IS NOT NULL"
                     ) {
                         out.children[1] = descend();
@@ -144,8 +145,10 @@ function appendChild (array, node) {
     if (node.type === NODE_TYPES.OPERATOR) {
         const prev = array[array.length-1];
 
-        if (prev.type === NODE_TYPES.OPERATOR && prev.id === "AND") {
-            // AND is low priority
+        if (prev.type === NODE_TYPES.OPERATOR &&
+            getPrecedence(prev) < getPrecedence(node)
+        ) {
+            // apply operator precedence
             appendChild(prev.children, node); // add this as a child of the AND instead
             return;
         }
@@ -153,6 +156,32 @@ function appendChild (array, node) {
         node.children[0] = array.pop();
     }
     array.push(node);
+}
+
+/**
+ * Get operator precedence
+ * @param {Node} node
+ */
+function getPrecedence (node) {
+    switch (node.id) {
+        case "AND":
+            return 0;
+        case ">":
+        case "<":
+        case "=":
+        case "!=":
+        case "<=":
+        case ">=":
+            return 1;
+        case "+":
+        case "-":
+            return 2;
+        case "*":
+        case "/":
+            return 3;
+        default:
+            return -1;
+    }
 }
 
 /**

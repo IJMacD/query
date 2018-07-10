@@ -7,7 +7,7 @@
  * NAME: [a-zA-Z_][a-zA-Z0-9_\.]*
  * STRING: '.*'
  * NUMBER: 0x[0-9a-f]+|[0-9]+
- * OPERATOR: [+-*\/=!><]
+ * OPERATOR: [+-*\/=!><]|AND
  */
 
 module.exports = {
@@ -57,16 +57,16 @@ module.exports = {
                     continue;
                 }
 
-                m = /^[a-z_][a-z0-9_\.]*/i.exec(ss);
+                m = /^(?:[<>+=!*\/-]+|IS(?: NOT)?(?: NULL)?|(?:NOT )?LIKE|(?:NOT )?REGEXP|IN|AND)/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TYPES.NAME, value: m[0] });
+                    out.push({ type: this.TYPES.OPERATOR, value: m[0] });
                     i += m[0].length;
                     continue;
                 }
 
-                m = /^(?:[<>+=!*\/-]+|IS(?: NOT)?(?: NULL)?|(?:NOT )?LIKE|(?:NOT )?REGEXP|IN)/i.exec(ss);
+                m = /^[a-z_][a-z0-9_\.]*/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TYPES.OPERATOR, value: m[0] });
+                    out.push({ type: this.TYPES.NAME, value: m[0] });
                     i += m[0].length;
                     continue;
                 }

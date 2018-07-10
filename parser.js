@@ -22,6 +22,7 @@ const NODE_TYPES = {
     SYMBOL: 4,
     STRING: 5,
     NUMBER: 6,
+    OPERATOR: 7,
 };
 
 module.exports = {
@@ -31,11 +32,11 @@ module.exports = {
      */
     parse (tokenList) {
         let i = 0;
-        
+
         function descend () {
-            const out = {};
+            let out = {};
             const t = tokenList[i];
-            
+
             switch (t.type) {
                 case TYPES.KEYWORD:
                     i++;
@@ -43,7 +44,8 @@ module.exports = {
                     out.id = t.value;
                     out.children = [];
                     while (i < tokenList.length && tokenList[i].type !== TYPES.BRACKET) {
-                        out.children.push(descend());
+                        appendChild(out.children, descend());
+
                         let next = tokenList[i];
                         if (next) {
                             if (next.type === TYPES.KEYWORD && next.value === "AS") {
@@ -74,7 +76,8 @@ module.exports = {
 
                         i++; // Open Bracket
                         while (i < tokenList.length && tokenList[i].type !== TYPES.BRACKET) {
-                            out.children.push(descend());
+                            appendChild(out.children, descend());
+
                             let next = tokenList[i];
                             if (next.type === TYPES.COMMA) {
                                 i++; // Comma
@@ -82,10 +85,12 @@ module.exports = {
                                 // This is special treatment for `EXTRACT(x FROM y)`
                                 i++; // FROM
                                 next = tokenList[i];
-                                if (next.type === TYPES.NAME || 
+                                if (next.type === TYPES.NAME ||
                                     next.type === TYPES.STRING ||
-                                    next.type === TYPES.NUMBER) {
-                                    out.children.push(descend());
+                                    next.type === TYPES.NUMBER ||
+                                    next.type === TYPES.OPERATOR
+                                ) {
+                                    appendChild(out.children, descend());
                                 }
                             }
                         }
@@ -99,6 +104,24 @@ module.exports = {
                 case TYPES.NUMBER:
                     i++;
                     return { type: NODE_TYPES.NUMBER, id: +t.value };
+                case TYPES.OPERATOR:
+                    i++;
+                    out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [] };
+
+                    if (t.value === "*") {
+                        const next = tokenList[i];
+                        if (!next || next.type === TYPES.COMMA || next.type === TYPES.KEYWORD) {
+                            // This is not an operator i.e. `SELECT *`
+                            return { type: NODE_TYPES.SYMBOL, id: "*" };
+                        }
+                    }
+                    else if (t.value !== "IS NULL" &&
+                        t.value !== "IS NOT NULL"
+                    ) {
+                        out.children[1] = descend();
+                    }
+
+                    return out;
                 default:
                     throw new Error("Only able to parse some tokens. Got token type " + t.type);
             }
@@ -108,4 +131,33 @@ module.exports = {
     },
 
     NODE_TYPES,
+}
+
+/**
+ * Normally adds the node to the end of the child array.
+ * However, in the case of an operator it will pop the previous
+ * node and add it as a child of this operator.
+ * @param {Node[]} array
+ * @param {Node} node
+ */
+function appendChild (array, node) {
+    if (node.type === NODE_TYPES.OPERATOR) {
+        node.children[0] = array.pop();
+    }
+    array.push(node);
+}
+
+/**
+ *
+ * @param {Node} node
+ * @returns {boolean}
+ */
+function isExpression (node) {
+    return (
+        node.type === NODE_TYPES.FUNCTION_CALL ||
+        node.type === NODE_TYPES.SYMBOL ||
+        node.type === NODE_TYPES.NUMBER ||
+        node.type === NODE_TYPES.STRING ||
+        node.type === NODE_TYPES.OPERATOR
+    );
 }

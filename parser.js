@@ -142,7 +142,16 @@ module.exports = {
  */
 function appendChild (array, node) {
     if (node.type === NODE_TYPES.OPERATOR) {
-        node.children[0] = array.pop();
+        const prev = array.pop();
+        if (prev.type === NODE_TYPES.OPERATOR && prev.id === "AND") {
+            // AND is low priority
+            array.push(prev); // put AND node back where you got it
+            appendChild(prev.children, node); // add this as a child of the AND instead
+            return;
+        }
+        else {
+            node.children[0] = prev;
+        }
     }
     array.push(node);
 }

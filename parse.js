@@ -3,6 +3,9 @@ const {
   CONDITION_REGEX,
 } = require('./const');
 
+const tokenizer = require('./tokenizer');
+const parser = require('./parser');
+
 const { matchAll } = require('./util');
 
 module.exports = {
@@ -51,9 +54,14 @@ function parseQuery (query) {
  * @returns {ParsedColumn[]}
  */
 function parseSelect (select) {
-    return matchAll(select, /([^,()]+(?:\([^\)]*\))?[^,()]*),?/g).map(s => {
-        const [ value, alias ] = s[1].trim().split(" AS ");
-        return { value, alias };
+    const ast = parser.parse(tokenizer.tonkenize("SELECT " + select));
+
+    if (!ast || !ast.children) {
+        throw new Error("Empty SELECT statement");
+    }
+
+    return ast.children.map(child => {
+        return { value: child.id, alias: child.alias, node: child };
     });
 }
 

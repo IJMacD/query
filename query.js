@@ -18,6 +18,16 @@ const {
     isNullDate,
 } = require('./util');
 
+const { NODE_TYPES } = require('./parser');
+
+/**
+ * @typedef Node
+ * @prop {number} type
+ * @prop {string|number} id
+ * @prop {string} alias
+ * @prop {Node[]} children
+ */
+
 module.exports = Query;
 
 /**
@@ -96,6 +106,8 @@ async function Query (query, callbacks) {
         findWhere,
     };
 
+    /** @type {Node[]} */
+    const colNodes = [];
     const colNames = [];
     const colHeaders = [];
     const colAlias = {};
@@ -198,12 +210,13 @@ async function Query (query, callbacks) {
      * Columns
      ******************/
 
-    for (const { value, alias } of cols) {
+    for (const { value, alias, node } of cols) {
 
         // Special Treatment for *
         if (value === "*") {
             if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
+                colNodes.push(node);
                 colNames.push(value);
                 colHeaders.push(value);
                 continue;
@@ -226,6 +239,7 @@ async function Query (query, callbacks) {
 
                     // If we're not the root table, then add placeholder headers
                     if (table.join != "") {
+                        colNodes.push(null);
                         colNames.push([join, null]);
                         colHeaders.push(`${table.name}.*`);
                     }
@@ -236,6 +250,7 @@ async function Query (query, callbacks) {
                 // only add "primitive" columns
                 let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
+                colNodes.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: c })));
                 colNames.push(...newCols.map(c => [join, c]));
                 colHeaders.push(...newCols);
             }
@@ -245,6 +260,7 @@ async function Query (query, callbacks) {
                 path = findPath(rows[0], value);
             }
 
+            colNodes.push(node);
             colNames.push([path, value]);
             colHeaders.push(alias || value);
 
@@ -271,34 +287,8 @@ async function Query (query, callbacks) {
                 row[i] = row['ROWID'];
                 continue;
             }
-            if (FUNCTION_REGEX.test(col)) {
-                const match = FUNCTION_REGEX.exec(col);
-                const fnName = match[1];
-                if (fnName === "EXTRACT") {
-                    // Special treatment for EXTRACT with its special syntax
-                    // i.e. EXTRACT(<part> FROM <value>)
-                    const [ part, v ] = match[2].split(" FROM ");
-                    row[i] = v && VALUE_FUNCTIONS.EXTRACT(part, resolveValue(row, v.trim()));
-                    continue;
-                }
-                if (fnName in AGGREGATE_FUNCTIONS) {
-                    // Don't compute aggregate functions until after grouping
-                    continue;
-                }
-                if (fnName in VALUE_FUNCTIONS) {
-                    const vals = parseArgumentList(match[2]).map(p => resolveValue(row, p));
-                    row[i] = VALUE_FUNCTIONS[fnName].apply(null, vals);
-                    continue;
-                }
-            }
-            // Fill values from result data
-            if (typeof join !== "undefined") {
-                const data = row['data'][join];
-                row[i] = data ? resolvePath(data, col) : null;
-                continue;
-            }
-            // This should just be constants
-            row[i] = resolveValue(row, col);
+            
+            row[i] = executeExpression(row, colNodes[i]);
         }
     }
 
@@ -419,6 +409,36 @@ async function Query (query, callbacks) {
     console.log(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
 
     return output_buffer;
+
+    /**
+     * Execute an expresion from AST nodes
+     * @param {ResultRow} row
+     * @param {Node} node
+     */
+    function executeExpression(row, node) {
+        if (node.type === NODE_TYPES.FUNCTION_CALL) {
+            const fnName = node.id;
+            if (fnName === "EXTRACT") {
+                // Special treatment for EXTRACT: treat first param as KEYWORD
+                return VALUE_FUNCTIONS.EXTRACT(node.children[0].id, executeExpression(row, node.children[1]));
+            }
+            if (fnName in AGGREGATE_FUNCTIONS) {
+                // Don't compute aggregate functions until after grouping
+                return;
+            }
+            if (fnName in VALUE_FUNCTIONS) {
+                return VALUE_FUNCTIONS[fnName](...node.children.map(c => executeExpression(row, c)));
+            }
+        } else if (node.type === NODE_TYPES.SYMBOL) {
+            return resolveValue(row, node.id);
+        } else if (node.type === NODE_TYPES.STRING) {
+            return node.id;
+        } else if (node.type === NODE_TYPES.NUMBER) {
+            return node.id;
+        } else {
+            throw new Error(`Can't execute node type ${node.type}: ${node.id}`);
+        }
+    }
 
     /**
      * Function to filter rows based on WHERE clause

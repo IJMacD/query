@@ -1,4 +1,4 @@
-const { TYPES } = require('./tokenizer');
+const { TOKEN_TYPES } = require('./tokenizer');
 
  /**
   * @typedef Token
@@ -38,20 +38,20 @@ module.exports = {
             const t = tokenList[i];
 
             switch (t.type) {
-                case TYPES.KEYWORD:
+                case TOKEN_TYPES.KEYWORD:
                     i++;
                     out.type = NODE_TYPES.CLAUSE;
                     out.id = t.value;
                     out.children = [];
-                    while (i < tokenList.length && tokenList[i].type !== TYPES.BRACKET) {
+                    while (i < tokenList.length && tokenList[i].type !== TOKEN_TYPES.BRACKET) {
                         appendChild(out.children, descend());
 
                         let next = tokenList[i];
                         if (next) {
-                            if (next.type === TYPES.KEYWORD && next.value === "AS") {
+                            if (next.type === TOKEN_TYPES.KEYWORD && next.value === "AS") {
                                 i++; // AS
                                 next = tokenList[i];
-                                if (next.type === TYPES.NAME) {
+                                if (next.type === TOKEN_TYPES.NAME) {
                                     out.children[out.children.length-1].alias = next.value;
                                 } else {
                                     throw new Error("Name expected");
@@ -60,57 +60,72 @@ module.exports = {
                                 next = tokenList[i];
                             }
 
-                            if (next && next.type === TYPES.COMMA) {
+                            if (next && next.type === TOKEN_TYPES.COMMA) {
                                 i++; // Comma
                             }
                         }
                     }
                     return out;
-                case TYPES.NAME:
+                case TOKEN_TYPES.NAME:
                     i++;
-                    const next = tokenList[i];
-                    if (next && next.type === TYPES.BRACKET && next.value === "(") {
+                    let next = tokenList[i];
+
+                    if (next && next.type === TOKEN_TYPES.BRACKET && next.value === "(") {
                         out.type = NODE_TYPES.FUNCTION_CALL;
                         out.id = t.value;
                         out.children = [];
 
                         i++; // Open Bracket
-                        while (i < tokenList.length && tokenList[i].type !== TYPES.BRACKET) {
+                        while (i < tokenList.length && tokenList[i].type !== TOKEN_TYPES.BRACKET) {
                             appendChild(out.children, descend());
 
                             let next = tokenList[i];
-                            if (next.type === TYPES.COMMA) {
+                            if (!next) {
+                                throw new Error("Unexpected end");
+                            }
+
+                            if (next.type === TOKEN_TYPES.COMMA) {
                                 i++; // Comma
-                            } else if (next.type === TYPES.KEYWORD && next.value === "FROM") {
+                            } else if (next.type === TOKEN_TYPES.KEYWORD && next.value === "FROM") {
                                 // This is special treatment for `EXTRACT(x FROM y)`
+
                                 i++; // FROM
                                 next = tokenList[i];
-                                if (next.type === TYPES.NAME ||
-                                    next.type === TYPES.STRING ||
-                                    next.type === TYPES.NUMBER ||
-                                    next.type === TYPES.OPERATOR
+                                if (next.type === TOKEN_TYPES.NAME ||
+                                    next.type === TOKEN_TYPES.STRING ||
+                                    next.type === TOKEN_TYPES.NUMBER ||
+                                    next.type === TOKEN_TYPES.OPERATOR
                                 ) {
                                     appendChild(out.children, descend());
+                                } else {
+                                    throw new Error(`Unexpected node type ${next.type}`);
                                 }
                             }
                         }
+                        next = tokenList[i];
+
+                        if (!next || next.type !== TOKEN_TYPES.BRACKET || next.value !== ")") {
+                            throw new Error("Expected `)`");
+                        }
                         i++; // Close Bracket
+
                         return out;
                     }
+
                     return { type: NODE_TYPES.SYMBOL, id: t.value };
-                case TYPES.STRING:
+                case TOKEN_TYPES.STRING:
                     i++;
                     return { type: NODE_TYPES.STRING, id: t.value };
-                case TYPES.NUMBER:
+                case TOKEN_TYPES.NUMBER:
                     i++;
                     return { type: NODE_TYPES.NUMBER, id: +t.value };
-                case TYPES.OPERATOR:
+                case TOKEN_TYPES.OPERATOR:
                     i++;
                     out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [] };
 
                     if (t.value === "*") {
                         const next = tokenList[i];
-                        if (!next || next.type === TYPES.COMMA || next.type === TYPES.KEYWORD) {
+                        if (!next || next.type === TOKEN_TYPES.COMMA || next.type === TOKEN_TYPES.KEYWORD) {
                             // This is not an operator i.e. `SELECT *`
                             return { type: NODE_TYPES.SYMBOL, id: "*" };
                         }
@@ -123,6 +138,8 @@ module.exports = {
                     }
 
                     return out;
+                case TOKEN_TYPES.COMMA:
+                    throw new Error("Unexpected comma");
                 default:
                     throw new Error("Only able to parse some tokens. Got token type " + t.type);
             }

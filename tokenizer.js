@@ -24,10 +24,10 @@ module.exports = {
             if (/\s/.test(c)) {
                 i++;
             } else if (c === "(" || c === ")") {
-                out.push({ type: this.TYPES.BRACKET, value: c });
+                out.push({ type: this.TOKEN_TYPES.BRACKET, value: c });
                 i++;
             } else if (c === ",") {
-                out.push({ type: this.TYPES.COMMA });
+                out.push({ type: this.TOKEN_TYPES.COMMA });
                 i++;
             } else if (c === "'") {
                 const end = string.indexOf("'", i + 1);
@@ -35,7 +35,7 @@ module.exports = {
                     throw new Error("Unterminated String: " + string.substring(i));
                 }
                 const str = string.substring(i + 1, end);
-                out.push({ type: this.TYPES.STRING, value: str });
+                out.push({ type: this.TOKEN_TYPES.STRING, value: str });
                 i = end + 1;
             } else if (/[-\d]/.test(c)) {
                 const r = /^0x[0-9a-f]+|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/i;
@@ -43,7 +43,7 @@ module.exports = {
                 const m = r.exec(ss);
 
                 if (m) {
-                    out.push({ type: this.TYPES.NUMBER, value: m[0] });
+                    out.push({ type: this.TOKEN_TYPES.NUMBER, value: m[0] });
                     i += m[0].length;
                 }
                 else throw new Error(`Unrecognised number: '${ss.substr(0, 10)}' at ${i}`);
@@ -52,21 +52,21 @@ module.exports = {
 
                 let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS)/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TYPES.KEYWORD, value: m[0].toUpperCase() });
+                    out.push({ type: this.TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase() });
                     i += m[0].length;
                     continue;
                 }
 
                 m = /^(?:[<>+=!*\/-]+|IS(?: NOT)?(?: NULL)?|(?:NOT )?LIKE|(?:NOT )?REGEXP|IN|AND)/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TYPES.OPERATOR, value: m[0] });
+                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[0] });
                     i += m[0].length;
                     continue;
                 }
 
                 m = /^[a-z_][a-z0-9_\.]*/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TYPES.NAME, value: m[0] });
+                    out.push({ type: this.TOKEN_TYPES.NAME, value: m[0] });
                     i += m[0].length;
                     continue;
                 }
@@ -78,7 +78,7 @@ module.exports = {
         return out;
     },
 
-    TYPES: {
+    TOKEN_TYPES: {
         UNKNOWN: 0,
         BRACKET: 1,
         COMMA: 2,

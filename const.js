@@ -54,6 +54,10 @@ const AGGREGATE_FUNCTIONS = {
 };
 
 const OPERATORS = {
+    '+': (a,b) => a + b,
+    '-': (a,b) => a - b,
+    '*': (a,b) => a * b,
+    '/': (a,b) => a / b,
     '=': (a,b) => a == b,
     '!=': (a,b) => a != b,
     '<': (a,b) => a < b,

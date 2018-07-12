@@ -287,7 +287,7 @@ async function Query (query, callbacks) {
                 row[i] = row['ROWID'];
                 continue;
             }
-            
+
             row[i] = executeExpression(row, colNodes[i]);
         }
     }
@@ -435,6 +435,12 @@ async function Query (query, callbacks) {
             return node.id;
         } else if (node.type === NODE_TYPES.NUMBER) {
             return node.id;
+        } else if (node.type === NODE_TYPES.OPERATOR) {
+            const op = OPERATORS[node.id];
+            if (op) {
+                return op(...node.children.map(c => executeExpression(row, c)));
+            }
+            throw new Error(`Unsupported operator '${node.id}'`);
         } else {
             throw new Error(`Can't execute node type ${node.type}: ${node.id}`);
         }

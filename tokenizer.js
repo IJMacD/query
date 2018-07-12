@@ -38,13 +38,17 @@ module.exports = {
                 out.push({ type: this.TOKEN_TYPES.STRING, value: str });
                 i = end + 1;
             } else if (/[-\d]/.test(c)) {
-                const r = /^0x[0-9a-f]+|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/i;
+                const r = /^(?:0x[0-9a-f]+|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)/i;
                 const ss = string.substr(i);
                 const m = r.exec(ss);
 
                 if (m) {
                     out.push({ type: this.TOKEN_TYPES.NUMBER, value: m[0] });
                     i += m[0].length;
+                }
+                else if (c === "-") {
+                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: "-" });
+                    i += 1;
                 }
                 else throw new Error(`Unrecognised number: '${ss.substr(0, 10)}' at ${i}`);
             } else {

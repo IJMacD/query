@@ -28,14 +28,16 @@ const NODE_TYPES = {
 module.exports = {
     /**
      * @param {Token[]} tokenList
+     * @param {string} source
      * @returns {Node}
      */
-    parse (tokenList) {
+    parse (tokenList, source) {
         let i = 0;
 
         function descend () {
             let out = {};
             const t = tokenList[i];
+            let next;
 
             switch (t.type) {
                 case TOKEN_TYPES.KEYWORD:
@@ -46,7 +48,7 @@ module.exports = {
                     while (i < tokenList.length && tokenList[i].type !== TOKEN_TYPES.BRACKET) {
                         appendChild(out.children, descend());
 
-                        let next = tokenList[i];
+                        next = tokenList[i];
                         if (next) {
                             if (next.type === TOKEN_TYPES.KEYWORD && next.value === "AS") {
                                 i++; // AS
@@ -65,10 +67,13 @@ module.exports = {
                             }
                         }
                     }
+
+                    out.source = source.substring(t.start, next && next.start);
+
                     return out;
                 case TOKEN_TYPES.NAME:
                     i++;
-                    let next = tokenList[i];
+                    next = tokenList[i];
 
                     if (next && next.type === TOKEN_TYPES.BRACKET && next.value === "(") {
                         out.type = NODE_TYPES.FUNCTION_CALL;
@@ -79,7 +84,7 @@ module.exports = {
                         while (i < tokenList.length && tokenList[i].type !== TOKEN_TYPES.BRACKET) {
                             appendChild(out.children, descend());
 
-                            let next = tokenList[i];
+                            next = tokenList[i];
                             if (!next) {
                                 throw new Error("Unexpected end");
                             }
@@ -109,25 +114,28 @@ module.exports = {
                         }
                         i++; // Close Bracket
 
+                        next = tokenList[i];
+                        out.source = source.substring(t.start, next && next.start).trim();
+
                         return out;
                     }
 
-                    return { type: NODE_TYPES.SYMBOL, id: t.value };
+                    return { type: NODE_TYPES.SYMBOL, id: t.value, source: t.value };
                 case TOKEN_TYPES.STRING:
                     i++;
-                    return { type: NODE_TYPES.STRING, id: t.value };
+                    return { type: NODE_TYPES.STRING, id: t.value, source: `'${t.value}'` };
                 case TOKEN_TYPES.NUMBER:
                     i++;
-                    return { type: NODE_TYPES.NUMBER, id: +t.value };
+                    return { type: NODE_TYPES.NUMBER, id: +t.value, source: t.value };
                 case TOKEN_TYPES.OPERATOR:
                     i++;
                     out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [] };
 
                     if (t.value === "*") {
-                        const next = tokenList[i];
+                        next = tokenList[i];
                         if (!next || next.type === TOKEN_TYPES.COMMA || next.type === TOKEN_TYPES.KEYWORD) {
                             // This is not an operator i.e. `SELECT *`
-                            return { type: NODE_TYPES.SYMBOL, id: "*" };
+                            return { type: NODE_TYPES.SYMBOL, id: "*", source: "*" };
                         }
                     }
 
@@ -136,6 +144,9 @@ module.exports = {
                     ) {
                         out.children[1] = descend();
                     }
+
+                    next = tokenList[i];
+                    out.source = source.substring(t.start, next && next.start);
 
                     return out;
                 case TOKEN_TYPES.COMMA:
@@ -171,6 +182,7 @@ function appendChild (array, node) {
         }
 
         node.children[0] = array.pop();
+        node.source = `${node.children[0].source} ${node.source}`;
     }
     array.push(node);
 }

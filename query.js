@@ -66,6 +66,7 @@ async function Query (query, callbacks) {
     * @typedef ParsedColumn
     * @prop {string} value
     * @prop {string} [alias]
+    * @prop {Node} [node]
     */
 
     /**
@@ -210,15 +211,15 @@ async function Query (query, callbacks) {
      * Columns
      ******************/
 
-    for (const { value, alias, node } of cols) {
+    for (const { node } of cols) {
 
         // Special Treatment for *
-        if (value === "*") {
+        if (node.type === NODE_TYPES.SYMBOL && node.id === "*") {
             if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
                 colNodes.push(node);
-                colNames.push(value);
-                colHeaders.push(value);
+                colNames.push("*");
+                colHeaders.push("*");
                 continue;
             }
 
@@ -257,18 +258,18 @@ async function Query (query, callbacks) {
         } else {
             let path;
             if (rows.length > 0) {
-                path = findPath(rows[0], value);
+                path = findPath(rows[0], node.source);
             }
 
             colNodes.push(node);
-            colNames.push([path, value]);
-            colHeaders.push(alias || value);
+            colNames.push([path, node.source]);
+            colHeaders.push(node.alias || node.source);
 
-            if (alias && typeof colAlias[alias] !== "undefined") {
-                throw new Error("Alias already in use: " + alias);
+            if (node.alias && typeof colAlias[node.alias] !== "undefined") {
+                throw new Error("Alias already in use: " + node.alias);
             }
 
-            colAlias[alias || value] = colNames.length - 1;
+            colAlias[node.alias || node.source] = colNames.length - 1;
         }
 
         colHeaders.forEach((col, i) => {

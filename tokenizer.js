@@ -24,10 +24,10 @@ module.exports = {
             if (/\s/.test(c)) {
                 i++;
             } else if (c === "(" || c === ")") {
-                out.push({ type: this.TOKEN_TYPES.BRACKET, value: c });
+                out.push({ type: this.TOKEN_TYPES.BRACKET, value: c, start: i });
                 i++;
             } else if (c === ",") {
-                out.push({ type: this.TOKEN_TYPES.COMMA });
+                out.push({ type: this.TOKEN_TYPES.COMMA, start: i });
                 i++;
             } else if (c === "'") {
                 const end = string.indexOf("'", i + 1);
@@ -35,7 +35,7 @@ module.exports = {
                     throw new Error("Unterminated String: " + string.substring(i));
                 }
                 const str = string.substring(i + 1, end);
-                out.push({ type: this.TOKEN_TYPES.STRING, value: str });
+                out.push({ type: this.TOKEN_TYPES.STRING, value: str, start: i });
                 i = end + 1;
             } else if (/[-\d]/.test(c)) {
                 const r = /^(?:0x[0-9a-f]+|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)/i;
@@ -43,11 +43,11 @@ module.exports = {
                 const m = r.exec(ss);
 
                 if (m) {
-                    out.push({ type: this.TOKEN_TYPES.NUMBER, value: m[0] });
+                    out.push({ type: this.TOKEN_TYPES.NUMBER, value: m[0], start: i });
                     i += m[0].length;
                 }
                 else if (c === "-") {
-                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: "-" });
+                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: "-", start: i });
                     i += 1;
                 }
                 else throw new Error(`Unrecognised number: '${ss.substr(0, 10)}' at ${i}`);
@@ -56,21 +56,21 @@ module.exports = {
 
                 let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS)/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase() });
+                    out.push({ type: this.TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;
                     continue;
                 }
 
                 m = /^(?:[<>+=!*\/-]+|IS(?: NOT)?(?: NULL)?|(?:NOT )?LIKE|(?:NOT )?REGEXP|IN|AND)/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[0] });
+                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[0], start: i });
                     i += m[0].length;
                     continue;
                 }
 
                 m = /^[a-z_][a-z0-9_\.]*/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TOKEN_TYPES.NAME, value: m[0] });
+                    out.push({ type: this.TOKEN_TYPES.NAME, value: m[0], start: i });
                     i += m[0].length;
                     continue;
                 }

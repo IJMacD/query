@@ -54,7 +54,9 @@ function parseQuery (query) {
  * @returns {ParsedColumn[]}
  */
 function parseSelect (select) {
-    const ast = parser.parse(tokenizer.tonkenize("SELECT " + select));
+    const source = "SELECT " + select;
+    const tokens = tokenizer.tonkenize(source);
+    const ast = parser.parse(tokens, source);
 
     if (!ast || !ast.children) {
         throw new Error("Empty SELECT statement");

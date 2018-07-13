@@ -54,7 +54,9 @@ module.exports = {
                                 i++; // AS
                                 next = tokenList[i];
                                 if (next.type === TOKEN_TYPES.NAME) {
-                                    out.children[out.children.length-1].alias = next.value;
+                                    const child = out.children[out.children.length - 1];
+                                    child.alias = next.value;
+                                    child.source += ` AS ${next.value}`;
                                 } else {
                                     throw new Error("Name expected");
                                 }
@@ -68,7 +70,7 @@ module.exports = {
                         }
                     }
 
-                    out.source = source.substring(t.start, next && next.start);
+                    out.source = source.substring(t.start, next && next.start).trim();
 
                     return out;
                 case TOKEN_TYPES.NAME:
@@ -146,7 +148,7 @@ module.exports = {
                     }
 
                     next = tokenList[i];
-                    out.source = source.substring(t.start, next && next.start);
+                    out.source = source.substring(t.start, next && next.start).trim();
 
                     return out;
                 case TOKEN_TYPES.COMMA:

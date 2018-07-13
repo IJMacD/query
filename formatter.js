@@ -6,7 +6,7 @@ module.exports = {
   format
 };
 
-function format (data, { mime = "text/plain", locale = undefined } = {}) {
+function format (data, { mime = "text/plain", locale = undefined, name = undefined } = {}) {
   switch (mime) {
     case "application/json":
       return JSON.stringify(data);
@@ -14,6 +14,8 @@ function format (data, { mime = "text/plain", locale = undefined } = {}) {
       return data.map(row => row.map(d => csvSafe(formatVal(d))).join(",")).join("\n");
     case "text/html":
       return `${renderStyle()}${renderTable({ rows: data, locale })}`;
+    case "application/sql":
+      return renderSQLInsert(data, { tableName: name });
     case "text/plain":
     default: {
       const rows = data.map(row => row.map(formatPlainTextVal));
@@ -42,6 +44,18 @@ function formatPlainTextVal (data) {
     }
 
     return String(data);
+}
+
+/**
+ *
+ * @param {any[][]} data
+ */
+function renderSQLInsert (data, { tableName = "data" } = {}) {
+  const headers = data.shift();
+  const headerList = headers.map(h => `"${h}"`).join(", ");
+  const create = `CREATE TABLE IF NOT EXISTS ${tableName} (${headerList})`;
+  const insert = `INSERT INTO ${tableName} (${headerList}) VALUES\n${data.map(row => `('${row.join("', '")}')`).join(",\n")}`;
+  return `${create};\n${insert};\n`
 }
 
 /**

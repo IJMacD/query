@@ -407,7 +407,8 @@ async function Query (query, callbacks) {
 
     output(colHeaders);
     rows.forEach(r => output(r.map(scalar)));
-    console.log(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
+    // Print to stderr
+    console.warn(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
 
     return output_buffer;
 

@@ -41,6 +41,13 @@ const VALUE_FUNCTIONS = {
             case 'WEEK': return m.isoWeek();
             case 'YEAR': return m.year();
         }
+    },
+
+    CAST (v, type) {
+        if (/^int/i.test(type)) return parseInt(v);
+        if (/^float|^real/i.test(type)) return parseFloat(v);
+        if (/^num/i.test(type)) return +v;
+        return String(v);
     }
 };
 
@@ -54,10 +61,11 @@ const AGGREGATE_FUNCTIONS = {
 };
 
 const OPERATORS = {
-    '+': (a,b) => a + b,
-    '-': (a,b) => a - b,
-    '*': (a,b) => a * b,
-    '/': (a,b) => a / b,
+    '+': (a,b) => +a + +b,
+    '-': (a,b) => +a - +b,
+    '*': (a,b) => +a * +b,
+    '/': (a,b) => +a / +b,
+    '||': (a,b) => `${a}${b}`,
     '=': (a,b) => a == b,
     '!=': (a,b) => a != b,
     '<': (a,b) => a < b,

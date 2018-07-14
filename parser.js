@@ -93,10 +93,10 @@ module.exports = {
 
                             if (next.type === TOKEN_TYPES.COMMA) {
                                 i++; // Comma
-                            } else if (next.type === TOKEN_TYPES.KEYWORD && next.value === "FROM") {
-                                // This is special treatment for `EXTRACT(x FROM y)`
+                            } else if (next.type === TOKEN_TYPES.KEYWORD) {
+                                // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
 
-                                i++; // FROM
+                                i++; // FROM/AS etc.
                                 next = tokenList[i];
                                 if (next.type === TOKEN_TYPES.NAME ||
                                     next.type === TOKEN_TYPES.STRING ||
@@ -115,6 +115,14 @@ module.exports = {
                             throw new Error("Expected `)`");
                         }
                         i++; // Close Bracket
+
+                        if (out.id === "EXTRACT") {
+                            const extractPart = out.children[0];
+                            if (extractPart) extractPart.type = NODE_TYPES.KEYWORD;
+                        } else if (out.id === "CAST") {
+                            const castType = out.children[1];
+                            if (castType) castType.type = NODE_TYPES.KEYWORD;
+                        }
 
                         next = tokenList[i];
                         out.source = source.substring(t.start, next && next.start).trim();

@@ -420,10 +420,6 @@ async function Query (query, callbacks) {
     function executeExpression(row, node) {
         if (node.type === NODE_TYPES.FUNCTION_CALL) {
             const fnName = node.id;
-            if (fnName === "EXTRACT") {
-                // Special treatment for EXTRACT: treat first param as KEYWORD
-                return VALUE_FUNCTIONS.EXTRACT(node.children[0].id, executeExpression(row, node.children[1]));
-            }
             if (fnName in AGGREGATE_FUNCTIONS) {
                 // Don't compute aggregate functions until after grouping
                 return;
@@ -436,6 +432,9 @@ async function Query (query, callbacks) {
         } else if (node.type === NODE_TYPES.STRING) {
             return node.id;
         } else if (node.type === NODE_TYPES.NUMBER) {
+            return node.id;
+        } else if (node.type === NODE_TYPES.KEYWORD) {
+            // Pass keywords like YEAR, SECOND, INT, FLOAT as strings
             return node.id;
         } else if (node.type === NODE_TYPES.OPERATOR) {
             const op = OPERATORS[node.id];

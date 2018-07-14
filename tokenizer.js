@@ -54,17 +54,17 @@ module.exports = {
             } else {
                 const ss = string.substr(i);
 
-                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS)/i.exec(ss);
+                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS)\b/i.exec(ss);
                 if (m) {
                     out.push({ type: this.TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;
                     continue;
                 }
 
-                m = /^(?:[<>+=!*\/-]+|IS(?: NOT)?(?: NULL)?|(?:NOT )?LIKE|(?:NOT )?REGEXP|(?:NOT )?IN|AND)/i.exec(ss);
+                m = /^([<>+=!*\/|-]+|IS(?: NOT)?(?: NULL)?|(?:NOT )?LIKE|(?:NOT )?REGEXP|(?:NOT )?IN|AND)(\s|$)/i.exec(ss);
                 if (m) {
-                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[0], start: i });
-                    i += m[0].length;
+                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[1], start: i });
+                    i += m[1].length;
                     continue;
                 }
 

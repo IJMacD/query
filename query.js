@@ -90,6 +90,8 @@ async function Query (query, callbacks) {
     // console.log(parsedWhere);
     const orderBy = parsedQuery['order by'];
     const groupBy = parsedQuery['group by'];
+    const analyse = parsedQuery.explain === "ANALYSE" ||
+        parsedQuery.explain === "ANALYZE";
 
     const self = {
         cols,
@@ -130,8 +132,22 @@ async function Query (query, callbacks) {
         table.join = "";
         table.inner = false;
 
+        const start = Date.now();
+
         /** @type {Array} */
         const results = await primaryTable.call(self, table) || [];
+
+        if (analyse) {
+            table.analyse = {
+                "Node Type": "Seq Scan",
+                "Relation Name": table.name,
+                "Alias": table.alias || table.name,
+                "Startup Cost": 0,
+                "Total Cost": Date.now() - start,
+                "Plan Rows": results.length,
+                "Plan Width": 1
+            };
+        }
 
         initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
@@ -165,9 +181,14 @@ async function Query (query, callbacks) {
          * Joins
          *****************/
         for(let table of parsedTables.slice(1)) {
+
+            const start = Date.now()
+
             if (beforeJoin) {
                 await beforeJoin.call(self, table, rows);
             }
+
+            const startup = Date.now() - start;
 
             table.join = findJoin(table, rows);
 
@@ -184,6 +205,18 @@ async function Query (query, callbacks) {
             if (afterJoin) {
                 await afterJoin.call(self, table, rows);
             }
+
+            if (analyse) {
+                table.analyse = {
+                    "Node Type": "Seq Scan",
+                    "Relation Name": table.name,
+                    "Alias": table.alias || table.name,
+                    "Startup Cost": startup,
+                    "Total Cost": Date.now() - start,
+                    "Plan Rows": rows.length,
+                    "Plan Width": 1
+                };
+            }
         }
     }
 
@@ -192,11 +225,36 @@ async function Query (query, callbacks) {
      ************/
 
     if (typeof parsedQuery.explain !== "undefined") {
-        output([ "index", ...Object.keys(parsedTables[0]) ]);
-        for (const [i,table] of parsedTables.entries()) {
-            output([ i, ...Object.values(table) ]);
+
+        if (analyse) {
+            // Build Tree
+            const analyses = parsedTables.map(t => t.analyse);
+            let curr = analyses.shift();
+
+            for (const analyse of analyses) {
+                curr = {
+                    "Node Type": "Nested Loop",
+                    "Startup Cost": curr["Startup Cost"] + analyse["Startup Cost"],
+                    "Total Cost": curr["Total Cost"] + analyse["Total Cost"],
+                    "Plans": [curr, analyse]
+                };
+            }
+
+            output(["QUERY PLAN"]);
+            // for (const table of parsedTables) {
+            //     const a = table.analyse;
+            //     output([`Seq Scan on ${a["Relation Name"]} ${a["Alias"] !== a["Relation Name"] ? a["Alias"] : ""} (cost=${a["Startup Cost"].toFixed(2)}..${a["Total Cost"].toFixed(2)} rows=${a["Plan Rows"]} width=${a["Plan Width"]})`]);
+            // }
+            output([JSON.stringify([{"Plan": curr}])]);
+            return output_buffer;
         }
-        return output_buffer;
+        else {
+            output([ "index", ...Object.keys(parsedTables[0]) ]);
+            for (const [i,table] of parsedTables.entries()) {
+                output([ i, ...Object.values(table) ]);
+            }
+            return output_buffer;
+        }
     }
 
     /******************

@@ -41,8 +41,8 @@ test("Column Alias", () => {
 });
 
 test("Simple WHERE", () => {
-    return Query("SELECT 1 AS num WHERE num > 2").then(r => {
-        expect(r.length).toBe(1);
+    return Query("FROM Test WHERE num > 2", cb).then(r => {
+        expect(r.length).toBe(8);
     });
 });
 

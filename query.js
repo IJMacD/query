@@ -40,11 +40,9 @@ module.exports = Query;
 /**
  *
  * @param {string} query
- * @param {QueryCallbacks} callbacks
+ * @param {QueryCallbacks} [callbacks]
  */
-async function Query (query, callbacks) {
-
-    const { primaryTable, afterJoin, beforeJoin } = callbacks;
+async function Query (query, callbacks = {}) {
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
@@ -134,8 +132,12 @@ async function Query (query, callbacks) {
 
         const start = Date.now();
 
+        if (typeof callbacks.primaryTable === "undefined") {
+            throw new Error("PrimaryTable callback not defined");
+        }
+
         /** @type {Array} */
-        const results = await primaryTable.call(self, table) || [];
+        const results = await callbacks.primaryTable.call(self, table) || [];
 
         if (analyse) {
             table.analyse = {
@@ -184,8 +186,8 @@ async function Query (query, callbacks) {
 
             const start = Date.now()
 
-            if (beforeJoin) {
-                await beforeJoin.call(self, table, rows);
+            if (callbacks.beforeJoin) {
+                await callbacks.beforeJoin.call(self, table, rows);
             }
 
             const startup = Date.now() - start;
@@ -202,8 +204,8 @@ async function Query (query, callbacks) {
 
             table.rowCount = rows.length;
 
-            if (afterJoin) {
-                await afterJoin.call(self, table, rows);
+            if (callbacks.afterJoin) {
+                await callbacks.afterJoin.call(self, table, rows);
             }
 
             if (analyse) {
@@ -460,7 +462,7 @@ async function Query (query, callbacks) {
         if (isNaN(limit)) {
             throw new Error(`Invalid limit ${parsedQuery.limit}`);
         }
-        
+
         const start = offset || 0;
         const end = start + limit;
         rows = rows.slice(start, end);

@@ -466,7 +466,7 @@ async function Query (query, callbacks) {
     output(colHeaders);
     rows.forEach(r => output(r.map(scalar)));
     // Print to stderr
-    console.warn(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
+    // console.warn(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
 
     return output_buffer;
 

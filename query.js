@@ -454,8 +454,15 @@ async function Query (query, callbacks) {
      * Limit and Offset
      ******************/
     if (parsedQuery.limit || parsedQuery.offset) {
-        const start = parseInt(parsedQuery.offset) || 0;
-        const end = start + parseInt(parsedQuery.limit) || rows.length;
+        const offset = parseInt(parsedQuery.offset);
+        const limit = parsedQuery.limit === "" ? rows.length : parseInt(parsedQuery.limit);
+
+        if (isNaN(limit)) {
+            throw new Error(`Invalid limit ${parsedQuery.limit}`);
+        }
+        
+        const start = offset || 0;
+        const end = start + limit;
         rows = rows.slice(start, end);
     }
 

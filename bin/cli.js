@@ -7,8 +7,27 @@ const Formatter = require('../formatter');
 
 const [ node, script, ...rest ] = process.argv;
 
-const query = rest.join(" ");
+const args = rest.filter(a => a[0] === "-");
+const query = rest.filter(a => a[0] !== "-").join(" ");
+
+let mime = "text/plain";
+let name;
+
+for (let arg of args) {
+    switch (arg[1]) {
+        case "f":
+            if (arg.startsWith("-f=plain")) mime = "text/plain";
+            else if (arg.startsWith("-f=csv")) mime = "text/csv";
+            else if (arg.startsWith("-f=json")) mime = "application/json";
+            else if (arg.startsWith("-f=html")) mime = "text/html";
+            else if (arg.startsWith("-f=sql")) {
+                mime = "application/sql";
+                name = arg.split(":")[1];
+            }
+            break;
+    }
+}
 
 Query(query).then(result => {
-    console.log(Formatter.format(result));
+    console.log(Formatter.format(result, { mime, name }));
 }).catch(e => console.error(e));

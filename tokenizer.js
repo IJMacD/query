@@ -37,6 +37,14 @@ module.exports = {
                 const str = string.substring(i + 1, end);
                 out.push({ type: this.TOKEN_TYPES.STRING, value: str, start: i });
                 i = end + 1;
+            } else if (c === "\"") {
+                const end = string.indexOf("\"", i + 1);
+                if (end < 0) {
+                    throw new Error("Unterminated Name: " + string.substring(i));
+                }
+                const str = string.substring(i + 1, end);
+                out.push({ type: this.TOKEN_TYPES.NAME, value: str, start: i });
+                i = end + 1;
             } else if (/[-\d]/.test(c)) {
                 const r = /^(?:0x[0-9a-f]+|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)/i;
                 const ss = string.substr(i);

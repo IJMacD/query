@@ -122,8 +122,7 @@ async function Query (query, callbacks = {}) {
     // console.log(parsedWhere);
     const orderBy = parsedQuery['order by'];
     const groupBy = parsedQuery['group by'];
-    const analyse = parsedQuery.explain === "ANALYSE" ||
-        parsedQuery.explain === "ANALYZE";
+    const analyse = parsedQuery.explain === "ANALYSE" || parsedQuery.explain === "ANALYZE";
 
     const self = {
         cols,
@@ -143,7 +142,6 @@ async function Query (query, callbacks = {}) {
 
     /** @type {Node[]} */
     const colNodes = [];
-    const colNames = [];
     const colHeaders = [];
     const colAlias = {};
 
@@ -160,8 +158,7 @@ async function Query (query, callbacks = {}) {
         rows = [[]];
     } else {
         const table = parsedTables[0];
-        // i === 0: Root table can't have joins
-        table.join = "";
+        table.join = table.alias || table.name;
         table.inner = false;
 
         const start = Date.now();
@@ -232,14 +229,19 @@ async function Query (query, callbacks = {}) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
 
-                const results = await primaryTable.call(self, table) || [];
+                if (typeof callbacks.primaryTable === "undefined") {
+                    throw new Error(`All attempts at joining failed: ${table.name}`);
+                }
 
-                table.join = table.name.toLowerCase();
+                const results = await callbacks.primaryTable.call(self, table) || [];
+
+                table.join = table.alias || table.name.toLowerCase();
                 table.explain += " cross-join";
 
                 for (const row of rows) {
                     row['data'][table.join] = results;
                 }
+
             }
 
             rows = applyJoin(table, rows);
@@ -322,7 +324,6 @@ async function Query (query, callbacks = {}) {
             if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
                 colNodes.push(node);
-                colNames.push("*");
                 colHeaders.push("*");
                 continue;
             }
@@ -345,8 +346,7 @@ async function Query (query, callbacks = {}) {
                     // If we're not the root table, then add placeholder headers
                     if (table.join != "") {
                         colNodes.push(null);
-                        colNames.push([join, null]);
-                        colHeaders.push(`${table.name}.*`);
+                        colHeaders.push(`${table.alias || table.name}.*`);
                     }
 
                     continue;
@@ -355,8 +355,7 @@ async function Query (query, callbacks = {}) {
                 // only add "primitive" columns
                 let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
-                colNodes.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: c })));
-                colNames.push(...newCols.map(c => [join, c]));
+                colNodes.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.alias || table.name}.${c}` })));
                 colHeaders.push(...newCols);
             }
         } else {
@@ -366,14 +365,13 @@ async function Query (query, callbacks = {}) {
             }
 
             colNodes.push(node);
-            colNames.push([path, node.source]);
             colHeaders.push(node.alias || node.source);
 
             if (node.alias && typeof colAlias[node.alias] !== "undefined") {
                 throw new Error("Alias already in use: " + node.alias);
             }
 
-            colAlias[node.alias || node.source] = colNames.length - 1;
+            colAlias[node.alias || node.source] = colNodes.length - 1;
         }
 
         colHeaders.forEach((col, i) => {
@@ -383,17 +381,20 @@ async function Query (query, callbacks = {}) {
         });
     }
 
+    // console.log(parsedTables);
+    // console.log(colNodes);
+
     /*****************
      * Column Values
      *****************/
     for(const row of rows) {
-        for(const [i, [join, col]] of colNames.entries()) {
-            if (col === "ROWID") {
+        for(const [i, node] of colNodes.entries()) {
+            if (node.id === "ROWID") {
                 row[i] = row['ROWID'];
                 continue;
             }
 
-            row[i] = executeExpression(row, colNodes[i]);
+            row[i] = executeExpression(row, node);
         }
     }
 
@@ -409,10 +410,7 @@ async function Query (query, callbacks = {}) {
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    if (colNames.some(([p,c]) => {
-        const m = FUNCTION_REGEX.exec(c);
-        return m && m[1] in AGGREGATE_FUNCTIONS;
-    })) {
+    if (colNodes.some(node => node.id in AGGREGATE_FUNCTIONS)) {
         if (!groupBy) {
             // If we have aggregate functions but we're not grouping,
             // then apply aggregate functions to whole set
@@ -424,7 +422,7 @@ async function Query (query, callbacks = {}) {
             ];
         }
 
-        rows = rows.map(row => computeAggregates(row['group'], colNames.map(([p,c])=>c)));
+        rows = rows.map(row => computeAggregates(row['group'], colNodes));
     }
 
     /*******************
@@ -664,7 +662,7 @@ async function Query (query, callbacks = {}) {
     /**
      * Resolve a col into a concrete value (constant or from object)
      * @param {ResultRow} row
-     * @param {string} col
+     * @param {Node} col
      */
     function resolveValue (row, col) {
         // Check for constant values first
@@ -681,28 +679,30 @@ async function Query (query, callbacks = {}) {
 
         // Now for the real column resolution
 
-                        // Resolve a possible alias
-        let qualified = colNames[colAlias[col]];
-        if (typeof qualified !== "undefined") {
-            let [ join, colName ] = qualified;
+        //                 // Resolve a possible alias
+        // let node = colNodes[colAlias[col]];
+        // if (typeof node !== "undefined") {
+        //     let [ join, colName ] = node.id.split(".", 2);
 
-            if (typeof join === "undefined") {
-                return; // undefined
-            }
+        //     console.log({ join, colName });
 
-            const data = row.data[join];
+        //     if (typeof join === "undefined") {
+        //         return; // undefined
+        //     }
 
-            if (typeof data === "undefined") {
-                // Possibly the result of a LEFT JOIN of a null row
-                return; // undefined
-            }
+        //     const data = row.data[join];
 
-            const val = resolvePath(data, colName);
+        //     if (typeof data === "undefined") {
+        //         // Possibly the result of a LEFT JOIN of a null row
+        //         return; // undefined
+        //     }
 
-            if (typeof val !== "undefined") {
-                return val;
-            }
-        }
+        //     const val = resolvePath(data, colName);
+
+        //     if (typeof val !== "undefined") {
+        //         return val;
+        //     }
+        // }
 
         let head = col;
         let tail;
@@ -777,7 +777,7 @@ async function Query (query, callbacks = {}) {
 
         let colNum = colAlias[col];
         if (typeof colNum === "undefined") {
-            colNum = colNames.findIndex(([p,c]) => c === col);
+            colNum = colNodes.findIndex(node => node.source === col);
         }
 
         if (colNum >= 0) {
@@ -812,10 +812,10 @@ async function Query (query, callbacks = {}) {
     /**
      * Turns a group of rows into one aggregate row
      * @param {any[][]} rows
-     * @param {string[]} colNames
+     * @param {Node[]} colNodes
      * @return {any[]}
      */
-    function computeAggregates (rows, colNames) {
+    function computeAggregates (rows, colNodes) {
         // If there are no rows (i.e. due to filtering) then
         // just return an empty row.
         if (rows.length === 0) {
@@ -826,16 +826,16 @@ async function Query (query, callbacks = {}) {
         const row = rows[0];
 
         // Fill in aggregate values
-        colNames.forEach((col, i) => {
-            const match = FUNCTION_REGEX.exec(col);
+        colNodes.forEach((node, i) => {
 
-            if (match && match[1] in AGGREGATE_FUNCTIONS) {
-                const fn = AGGREGATE_FUNCTIONS[match[1]];
+            if (node.id in AGGREGATE_FUNCTIONS) {
+                const fn = AGGREGATE_FUNCTIONS[node.id];
 
                 if (fn) {
-                    row[i] = fn(aggregateValues(rows, match[2]));
+                    // TODO: Fix Aggregates for expressions
+                    row[i] = fn(aggregateValues(rows, node));
                 } else {
-                    throw new Error("Function not found: " + match[1]);
+                    throw new Error("Function not found: " + node.id);
                 }
 
                 return;

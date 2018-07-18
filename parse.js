@@ -134,9 +134,13 @@ function parseWhere (where) {
 function parseFrom (from) {
   const tables = from ? from.split(",").map(s => s.trim()) : [];
   return tables.map(table => {
+      const aliasRegex = / AS "?([a-z0-9_]+)"?/i;
+      const aliasMatch = aliasRegex.exec(table);
+      const alias = aliasMatch && aliasMatch[1];
+      table = table.replace(aliasRegex, "");
       const inner = table.includes("INNER");
       const [ name, join ] = table.replace("INNER", "").split("ON").map(s => s.trim());
-      return { name, join, inner, explain: "", rowCount: 0 };
+      return { name, alias, join, inner, explain: "", rowCount: 0 };
   });
 }
 

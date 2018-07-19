@@ -15,6 +15,19 @@ const cb = {
                 { n: 8 },
                 { n: 9 },
             ];
+        } else if (table.name === "Test_2") {
+            return [
+                { c: 'a' },
+                { c: 'b' },
+                { c: 'c' },
+                { c: 'd' },
+                { c: 'e' },
+                { c: 'f' },
+                { c: 'g' },
+                { c: 'h' },
+                { c: 'i' },
+                { c: 'j' },
+            ];
         }
 
         throw new Error(`Table not recognised: ${table.name}`);
@@ -68,6 +81,48 @@ test("Descending ORDER", () => {
     return Query("FROM Test ORDER BY 0 DESC", cb).then(r => {
         expect(r[1][0]).toBe(9);
         expect(r[10][0]).toBe(0);
+    });
+});
+
+test("CROSS JOIN", () => {
+    return Query("FROM Test, Test_2", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(100);
+        expect(r[1].length).toBe(2);
+        expect(r[1][0]).toBe(0);
+        expect(r[1][1]).toBe('a');
+        expect(r[2][0]).toBe(0);
+        expect(r[2][1]).toBe('b');
+    });
+});
+
+test("CROSS JOIN Explicit Columns", () => {
+    return Query("FROM Test, Test_2 SELECT c,n", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(100);
+        expect(r[1].length).toBe(2);
+        expect(r[1][0]).toBe('a');
+        expect(r[1][1]).toBe(0);
+    });
+});
+
+test("CROSS JOIN Resolved Columns", () => {
+    return Query("FROM Test, Test_2 SELECT Test_2.c,Test.n", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(100);
+        expect(r[1].length).toBe(2);
+        expect(r[1][0]).toBe('a');
+        expect(r[1][1]).toBe(0);
+    });
+});
+
+test("CROSS JOIN Aliased Columns", () => {
+    return Query("FROM Test AS t1, Test_2 AS t2 SELECT t2.c,t1.n", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(100);
+        expect(r[1].length).toBe(2);
+        expect(r[1][0]).toBe('a');
+        expect(r[1][1]).toBe(0);
     });
 });
 

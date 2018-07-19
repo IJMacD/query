@@ -145,6 +145,15 @@ async function Query (query, callbacks = {}) {
     const colHeaders = [];
     const colAlias = {};
 
+    /** @type {{ [key: string]: ParsedTable }} */
+    const tableAlias = {};
+    for (const t of parsedTables) {
+        const n = t.alias || t.name;
+        if (!tableAlias[n]) {
+            tableAlias[n] = t;
+        }
+    }
+
     let initialResultCount = 0;
 
     /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
@@ -235,7 +244,7 @@ async function Query (query, callbacks = {}) {
 
                 const results = await callbacks.primaryTable.call(self, table) || [];
 
-                table.join = table.alias || table.name.toLowerCase();
+                table.join = table.alias || table.name;
                 table.explain += " cross-join";
 
                 for (const row of rows) {
@@ -355,7 +364,7 @@ async function Query (query, callbacks = {}) {
                 // only add "primitive" columns
                 let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
-                colNodes.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.alias || table.name}.${c}` })));
+                colNodes.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.join}.${c}` })));
                 colHeaders.push(...newCols);
             }
         } else {
@@ -662,7 +671,7 @@ async function Query (query, callbacks = {}) {
     /**
      * Resolve a col into a concrete value (constant or from object)
      * @param {ResultRow} row
-     * @param {Node} col
+     * @param {string} col
      */
     function resolveValue (row, col) {
         // Check for constant values first
@@ -707,10 +716,19 @@ async function Query (query, callbacks = {}) {
         let head = col;
         let tail;
         while(head.length > 0) {
-            const data = row['data'][head];
+            let data = row['data'][head];
 
             if (typeof data !== "undefined" && data != null) {
                 return resolvePath(data, tail);
+            }
+
+            const t = tableAlias[head];
+            if (t) {
+                data = row['data'][t.join];
+
+                if (typeof data !== "undefined" && data != null) {
+                    return resolvePath(data, tail);
+                }
             }
 
             head = head.substr(0, head.lastIndexOf("."));
@@ -942,42 +960,42 @@ async function Query (query, callbacks = {}) {
     }
 
     function findJoin (table, rows) {
-        const t = table.name.toLowerCase();
-
+        
         if (table.join) {
             // If we have an explicit join, check it first.
-
+            
             // First check of explicit join check is in data object.
             // This may already have been set for us by a beforeJoin callback.
             for (const row of rows) {
                 const data = row['data'][table.join];
-
+                
                 if (typeof data !== "undefined" && data !== null) {
                     return table.join;
                 }
             }
-
+            
             // We didn't have the data set for us, so let's search ourselves
-
+            
             // Iterate over rows until we find one that works
             for (const row of rows) {
                 const val = resolveValue(row, table.join);
-
+                
                 if (typeof val !== "undefined") {
                     // If we found `val` that means `table.join` is correct
                     return table.join;
                 }
             }
-
+            
             throw new Error("Invalid ON clause: " + table.join);
-
+            
         } else {
             // AUTO JOIN! (natural join, comma join, implicit join?)
             // We will find the path automatically
-
+            const t = table.name.toLowerCase();
+            
             for (const r of rows) {
                 const path = findPath(r, t);
-
+                
                 if (typeof path !== "undefined"){
                     return path.length === 0 ? t : `${path}.${t}`;
                 }

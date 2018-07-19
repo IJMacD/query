@@ -109,6 +109,7 @@ async function Query (query, callbacks = {}) {
     * @prop {boolean} [inner]
     * @prop {string} [explain]
     * @prop {number} [rowCount]
+    * @prop {any} [analyse]
     */
 
     /** @type {ParsedColumn[]} */
@@ -179,17 +180,7 @@ async function Query (query, callbacks = {}) {
         /** @type {Array} */
         const results = await callbacks.primaryTable.call(self, table) || [];
 
-        if (analyse) {
-            table.analyse = {
-                "Node Type": "Seq Scan",
-                "Relation Name": table.name,
-                "Alias": table.alias || table.name,
-                "Startup Cost": 0,
-                "Total Cost": Date.now() - start,
-                "Plan Rows": results.length,
-                "Plan Width": 1
-            };
-        }
+        const totalTime = Date.now() - start;
 
         initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
@@ -213,6 +204,22 @@ async function Query (query, callbacks = {}) {
         rows = filterRows(rows);
 
         table.rowCount = rows.length;
+
+        if (analyse) {
+            table.analyse = {
+                "Node Type": "Seq Scan",
+                "Relation Name": table.name,
+                "Alias": table.alias || table.name,
+                "Startup Cost": 0,
+                "Total Cost": totalTime,
+                "Plan Rows": results.length,
+                "Plan Width": 1,
+                "Actual Startup Time": 0,
+                "Actual Total Time": totalTime,
+                "Actual Rows": rows.length,
+                "Actual Loops": 1,
+            };
+        }
     }
 
 
@@ -264,14 +271,19 @@ async function Query (query, callbacks = {}) {
             }
 
             if (analyse) {
+                const totalTime = Date.now() - start;
                 table.analyse = {
                     "Node Type": "Seq Scan",
                     "Relation Name": table.name,
                     "Alias": table.alias || table.name,
                     "Startup Cost": startup,
-                    "Total Cost": Date.now() - start,
+                    "Total Cost": totalTime,
                     "Plan Rows": rows.length,
-                    "Plan Width": 1
+                    "Plan Width": 1,
+                    "Actual Startup Time": startup,
+                    "Actual Total Time": totalTime,
+                    "Actual Rows": rows.length,
+                    "Actual Loops": 1,
                 };
             }
         }
@@ -293,7 +305,11 @@ async function Query (query, callbacks = {}) {
                     "Node Type": "Nested Loop",
                     "Startup Cost": curr["Startup Cost"] + analyse["Startup Cost"],
                     "Total Cost": curr["Total Cost"] + analyse["Total Cost"],
-                    "Plans": [curr, analyse]
+                    "Plans": [curr, analyse],
+                    "Actual Startup Time": curr["Startup Cost"] + analyse["Startup Cost"],
+                    "Actual Total Time": curr["Actual Total Time"] + analyse["Actual Total Time"],
+                    "Actual Rows": curr["Actual Rows"],
+                    "Actual Loops": 1,
                 };
             }
 
@@ -302,7 +318,7 @@ async function Query (query, callbacks = {}) {
             //     const a = table.analyse;
             //     output([`Seq Scan on ${a["Relation Name"]} ${a["Alias"] !== a["Relation Name"] ? a["Alias"] : ""} (cost=${a["Startup Cost"].toFixed(2)}..${a["Total Cost"].toFixed(2)} rows=${a["Plan Rows"]} width=${a["Plan Width"]})`]);
             // }
-            output([JSON.stringify([{"Plan": curr}])]);
+            output([JSON.stringify([{"Plan": curr, "Total Runtime": curr["Actual Total Time"]}])]);
             return output_buffer;
         }
         else {
@@ -960,42 +976,42 @@ async function Query (query, callbacks = {}) {
     }
 
     function findJoin (table, rows) {
-        
+
         if (table.join) {
             // If we have an explicit join, check it first.
-            
+
             // First check of explicit join check is in data object.
             // This may already have been set for us by a beforeJoin callback.
             for (const row of rows) {
                 const data = row['data'][table.join];
-                
+
                 if (typeof data !== "undefined" && data !== null) {
                     return table.join;
                 }
             }
-            
+
             // We didn't have the data set for us, so let's search ourselves
-            
+
             // Iterate over rows until we find one that works
             for (const row of rows) {
                 const val = resolveValue(row, table.join);
-                
+
                 if (typeof val !== "undefined") {
                     // If we found `val` that means `table.join` is correct
                     return table.join;
                 }
             }
-            
+
             throw new Error("Invalid ON clause: " + table.join);
-            
+
         } else {
             // AUTO JOIN! (natural join, comma join, implicit join?)
             // We will find the path automatically
             const t = table.name.toLowerCase();
-            
+
             for (const r of rows) {
                 const path = findPath(r, t);
-                
+
                 if (typeof path !== "undefined"){
                     return path.length === 0 ? t : `${path}.${t}`;
                 }

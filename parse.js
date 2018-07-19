@@ -124,6 +124,7 @@ function parseWhere (where) {
  * @prop {boolean} [inner]
  * @prop {string} [explain]
  * @prop {number} [rowCount]
+ * @prop {any} [analyse]
  */
 
 /**

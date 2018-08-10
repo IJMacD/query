@@ -866,8 +866,8 @@ async function Query (query, callbacks = {}) {
                 const fn = AGGREGATE_FUNCTIONS[node.id];
 
                 if (fn) {
-                    // TODO: Fix Aggregates for expressions
-                    row[i] = fn(aggregateValues(rows, node));
+                    const col = node.children.length ? node.children[0].id : "";
+                    row[i] = fn(aggregateValues(rows, col));
                 } else {
                     throw new Error("Function not found: " + node.id);
                 }

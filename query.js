@@ -599,7 +599,14 @@ async function Query (query, callbacks = {}) {
                     const b = resolveValue(r, child.operand2);
 
                     // Check to see if we have enough information to process this yet
-                    if (typeof a === "undefined" && !strict) {
+
+                    if (!strict
+                        && typeof a === "undefined") {
+                        return true;
+                    }
+                    if (!strict
+                        && typeof b === "undefined"
+                        && typeof child.operand2 !== "undefined") {
                         // n.b. `b` can be undefined (e.g. a IS NULL)
                         return true;
                     }

@@ -74,7 +74,7 @@ module.exports = {
                 }
 
                 if (prevToken().type !== this.TOKEN_TYPES.BRACKET || prevToken().value === ")") {
-                    m = /^([<>+=!*\/|-]+|IS(?: NOT)? NULL|(?:NOT )?LIKE|(?:NOT )?REGEXP|(?:NOT )?IN|AND)/i.exec(ss);
+                    m = /^([<>+=!*\/|-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|AND\b)/i.exec(ss);
                     if (m) {
                         out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[1], start: i });
                         i += m[1].length;

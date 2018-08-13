@@ -139,3 +139,10 @@ test("Filtered Self CROSS JOIN ", () => {
         expect(r.length - 1).toBe(90);
     });
 });
+
+test("Invariant Filtered Self CROSS JOIN ", () => {
+    return Query("FROM Test AS a, Test AS b WHERE a.n < b.n", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(45);
+    });
+});

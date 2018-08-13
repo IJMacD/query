@@ -10,13 +10,23 @@
  * OPERATOR: [+-*\/=!><]|AND
  */
 
+ /**
+  * @typedef Token
+  * @prop {number} type
+  * @prop {string} [value]
+  * @prop {number} start
+  */
+
 module.exports = {
     /**
      * @param {string} string
+     * @return {Token[]}
      */
     tonkenize (string) {
         const len = string.length;
         let i = 0;
+
+        /** @type {Token[]} */
         const out = [];
 
         function prevToken() {
@@ -66,7 +76,7 @@ module.exports = {
             } else {
                 const ss = string.substr(i);
 
-                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS)\b/i.exec(ss);
+                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS|USING|ON)\b/i.exec(ss);
                 if (m) {
                     out.push({ type: this.TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;

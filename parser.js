@@ -3,7 +3,8 @@ const { TOKEN_TYPES } = require('./tokenizer');
  /**
   * @typedef Token
   * @prop {number} type
-  * @prop {string} value
+  * @prop {string} [value]
+  * @prop {number} start
   */
 
  /**

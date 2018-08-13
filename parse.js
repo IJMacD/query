@@ -116,10 +116,19 @@ function parseWhere (where) {
   return out;
 }
 
+ /**
+  * @typedef Node
+  * @prop {number} type
+  * @prop {string|number} id
+  * @prop {string} alias
+  * @prop {Node[]} children
+  */
+
 /**
  * @typedef ParsedTable
  * @prop {string} name
  * @prop {string} [join]
+ * @prop {Node} [condition]
  * @prop {string} [alias]
  * @prop {boolean} [inner]
  * @prop {string} [explain]
@@ -139,9 +148,35 @@ function parseFrom (from) {
       const aliasMatch = aliasRegex.exec(table);
       const alias = aliasMatch && aliasMatch[1];
       table = table.replace(aliasRegex, "");
+
       const inner = table.includes("INNER");
-      const [ name, join ] = table.replace("INNER", "").split("ON").map(s => s.trim());
-      return { name, alias, join, inner, explain: "", rowCount: 0 };
+      table = table.replace("INNER", "");
+
+      const usingRegex = / USING ([a-z0-9_.]+)/i;
+      const usingMatch = usingRegex.exec(table);
+      const using = usingMatch && usingMatch[1];
+      table = table.replace(usingRegex, "");
+
+      const onRegex = / ON ([a-z0-9_ .<>!=]+)/i;
+      const onMatch = onRegex.exec(table);
+      const on = onMatch && onMatch[1];
+      table = table.replace(onRegex, "");
+
+      const source = onMatch && "ON " + on;
+      const tokens = onMatch && tokenizer.tonkenize(source);
+      const condition = onMatch && parser.parse(tokens, source);
+
+      const name = table.trim();
+
+      return {
+        name,
+        alias,
+        join: using,
+        condition,
+        inner,
+        explain: "",
+        rowCount: 0
+      };
   });
 }
 

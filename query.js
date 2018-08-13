@@ -105,6 +105,7 @@ async function Query (query, callbacks = {}) {
     * @typedef ParsedTable
     * @prop {string} name
     * @prop {string} [join]
+    * @prop {Node} [condition]
     * @prop {string} [alias]
     * @prop {boolean} [inner]
     * @prop {string} [explain]
@@ -116,6 +117,7 @@ async function Query (query, callbacks = {}) {
     const cols = parseSelect(parsedQuery.select);
     /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
+    console.log(parsedTables);
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
     const having = parsedQuery.having;
@@ -619,6 +621,16 @@ async function Query (query, callbacks = {}) {
     }
 
     /**
+     * Function to filter rows based on arbitrary expression
+     * @param {ResultRow[]} rows
+     * @param {Node} conditionNode
+     * @return {ResultRow[]}
+     */
+    function filterRowsByCondition (rows, conditionNode) {
+        return rows.filter(r => executeExpression(r, conditionNode));
+    }
+
+    /**
      * Traverse a sample object to determine absolute path
      * up to, but not including, given name.
      * Uses explicit join list.
@@ -1119,6 +1131,10 @@ async function Query (query, callbacks = {}) {
 
         if (one2many) {
             table.explain += ` one-to-many`;
+        }
+
+        if (table.condition) {
+            return filterRowsByCondition(newRows, table.condition);
         }
 
         return newRows;

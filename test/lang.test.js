@@ -133,16 +133,37 @@ test("Self CROSS JOIN", () => {
     });
 });
 
-test("Filtered Self CROSS JOIN ", () => {
+test("Filtered Self CROSS JOIN", () => {
     return Query("FROM Test AS a, Test AS b WHERE a.n != b.n", cb).then(r => {
         // Don't forget header row
         expect(r.length - 1).toBe(90);
     });
 });
 
-test("Invariant Filtered Self CROSS JOIN ", () => {
+test("Invariant Filtered Self CROSS JOIN", () => {
     return Query("FROM Test AS a, Test AS b WHERE a.n < b.n", cb).then(r => {
         // Don't forget header row
         expect(r.length - 1).toBe(45);
+    });
+});
+
+test("Expression Filtered Self CROSS JOIN", () => {
+    return Query("FROM Test AS a, Test AS b WHERE a.n + b.n = 3", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(4);
+    });
+});
+
+test("Expression Predicate Self CROSS JOIN", () => {
+    return Query("FROM Test AS a, Test AS b ON a.n + 1 = b.n", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(9);
+    });
+});
+
+test("Expression Access Predicate Self CROSS JOIN", () => {
+    return Query("FROM Test AS a, Test AS b ON a.n + b.n = 3", cb).then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(4);
     });
 });

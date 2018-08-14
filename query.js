@@ -42,7 +42,7 @@ module.exports = Query;
  * @param {string} query
  * @param {QueryCallbacks} [callbacks]
  */
-async function Query (query, callbacks = {}) {
+async function Query (query, callbacks) {
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
@@ -105,7 +105,7 @@ async function Query (query, callbacks = {}) {
     * @typedef ParsedTable
     * @prop {string} name
     * @prop {string} [join]
-    * @prop {Node} [condition]
+    * @prop {Node} [predicate]
     * @prop {string} [alias]
     * @prop {boolean} [inner]
     * @prop {string} [explain]
@@ -117,7 +117,7 @@ async function Query (query, callbacks = {}) {
     const cols = parseSelect(parsedQuery.select);
     /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
-    console.log(parsedTables);
+    // console.log(parsedTables);
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
     const having = parsedQuery.having;
@@ -326,10 +326,14 @@ async function Query (query, callbacks = {}) {
         else {
             output([ "index", ...Object.keys(parsedTables[0]) ]);
             for (const [i,table] of parsedTables.entries()) {
-                output([ i, ...Object.values(table) ]);
+                output([ i, ...Object.values(table).map(formatExplainCol) ]);
             }
             return output_buffer;
         }
+    }
+
+    function formatExplainCol (col) {
+        return col && (col.source || col);
     }
 
     /******************
@@ -578,6 +582,14 @@ async function Query (query, callbacks = {}) {
                 return op(...node.children.map(c => executeExpression(row, c)));
             }
             throw new Error(`Unsupported operator '${node.id}'`);
+        } else if (node.type === NODE_TYPES.CLAUSE
+            && (node.id === "WHERE" || node.id === "ON")
+        ) {
+            if (node.children.length > 0) {
+                return Boolean(executeExpression(row, node.children[0]));
+            } else {
+                throw new Error(`Empty predicate clause: ${node.id}`);
+            }
         } else {
             throw new Error(`Can't execute node type ${node.type}: ${node.id}`);
         }
@@ -623,11 +635,11 @@ async function Query (query, callbacks = {}) {
     /**
      * Function to filter rows based on arbitrary expression
      * @param {ResultRow[]} rows
-     * @param {Node} conditionNode
+     * @param {Node} predicate
      * @return {ResultRow[]}
      */
-    function filterRowsByCondition (rows, conditionNode) {
-        return rows.filter(r => executeExpression(r, conditionNode));
+    function filterRowsByPredicate (rows, predicate) {
+        return rows.filter(r => executeExpression(r, predicate));
     }
 
     /**
@@ -858,7 +870,7 @@ async function Query (query, callbacks = {}) {
             return fn(aggregateValues(row['group'], match[2]));
         }
 
-        throw new Error("Invalid HAVING condition: " + col);
+        throw new Error("Invalid HAVING predicate: " + col);
 
     }
 
@@ -1133,8 +1145,8 @@ async function Query (query, callbacks = {}) {
             table.explain += ` one-to-many`;
         }
 
-        if (table.condition) {
-            return filterRowsByCondition(newRows, table.condition);
+        if (table.predicate) {
+            return filterRowsByPredicate(newRows, table.predicate);
         }
 
         return newRows;

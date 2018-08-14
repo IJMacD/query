@@ -152,19 +152,32 @@ function parseFrom (from) {
       const inner = table.includes("INNER");
       table = table.replace("INNER", "");
 
-      const usingRegex = / USING ([a-z0-9_.]+)/i;
-      const usingMatch = usingRegex.exec(table);
-      const using = usingMatch && usingMatch[1];
-      table = table.replace(usingRegex, "");
+      const usingIdx = table.indexOf("USING");
+      const onIdx = table.indexOf("ON");
 
-      const onRegex = / ON ([a-z0-9_ .<>!=]+)/i;
-      const onMatch = onRegex.exec(table);
-      const on = onMatch && onMatch[1];
-      table = table.replace(onRegex, "");
+      let using;
+      let on;
 
-      const source = onMatch && "ON " + on;
-      const tokens = onMatch && tokenizer.tonkenize(source);
-      const condition = onMatch && parser.parse(tokens, source);
+      if (usingIdx >= 0 && onIdx >= 0) {
+        if (onIdx > usingIdx) {
+          using = table.substring(usingIdx + 5, onIdx);
+          on = table.substring(onIdx + 2);
+          table = table.substring(0, usingIdx);
+        } else {
+          using = table.substring(onIdx + 2, usingIdx);
+          on = table.substring(usingIdx + 5);
+          table = table.substring(0, onIdx);
+        }
+      } else if (usingIdx >= 0) {
+        using = table.substring(usingIdx + 5);
+        table = table.substring(0, usingIdx);
+      } else if (onIdx >= 0) {
+        on = table.substring(onIdx + 2);
+        table = table.substring(0, onIdx);
+      }
+
+      const tokens = on && tokenizer.tonkenize("ON " + on);
+      const predicate = on && parser.parse(tokens, on);
 
       const name = table.trim();
 
@@ -172,7 +185,7 @@ function parseFrom (from) {
         name,
         alias,
         join: using,
-        condition,
+        predicate,
         inner,
         explain: "",
         rowCount: 0

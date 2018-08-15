@@ -17,6 +17,10 @@ module.exports = {
 };
 
 /**
+ * @typedef {import('./parser').Node} Node
+ */
+
+/**
  * Break a flat text SQL query into its clauses
  * @param {string} query
  * @return {{ from?: string, select?: string, where?: string, ["order by"]?: string, limit?: string, ["group by"]?: string, [clause: string]: string }}
@@ -68,7 +72,7 @@ function parseSelect (select) {
     }
 
     return ast.children.map(child => {
-        return { value: child.id, alias: child.alias, node: child };
+        return { value: String(child.id), alias: child.alias, node: child };
     });
 }
 
@@ -115,14 +119,6 @@ function parseWhere (where) {
 
   return out;
 }
-
- /**
-  * @typedef Node
-  * @prop {number} type
-  * @prop {string|number} id
-  * @prop {string} alias
-  * @prop {Node[]} children
-  */
 
 /**
  * @typedef ParsedTable

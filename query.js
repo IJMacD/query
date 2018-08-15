@@ -21,11 +21,7 @@ const {
 const { NODE_TYPES } = require('./parser');
 
 /**
- * @typedef Node
- * @prop {number} type
- * @prop {string|number} id
- * @prop {string} alias
- * @prop {Node[]} children
+ * @typedef {import('./parser').Node} Node
  */
 
 module.exports = Query;
@@ -184,7 +180,6 @@ async function Query (query, callbacks) {
 
         const totalTime = Date.now() - start;
 
-        initialResultCount = results.length;
         // console.log(`Initial data set: ${results.length} items`);
 
         // Poulate inital rows
@@ -325,6 +320,7 @@ async function Query (query, callbacks) {
         }
         else {
             output([ "index", ...Object.keys(parsedTables[0]) ]);
+            // @ts-ignore
             for (const [i,table] of parsedTables.entries()) {
                 output([ i, ...Object.values(table).map(formatExplainCol) ]);
             }
@@ -419,6 +415,7 @@ async function Query (query, callbacks) {
      * Column Values
      *****************/
     for(const row of rows) {
+        // @ts-ignore
         for(const [i, node] of colNodes.entries()) {
             if (node.id === "ROWID") {
                 row[i] = row['ROWID'];
@@ -568,7 +565,7 @@ async function Query (query, callbacks) {
                 return VALUE_FUNCTIONS[fnName](...node.children.map(c => executeExpression(row, c)));
             }
         } else if (node.type === NODE_TYPES.SYMBOL) {
-            return resolveValue(row, node.id);
+            return resolveValue(row, String(node.id));
         } else if (node.type === NODE_TYPES.STRING) {
             return node.id;
         } else if (node.type === NODE_TYPES.NUMBER) {
@@ -897,6 +894,8 @@ async function Query (query, callbacks) {
                 const fn = AGGREGATE_FUNCTIONS[node.id];
 
                 if (fn) {
+                    /** @type {string} */
+                    // @ts-ignore
                     const col = node.children.length ? node.children[0].id : "";
                     row[i] = fn(aggregateValues(rows, col));
                 } else {

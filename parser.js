@@ -11,8 +11,9 @@ const { TOKEN_TYPES } = require('./tokenizer');
   * @typedef Node
   * @prop {number} type
   * @prop {string|number} id
-  * @prop {string} alias
-  * @prop {Node[]} children
+  * @prop {string} [alias]
+  * @prop {Node[]} [children]
+  * @prop {string} [source]
   */
 
 const NODE_TYPES = {
@@ -35,6 +36,9 @@ module.exports = {
     parse (tokenList, source) {
         let i = 0;
 
+        /**
+         * @returns {Node}
+         */
         function descend () {
             let out = {};
             const t = tokenList[i];
@@ -140,7 +144,7 @@ module.exports = {
                     return { type: NODE_TYPES.NUMBER, id: +t.value, source: t.value };
                 case TOKEN_TYPES.OPERATOR:
                     i++;
-                    out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [] };
+                    out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [], source: "" };
 
                     if (t.value === "*") {
                         next = tokenList[i];

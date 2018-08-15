@@ -147,13 +147,14 @@ async function Query (query, callbacks) {
     /** @type {{ [key: string]: ParsedTable }} */
     const tableAlias = {};
     for (const t of parsedTables) {
-        const n = t.alias || t.name;
-        if (!tableAlias[n]) {
-            tableAlias[n] = t;
+        let n = t.alias || t.name;
+        let i = 1;
+        while (n in tableAlias) {
+            n = `${t.alias || t.name}_${i++}`;
         }
+        t.alias = n;
+        tableAlias[n] = t;
     }
-
-    let initialResultCount = 0;
 
     /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
 
@@ -562,7 +563,11 @@ async function Query (query, callbacks) {
                 return;
             }
             if (fnName in VALUE_FUNCTIONS) {
-                return VALUE_FUNCTIONS[fnName](...node.children.map(c => executeExpression(row, c)));
+                try {
+                    return VALUE_FUNCTIONS[fnName](...node.children.map(c => executeExpression(row, c)));
+                } catch (e) {
+                    return null;
+                }
             }
         } else if (node.type === NODE_TYPES.SYMBOL) {
             return resolveValue(row, String(node.id));

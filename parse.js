@@ -56,6 +56,7 @@ function parseQuery (query) {
 * @typedef ParsedColumn
 * @prop {string} value
 * @prop {string} [alias]
+* @prop {Node} [node]
 */
 
 /**
@@ -124,7 +125,7 @@ function parseWhere (where) {
  * @typedef ParsedTable
  * @prop {string} name
  * @prop {string} [join]
- * @prop {Node} [condition]
+ * @prop {Node} [predicate]
  * @prop {string} [alias]
  * @prop {boolean} [inner]
  * @prop {string} [explain]

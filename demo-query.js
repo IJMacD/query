@@ -33,5 +33,5 @@ function primaryTable (table) {
 }
 
 module.exports = function (query) {
-  return Query(query, { primaryTable });
+  return Query(query, { callbacks: { primaryTable }});
 }

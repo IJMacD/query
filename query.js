@@ -38,9 +38,11 @@ module.exports = Query;
 /**
  *
  * @param {string} query
- * @param {QueryCallbacks} [callbacks]
+ * @param {{ callbacks?: QueryCallbacks, userFunctions?: { [name: string]: (...args: any[]) => any }}} [options]
  */
-async function Query (query, callbacks) {
+async function Query (query, options = {}) {
+
+    const { callbacks, userFunctions = {} } = options;
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
@@ -56,7 +58,7 @@ async function Query (query, callbacks) {
             throw new Error(`Empty TRANSPOSE body "${parsedQuery.transpose}"`);
         }
 
-        const subQuery = await Query(m[1], callbacks);
+        const subQuery = await Query(m[1], options);
 
         const out = [];
 
@@ -407,6 +409,13 @@ async function Query (query, callbacks) {
     for(const row of rows) {
         // @ts-ignore
         for(const [i, node] of colNodes.entries()) {
+            if (node === null) {
+                // This occurs when there were no rows to extract poperties from as columns
+                //  e.g. Tutor.*
+                row[i] = null;
+                continue;
+            }
+
             if (node.id === "ROWID") {
                 row[i] = row['ROWID'];
                 continue;
@@ -428,7 +437,7 @@ async function Query (query, callbacks) {
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    if (colNodes.some(node => node.id in AGGREGATE_FUNCTIONS)) {
+    if (colNodes.some(node => node && node.id in AGGREGATE_FUNCTIONS)) {
         if (!groupBy) {
             // If we have aggregate functions but we're not grouping,
             // then apply aggregate functions to whole set
@@ -550,6 +559,14 @@ async function Query (query, callbacks) {
             if (fnName in AGGREGATE_FUNCTIONS) {
                 // Don't compute aggregate functions until after grouping
                 return;
+            }
+            if (fnName in userFunctions) {
+                const args = node.children.map(c => executeExpression(row, c));
+                try {
+                    return userFunctions[fnName](...args);
+                } catch (e) {
+                    return null;
+                }
             }
             if (fnName in VALUE_FUNCTIONS) {
                 try {
@@ -754,18 +771,15 @@ async function Query (query, callbacks) {
         let head = col;
         let tail;
         while(head.length > 0) {
-            let data = row['data'][head];
 
-            if (typeof data !== "undefined" && data != null) {
-                return resolvePath(data, tail);
+            if (head in row['data']) {
+                return resolvePath(row['data'][head], tail);
             }
 
-            const t = tableAlias[head];
-            if (t) {
-                data = row['data'][t.join];
-
-                if (typeof data !== "undefined" && data != null) {
-                    return resolvePath(data, tail);
+            for (let join in row['data']) {
+                const joinedName = `${join}.${head}`;
+                if (joinedName in row['data']) {
+                    return resolvePath(row['data'][joinedName], tail);
                 }
             }
 
@@ -803,13 +817,15 @@ async function Query (query, callbacks) {
      */
     function resolvePath(data, path) {
         if (typeof data === "undefined" || data === null) {
-            throw new Error("Trying to resolve a path on a null object: " + path)
+            return null;
+            // throw new Error("Trying to resolve a path on a null object: " + path)
         }
         if (process.env.NODE_ENV !== "production" && typeof data['ROWID'] !== "undefined") {
             console.error("It looks like you passed a row to resolvePath");
         }
         if (typeof path === "undefined") {
-            throw new Error("No path provided");
+            return data;
+            // throw new Error("No path provided");
         }
         // resolve path
         let val = data;

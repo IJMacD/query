@@ -7,6 +7,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Start Server",
+            "program": "${workspaceFolder}/server.js"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}\\bin\\cli.js",
             "args": [

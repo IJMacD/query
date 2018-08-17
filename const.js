@@ -78,6 +78,8 @@ const OPERATORS = {
     'NOT LIKE': (a,b) => !OPERATORS['LIKE'](a, b),
     'REGEXP': (a,b) => new RegExp(b, "i").test(a),
     'NOT REGEXP': (a,b) => !OPERATORS['REGEXP'](a, b),
+    'AND': (a,b) => a && b,
+    'OR': (a,b) => a || b,
 };
 
 module.exports = {

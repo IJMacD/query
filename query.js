@@ -28,10 +28,12 @@ module.exports = Query;
 
 /**
  * @typedef QueryCallbacks
- * @prop {(ParsedFrom) => Promise<any[]>} primaryTable
+ * @prop {(ParsedFrom) => Promise<any[]>|any[]} primaryTable
  * @prop {(ParsedFrom, results: any[]) => Promise} [beforeJoin]
  * @prop {(ParsedFrom, results: any[]) => Promise} [afterJoin]
  */
+
+/** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
 
 /**
  *
@@ -91,22 +93,11 @@ async function Query (query, callbacks) {
     }
 
     /**
-    * @typedef ParsedColumn
-    * @prop {string} value
-    * @prop {string} [alias]
-    * @prop {Node} [node]
+    * @typedef {import('./parse').ParsedColumn} ParsedColumn
     */
 
     /**
-    * @typedef ParsedTable
-    * @prop {string} name
-    * @prop {string} [join]
-    * @prop {Node} [predicate]
-    * @prop {string} [alias]
-    * @prop {boolean} [inner]
-    * @prop {string} [explain]
-    * @prop {number} [rowCount]
-    * @prop {any} [analyse]
+    * @typedef {import('./parse').ParsedTable} ParsedTable
     */
 
     /** @type {ParsedColumn[]} */
@@ -155,8 +146,6 @@ async function Query (query, callbacks) {
         t.alias = n;
         tableAlias[n] = t;
     }
-
-    /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
 
     /** @type {ResultRow[]} */
     let rows;

@@ -6,8 +6,15 @@ const path = require('path');
 
 const port = 3000;
 
-const Query = require('./query');
+const ilQuery = require('./query');
+const demoQuery = require('./demo-query');
 const Formatter = require('./formatter');
+
+const [ node, script, ...rest ] = process.argv;
+
+const args = rest.filter(a => a[0] === "-");
+
+const demoMode = args.includes("--demo");
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -57,7 +64,9 @@ function handleQuery (req, res, query, type) {
         res.setHeader("Access-Control-Allow-Credentials", "true");
     }
 
-    Query(query).then(result => {
+    const q = demoMode ? demoQuery : ilQuery;
+
+    q(query).then(result => {
         const mime = type || determineMimeType(req.header("accept"));
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];

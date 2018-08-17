@@ -68,19 +68,19 @@ describe("Maths", () => {
             expect(r[1][0]).toBe(42);
         });
     });
-    
+
     test("Subtraction", () => {
         return Query("SELECT 14 - 28").then(r => {
             expect(r[1][0]).toBe(-14);
         });
     });
-    
+
     test("Multiplication", () => {
         return Query("SELECT 14 * 28").then(r => {
             expect(r[1][0]).toBe(14 * 28);
         });
     });
-    
+
     test("Division", () => {
         return Query("SELECT 14 / 28").then(r => {
             expect(r[1][0]).toBe(14 / 28);

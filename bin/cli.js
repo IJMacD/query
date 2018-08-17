@@ -2,13 +2,16 @@
 require('fetch-everywhere');
 require('dotenv').config();
 
-const Query = require('../query');
+const ilQuery = require('../query');
+const demoQuery = require('../demo-query');
 const Formatter = require('../formatter');
 
 const [ node, script, ...rest ] = process.argv;
 
 const args = rest.filter(a => a[0] === "-");
 const query = rest.filter(a => a[0] !== "-").join(" ");
+
+const demoMode = args.includes("--demo");
 
 let mime = "text/plain";
 let name;
@@ -28,6 +31,6 @@ for (let arg of args) {
     }
 }
 
-Query(query).then(result => {
+(demoMode ? demoQuery : ilQuery)(query).then(result => {
     console.log(Formatter.format(result, { mime, name }));
 }).catch(e => console.error(e));

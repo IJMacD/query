@@ -86,6 +86,66 @@ describe("Maths", () => {
             expect(r[1][0]).toBe(14 / 28);
         });
     });
+
+    test("Order of Operations: +-", () => {
+        return Query("SELECT 14 + 28 - 18").then(r => {
+            expect(r[1][0]).toBe(24);
+        });
+    });
+
+    test("Order of Operations: -+", () => {
+        return Query("SELECT 14 - 8 + 26").then(r => {
+            expect(r[1][0]).toBe(32);
+        });
+    });
+
+    test("Order of Operations: *+", () => {
+        return Query("SELECT 14 * 2 + 7").then(r => {
+            expect(r[1][0]).toBe(35);
+        });
+    });
+
+    test("Order of Operations: *-", () => {
+        return Query("SELECT 14 * 2 - 7").then(r => {
+            expect(r[1][0]).toBe(21);
+        });
+    });
+
+    test("Order of Operations: +*", () => {
+        return Query("SELECT 14 + 7 * 2").then(r => {
+            expect(r[1][0]).toBe(28);
+        });
+    });
+
+    test("Order of Operations: -*", () => {
+        return Query("SELECT 42 - 7 * 3").then(r => {
+            expect(r[1][0]).toBe(21);
+        });
+    });
+
+    test("Order of Operations: +*+", () => {
+        return Query("SELECT 14 + 7 * 2 + 1").then(r => {
+            expect(r[1][0]).toBe(29);
+        });
+    });
+
+    test("Order of Operations: +*-", () => {
+        return Query("SELECT 14 + 7 * 5 - 1").then(r => {
+            expect(r[1][0]).toBe(48);
+        });
+    });
+
+    test("Order of Operations: *+*", () => {
+        return Query("SELECT 14 * 2 + 7 * 2").then(r => {
+            expect(r[1][0]).toBe(42);
+        });
+    });
+
+    test("Order of Operations: *-*", () => {
+        return Query("SELECT 14 * 3 - 7 * 5").then(r => {
+            expect(r[1][0]).toBe(7);
+        });
+    });
 });
 
 describe("Strings", () => {

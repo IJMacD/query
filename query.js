@@ -987,9 +987,12 @@ async function Query (query, options = {}) {
     function groupRows (rows, parsedGroupBy) {
         const groupByMap = new Map();
         for(const row of rows) {
-            const key = parsedGroupBy.length === 1 ?
+            let key = parsedGroupBy.length === 1 ?
                 resolveValue(row, parsedGroupBy[0]) : // Group could actually be an object e.g. GROUP BY tutor
                 parsedGroupBy.map(g => resolveValue(row, g)).join("|");
+            if (key instanceof Date) {
+                key = +key;
+            }
             if (!groupByMap.has(key)) {
                 groupByMap.set(key, []);
             }

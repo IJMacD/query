@@ -3,29 +3,29 @@ const Query = require('./query');
 function primaryTable (table) {
     if (table.name === "Test") {
         return [
-            { n: 0 },
-            { n: 1 },
-            { n: 2 },
-            { n: 3 },
-            { n: 4 },
-            { n: 5 },
-            { n: 6 },
-            { n: 7 },
-            { n: 8 },
-            { n: 9 },
+            { n: 0, n2: 0, n3: 0 },
+            { n: 1, n2: 0, n3: 0 },
+            { n: 2, n2: 1, n3: 0 },
+            { n: 3, n2: 1, n3: 1 },
+            { n: 4, n2: 2, n3: 1 },
+            { n: 5, n2: 2, n3: 1 },
+            { n: 6, n2: 3, n3: 2 },
+            { n: 7, n2: 3, n3: 2 },
+            { n: 8, n2: 4, n3: 2 },
+            { n: 9, n2: 4, n3: 3 },
         ];
     } else if (table.name === "Test_2") {
         return [
-            { c: 'a' },
-            { c: 'b' },
-            { c: 'c' },
-            { c: 'd' },
-            { c: 'e' },
-            { c: 'f' },
-            { c: 'g' },
-            { c: 'h' },
-            { c: 'i' },
-            { c: 'j' },
+            { c: 'a', d: new Date("2018-08-21") },
+            { c: 'b', d: new Date("2018-08-21") },
+            { c: 'c', d: new Date("2018-08-22") },
+            { c: 'd', d: new Date("2018-08-22") },
+            { c: 'e', d: new Date("2018-08-28") },
+            { c: 'f', d: new Date("2018-08-28") },
+            { c: 'g', d: new Date("2018-09-21") },
+            { c: 'h', d: new Date("2018-09-28") },
+            { c: 'i', d: new Date("2018-09-29") },
+            { c: 'j', d: new Date("2018-09-29") },
         ];
     } else if (table.name === "Test_3") {
         return [

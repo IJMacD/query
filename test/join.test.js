@@ -53,14 +53,25 @@ test("SELECT columns FROM JOIN on array", () => {
 });
 
 test("CROSS JOIN", () => {
-  return demoQuery("FROM Test, Test_2").then(r => {
+  return demoQuery("FROM Test, Test_2 SELECT n,c").then(r => {
       // Don't forget header row
       expect(r.length - 1).toBe(100);
+
+      // Check all columns have been selected
       expect(r[1].length).toBe(2);
+
+      // Check the values are the cartesian product
       expect(r[1][0]).toBe(0);
       expect(r[1][1]).toBe('a');
+
       expect(r[2][0]).toBe(0);
       expect(r[2][1]).toBe('b');
+
+      expect(r[11][0]).toBe(1);
+      expect(r[11][1]).toBe('a');
+
+      expect(r[12][0]).toBe(1);
+      expect(r[12][1]).toBe('b');
   });
 });
 

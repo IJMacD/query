@@ -863,19 +863,20 @@ async function Query (query, options = {}) {
             return ca;
         }
 
-        const match = FUNCTION_REGEX.exec(col);
-        if (match) {
-            const fn = AGGREGATE_FUNCTIONS[match[1]];
-            if (!fn) {
-                throw new Error("Function not found: " + match[1]);
-            }
+        // TODO: Reimplement HAVING using Nodes
+        // const match = FUNCTION_REGEX.exec(col);
+        // if (match) {
+        //     const fn = AGGREGATE_FUNCTIONS[match[1]];
+        //     if (!fn) {
+        //         throw new Error("Function not found: " + match[1]);
+        //     }
 
-            if (!row['group']) {
-                throw new Error("Aggregate function called on non-group of rows");
-            }
+        //     if (!row['group']) {
+        //         throw new Error("Aggregate function called on non-group of rows");
+        //     }
 
-            return fn(aggregateValues(row['group'], match[2]));
-        }
+        //     return fn(aggregateValues(row['group'], match[2]));
+        // }
 
         throw new Error("Invalid HAVING predicate: " + col);
 
@@ -904,10 +905,16 @@ async function Query (query, options = {}) {
                 const fn = AGGREGATE_FUNCTIONS[node.id];
 
                 if (fn) {
-                    /** @type {string} */
-                    // @ts-ignore
-                    const col = node.children.length ? node.children[0].id : "";
-                    row[i] = fn(aggregateValues(rows, col));
+                   // TODO: Reimplement DISTINCT
+                   // old code:
+                   // if (col.startsWith("DISTINCT")) {
+                   //     distinct = true;
+                   //     col = col.substr(8).trim();
+                   // }
+
+                   const distinct = false;
+
+                    row[i] = fn(aggregateValues(rows, node.children[0], distinct));
                 } else {
                     throw new Error("Function not found: " + node.id);
                 }
@@ -922,24 +929,21 @@ async function Query (query, options = {}) {
     /**
      *
      * @param {any[][]} rows
-     * @param {string} col
+     * @param {Node} expr
+     * @param {boolean} distinct
      * @returns {any[]}
      */
-    function aggregateValues (rows, col) {
-        if (col === "*") {
+    function aggregateValues (rows, expr, distinct = false) {
+        if (expr.id === "*") {
             return rows.map(r => true);
         }
 
-        let distinct = false;
-        if (col.startsWith("DISTINCT")) {
-            distinct = true;
-            col = col.substr(8).trim();
-        }
+        let values = rows.map(row => executeExpression(row, expr));
 
         // All aggregate functions ignore null except COUNT(*)
         // We'll use our convenient 'IS NOT NULL' function to do the
         // filtering for us.
-        let values = rows.map(row => resolveValue(row, col)).filter(OPERATORS['IS NOT NULL']);
+        values = values.filter(OPERATORS['IS NOT NULL']);
 
         if (distinct) {
             values = Array.from(new Set(values));

@@ -163,3 +163,11 @@ test("GROUP BY dates by value", () => {
         expect(r.length - 1).toBe(6);
     });
 });
+
+test("Expressions in Aggregate Functions", () => {
+    return demoQuery("FROM Test SELECT SUM(n + n)").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(1);
+        expect(r[1][0]).toBe(90);
+    });
+});

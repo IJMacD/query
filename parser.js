@@ -171,7 +171,19 @@ module.exports = {
             }
         }
 
-        return descend();
+        let node = descend();
+
+        if (i < tokenList.length) {
+            const next = tokenList[i];
+            if (next && next.type === TOKEN_TYPES.OPERATOR) {
+                const arr = [node];
+                appendChild(arr, descend());
+                // Haha I've just invented the double pointer in javascript
+                node = arr[0];
+            }
+        }
+
+        return node;
     },
 
     NODE_TYPES,

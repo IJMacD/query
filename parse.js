@@ -13,6 +13,7 @@ module.exports = {
   parseSelect,
   parseWhere,
   parseFrom,
+  parseGroupBy,
   parseArgumentList,
 };
 
@@ -197,4 +198,17 @@ function parseFrom (from) {
  */
 function parseArgumentList (list) {
     return matchAll(list, /([^,']+|'[^']*'),?/g).map(s => s[1].trim());
+}
+
+/**
+ *
+ * @param {string} groupBy
+ * @returns {Node[]}
+ */
+function parseGroupBy (groupBy) {
+  return groupBy.split(",").map(s => {
+    const tokens = tokenizer.tonkenize(s);
+    const ast = parser.parse(tokens, s);
+    return ast;
+  });
 }

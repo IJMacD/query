@@ -10,7 +10,7 @@ const {
     parseSelect,
     parseFrom,
     parseWhere,
-    parseArgumentList,
+    parseGroupBy,
 } = require('./parse');
 
 const {
@@ -429,8 +429,7 @@ async function Query (query, options = {}) {
      * Grouping
      *************/
     if (groupBy) {
-        const parsedGroupBy = groupBy.split(",").map(s => s.trim());
-        rows = groupRows(rows, parsedGroupBy);
+        rows = groupRows(rows, parseGroupBy(groupBy));
     }
 
     /**********************
@@ -985,25 +984,23 @@ async function Query (query, options = {}) {
     /**
      * Collapse multiple rows into a single row
      * @param {any[][]} rows
-     * @param {string[]} parsedGroupBy
+     * @param {Node[]} parsedGroupBy
      * @returns {any[]}
      */
     function groupRows (rows, parsedGroupBy) {
-        const groupByMap = new Map();
+        const groupByMap = {};
+
         for(const row of rows) {
-            let key = parsedGroupBy.length === 1 ?
-                resolveValue(row, parsedGroupBy[0]) : // Group could actually be an object e.g. GROUP BY tutor
-                parsedGroupBy.map(g => resolveValue(row, g)).join("|");
-            if (key instanceof Date) {
-                key = +key;
+            const key = JSON.stringify(parsedGroupBy.map(g => executeExpression(row, g)));
+
+            if (!groupByMap[key]) {
+                groupByMap[key] = [];
             }
-            if (!groupByMap.has(key)) {
-                groupByMap.set(key, []);
-            }
-            groupByMap.get(key).push(row);
+
+            groupByMap[key].push(row);
         }
 
-        return Array.from(groupByMap.values()).map(rows => {
+        return Object.values(groupByMap).map(rows => {
             // Just pick the first row from each group
             const aggRow = rows[0];
 

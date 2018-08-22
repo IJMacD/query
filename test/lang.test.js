@@ -164,6 +164,13 @@ test("GROUP BY dates by value", () => {
     });
 });
 
+test("Expressions in GROUP BY", () => {
+    return demoQuery("FROM Test GROUP BY n - n2").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(6);
+    });
+});
+
 test("Expressions in Aggregate Functions", () => {
     return demoQuery("FROM Test SELECT SUM(n + n)").then(r => {
         // Remember header row

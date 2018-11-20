@@ -3,6 +3,7 @@ const {
     VALUE_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
     OPERATORS,
+    TABLE_VALUED_FUNCTIONS,
 } = require('./const');
 
 const {
@@ -106,7 +107,7 @@ async function Query (query, options = {}) {
     const cols = parseSelect(parsedQuery.select);
     /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
-    // console.log(parsedTables);
+    console.log(parsedTables);
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
     const having = parsedQuery.having;
@@ -163,12 +164,19 @@ async function Query (query, options = {}) {
 
         const start = Date.now();
 
-        if (typeof callbacks.primaryTable === "undefined") {
-            throw new Error("PrimaryTable callback not defined");
-        }
-
         /** @type {Array} */
-        const results = await callbacks.primaryTable.call(self, table) || [];
+        let results;
+
+        if (table.name in TABLE_VALUED_FUNCTIONS) {
+            results = TABLE_VALUED_FUNCTIONS[table.name]();
+        }
+        else {
+            if (typeof callbacks.primaryTable === "undefined") {
+                throw new Error("PrimaryTable callback not defined");
+            }
+
+            results = await callbacks.primaryTable.call(self, table) || [];
+        }
 
         const totalTime = Date.now() - start;
 
@@ -234,11 +242,18 @@ async function Query (query, options = {}) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
 
-                if (typeof callbacks.primaryTable === "undefined") {
-                    throw new Error(`All attempts at joining failed: ${table.name}`);
-                }
+                let results;
 
-                const results = await callbacks.primaryTable.call(self, table) || [];
+                if (table.name in TABLE_VALUED_FUNCTIONS) {
+                    results = TABLE_VALUED_FUNCTIONS[table.name]();
+                }
+                else {
+                    if (typeof callbacks.primaryTable === "undefined") {
+                        throw new Error(`All attempts at joining failed: ${table.name}`);
+                    }
+
+                    results = await callbacks.primaryTable.call(self, table) || [];
+                }
 
                 table.join = table.alias || table.name;
                 table.explain += " cross-join";

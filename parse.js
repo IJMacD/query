@@ -140,44 +140,58 @@ function parseWhere (where) {
  * @return {ParsedTable[]}
  */
 function parseFrom (from) {
-  const tables = from ? from.split(",").map(s => s.trim()) : [];
-  return tables.map(table => {
-      const aliasRegex = / AS "?([a-z0-9_]+)"?/i;
-      const aliasMatch = aliasRegex.exec(table);
-      const alias = aliasMatch && aliasMatch[1];
-      table = table.replace(aliasRegex, "");
+  if (!from) {
+    return [];
+  }
 
-      const inner = table.includes("INNER");
-      table = table.replace("INNER", "");
+  const tokens = tokenizer.tonkenize("FROM " + from);
+  const ast = parser.parse(tokens, "FROM " + from);
+  console.log(tokens);
+  console.log(require('util').inspect(ast, {depth:null}));
 
-      const usingIdx = table.indexOf("USING");
-      const onIdx = table.indexOf("ON");
+  return ast.children.map(node => {
+      // const aliasRegex = / AS "?([a-z0-9_]+)"?/i;
+      // const aliasMatch = aliasRegex.exec(table);
+      // const alias = aliasMatch && aliasMatch[1];
+      // table = table.replace(aliasRegex, "");
 
-      let using;
-      let on;
+      // const inner = table.includes("INNER");
+      // table = table.replace("INNER", "");
 
-      if (usingIdx >= 0 && onIdx >= 0) {
-        if (onIdx > usingIdx) {
-          using = table.substring(usingIdx + 5, onIdx);
-          on = table.substring(onIdx + 2);
-          table = table.substring(0, usingIdx);
-        } else {
-          using = table.substring(onIdx + 2, usingIdx);
-          on = table.substring(usingIdx + 5);
-          table = table.substring(0, onIdx);
-        }
-      } else if (usingIdx >= 0) {
-        using = table.substring(usingIdx + 5);
-        table = table.substring(0, usingIdx);
-      } else if (onIdx >= 0) {
-        on = table.substring(onIdx + 2);
-        table = table.substring(0, onIdx);
-      }
+      // const usingIdx = table.indexOf("USING");
+      // const onIdx = table.indexOf("ON");
 
-      const tokens = on && tokenizer.tonkenize("ON " + on);
-      const predicate = on && parser.parse(tokens, on);
+      // let using;
+      // let on;
 
-      const name = table.trim();
+      // if (usingIdx >= 0 && onIdx >= 0) {
+      //   if (onIdx > usingIdx) {
+      //     using = table.substring(usingIdx + 5, onIdx);
+      //     on = table.substring(onIdx + 2);
+      //     table = table.substring(0, usingIdx);
+      //   } else {
+      //     using = table.substring(onIdx + 2, usingIdx);
+      //     on = table.substring(usingIdx + 5);
+      //     table = table.substring(0, onIdx);
+      //   }
+      // } else if (usingIdx >= 0) {
+      //   using = table.substring(usingIdx + 5);
+      //   table = table.substring(0, usingIdx);
+      // } else if (onIdx >= 0) {
+      //   on = table.substring(onIdx + 2);
+      //   table = table.substring(0, onIdx);
+      // }
+
+      // const tokens = on && tokenizer.tonkenize("ON " + on);
+      // const predicate = on && parser.parse(tokens, on);
+
+      // const name = table.trim();
+
+      const name = String(node.id);
+      const alias = "";
+      const using = "";
+      const predicate = null;
+      const inner = false;
 
       return {
         name,

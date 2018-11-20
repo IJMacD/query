@@ -7,6 +7,10 @@ const { TOKEN_TYPES } = require('./tokenizer');
   * @prop {number} start
   */
 
+  /**
+   * @typedef {Token[] & { index: number, current: Token, next: Token }} TokenList
+   */
+
  /**
   * @typedef Node
   * @prop {number} type
@@ -65,6 +69,15 @@ module.exports = {
                                 } else {
                                     throw new Error("Name expected");
                                 }
+                                i++; // alias
+                                next = tokenList[i];
+                            }
+                            else if (next.type === TOKEN_TYPES.KEYWORD && next.value === "ON") {
+                                // i++; // Join
+                                // next = tokenList[i];
+                                const child = out.children[out.children.length - 1];
+                                if (!child.children) child.children = [];
+                                appendChild(child.children, descend());
                                 i++; // alias
                                 next = tokenList[i];
                             }
@@ -253,4 +266,77 @@ function isExpression (node) {
         node.type === NODE_TYPES.STRING ||
         node.type === NODE_TYPES.OPERATOR
     );
+}
+
+/**
+ * @param {Token[]} tokens
+ * @returns {TokenList}
+ */
+function makeTokenList (tokens) {
+    Object.defineProperties(tokens, {
+        index: {
+            value: 0,
+            writable: true,
+        },
+        current: {
+            get () {
+                return this[this.index];
+            }
+        },
+        next: {
+            get () {
+                return this[++this.index];
+            }
+        },
+    });
+    // @ts-ignore
+    return tokens;
+}
+
+/**
+ *
+ * @param {TokenList} tokens
+ */
+function parseClause (tokens) {
+    const token = tokens.current;
+    if (!token || token.type != TOKEN_TYPES.KEYWORD) return null;
+
+    switch (token.value) {
+        case 'AS':
+        case 'USING':
+        case 'ON':
+            return null;
+    }
+
+    const node = makeNode(NODE_TYPES.CLAUSE, token.value);
+
+    if (node.id === "FROM") {
+        let next;
+        while((next = tokens.next) != null && next.type !== TOKEN_TYPES.KEYWORD) {
+
+        }
+    }
+}
+function parseName (tokens) {
+
+}
+function parseOperator (tokens) {
+
+}
+function parseExpression (tokens) {
+
+}
+function parseAlias (tokens) {
+
+}
+function parseJoin (tokens) {
+
+}
+function makeNode (type, id=null) {
+    return {
+        type,
+        id,
+        children: [],
+        source: ""
+    };
 }

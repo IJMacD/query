@@ -82,6 +82,10 @@ const OPERATORS = {
     'OR': (a,b) => a || b,
 };
 
+const TABLE_VALUED_FUNCTIONS = {
+    RANGE: (start, end, step=1) => [{n:0},{n:1},{n:2},{n:3},{n:4},{n:5},{n:6},{n:7},{n:8},{n:9}],
+};
+
 module.exports = {
     CLAUSES,
     CONDITION_REGEX,
@@ -89,4 +93,5 @@ module.exports = {
     VALUE_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
     OPERATORS,
+    TABLE_VALUED_FUNCTIONS,
 };

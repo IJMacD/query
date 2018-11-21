@@ -90,7 +90,6 @@ const TABLE_VALUED_FUNCTIONS = {
         }
         const diff = end - start + 1;
         const count = Math.ceil(diff / step);
-        console.log({ start, end, step, diff, count });
         return Array(count).fill(0).map((n,i) => ({ value: start + i * step }));
     },
 };

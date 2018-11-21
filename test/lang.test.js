@@ -178,3 +178,27 @@ test("Expressions in Aggregate Functions", () => {
         expect(r[1][0]).toBe(90);
     });
 });
+
+test("Table Valued Functions in FROM", () => {
+    return demoQuery("FROM RANGE(1)").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(2);
+        expect(r[1][0]).not.toBeNull();
+    });
+});
+
+test("Table Valued Functions with multiple paramaters in FROM", () => {
+    return demoQuery("FROM RANGE(1,2)").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(2);
+        expect(r[1][0]).not.toBeNull();
+    });
+});
+
+test("Table Valued Functions with expressions in FROM", () => {
+    return demoQuery("FROM RANGE(1,3*2)").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(6);
+        expect(r[1][0]).not.toBeNull();
+    });
+});

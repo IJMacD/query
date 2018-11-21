@@ -107,7 +107,7 @@ async function Query (query, options = {}) {
     const cols = parseSelect(parsedQuery.select);
     /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
-    console.log(parsedTables);
+    // console.log(parsedTables);
     const where = parsedQuery.where;
     const parsedWhere = parseWhere(where);
     const having = parsedQuery.having;
@@ -168,7 +168,7 @@ async function Query (query, options = {}) {
         let results;
 
         if (table.name in TABLE_VALUED_FUNCTIONS) {
-            results = TABLE_VALUED_FUNCTIONS[table.name](...table.node.children.map(c => executeExpression([], c)));
+            results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => executeExpression([], c)));
         }
         else {
             if (typeof callbacks.primaryTable === "undefined") {
@@ -245,7 +245,7 @@ async function Query (query, options = {}) {
                 let results;
 
                 if (table.name in TABLE_VALUED_FUNCTIONS) {
-                    results = TABLE_VALUED_FUNCTIONS[table.name](...table.node.children.map(c => executeExpression([], c)));
+                    results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => executeExpression([], c)));
                 }
                 else {
                     if (typeof callbacks.primaryTable === "undefined") {

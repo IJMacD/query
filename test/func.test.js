@@ -159,3 +159,35 @@ describe("Value Functions", () => {
     });
   });
 });
+
+describe("Table Valued Functions", function() {
+  test("RANGE(10)", () => {
+    return demoQuery("FROM RANGE(10)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(11);
+      expect(r[1][0]).toBe(0);
+      expect(r[2][0]).toBe(1);
+      expect(r[11][0]).toBe(10);
+    });
+  });
+
+  test("RANGE(5,25)", () => {
+    return demoQuery("FROM RANGE(5,25)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(21);
+      expect(r[1][0]).toBe(5);
+      expect(r[2][0]).toBe(6);
+      expect(r[21][0]).toBe(25);
+    });
+  });
+
+  test("RANGE(2,9,3)", () => {
+    return demoQuery("FROM RANGE(2,9,3)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(3);
+      expect(r[1][0]).toBe(2);
+      expect(r[2][0]).toBe(5);
+      expect(r[3][0]).toBe(8);
+    });
+  });
+})

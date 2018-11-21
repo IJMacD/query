@@ -128,6 +128,7 @@ function parseWhere (where) {
  * @prop {string} [join]
  * @prop {Node} [predicate]
  * @prop {string} [alias]
+ * @prop {Node[]} [params]
  * @prop {boolean} [inner]
  * @prop {string} [explain]
  * @prop {number} [rowCount]
@@ -146,8 +147,8 @@ function parseFrom (from) {
 
   const tokens = tokenizer.tonkenize("FROM " + from);
   const ast = parser.parse(tokens, "FROM " + from);
-  console.log(tokens);
-  console.log(require('util').inspect(ast, {depth:null}));
+  // console.log(tokens);
+  // console.log(require('util').inspect(ast, {depth:null}));
 
   return ast.children.map(node => {
       // const aliasRegex = / AS "?([a-z0-9_]+)"?/i;
@@ -187,19 +188,23 @@ function parseFrom (from) {
 
       // const name = table.trim();
 
+      if (node.type !== parser.NODE_TYPES.SYMBOL &&
+          node.type !== parser.NODE_TYPES.FUNCTION_CALL)
+      {
+        throw new Error(`Node type ${node.type} cannot be a table`);
+      }
+
       const name = String(node.id);
-      const alias = "";
       const using = "";
-      const predicate = null;
       const inner = false;
 
       return {
         name,
-        alias,
+        alias: node.alias,
         join: using,
-        predicate,
+        predicate: node.predicate,
         inner,
-        node,
+        params: node.children,
         explain: "",
         rowCount: 0
       };

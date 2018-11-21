@@ -16,6 +16,7 @@ const { TOKEN_TYPES } = require('./tokenizer');
   * @prop {number} type
   * @prop {string|number} id
   * @prop {string} [alias]
+  * @prop {Node} [predicate]
   * @prop {Node[]} [children]
   * @prop {string} [source]
   */
@@ -72,13 +73,28 @@ module.exports = {
                                 i++; // alias
                                 next = tokenList[i];
                             }
-                            else if (next.type === TOKEN_TYPES.KEYWORD && next.value === "ON") {
-                                // i++; // Join
-                                // next = tokenList[i];
-                                const child = out.children[out.children.length - 1];
-                                if (!child.children) child.children = [];
-                                appendChild(child.children, descend());
-                                i++; // alias
+
+                            if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "ON") {
+                                i++; // ON
+                                next = tokenList[i];
+                                if (next.type === TOKEN_TYPES.NAME) {
+                                    const child = out.children[out.children.length - 1];
+                                    child.predicate = descendExpression();
+                                    child.source += ` ON ${child.predicate.source}`;
+                                } else {
+                                    throw new Error("Name expected");
+                                }
+                            } else if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "USING") {
+                                i++; // USING
+                                next = tokenList[i];
+                                if (next.type === TOKEN_TYPES.NAME) {
+                                    const child = out.children[out.children.length - 1];
+                                    child.predicate = descend();
+                                    child.source += ` USING ${child.predicate.source}`;
+                                } else {
+                                    throw new Error("Name expected");
+                                }
+                                i++; // predicate
                                 next = tokenList[i];
                             }
 
@@ -184,19 +200,27 @@ module.exports = {
             }
         }
 
-        let node = descend();
+        function descendExpression () {
 
-        if (i < tokenList.length) {
-            const next = tokenList[i];
-            if (next && next.type === TOKEN_TYPES.OPERATOR) {
-                const arr = [node];
-                appendChild(arr, descend());
-                // Haha I've just invented the double pointer in javascript
-                node = arr[0];
+            let node = descend();
+
+            while (i < tokenList.length) {
+                const next = tokenList[i];
+                if (next && next.type === TOKEN_TYPES.OPERATOR)
+                {
+                    const arr = [node];
+                    appendChild(arr, descend());
+                    // Haha I've just invented the double pointer in javascript
+                    node = arr[0];
+                }
+                else break;
             }
+
+            return node;
+
         }
 
-        return node;
+        return descendExpression();
     },
 
     NODE_TYPES,

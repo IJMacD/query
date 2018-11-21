@@ -16,7 +16,8 @@
             "name": "Launch Program",
             "program": "${workspaceFolder}\\bin\\cli.js",
             "args": [
-                "SELECT * FROM Tutor"
+                "--demo",
+                "FROM Test AS a, Test AS b ON a.n + 1 = b.n"
             ]
         }
     ]

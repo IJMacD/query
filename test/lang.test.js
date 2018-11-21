@@ -179,6 +179,48 @@ test("Expressions in Aggregate Functions", () => {
     });
 });
 
+test("Table Alias SELECT", () => {
+    return demoQuery("FROM Test AS a SELECT a.n").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(10);
+        expect(r[1][0]).toBe(0);
+        expect(r[2][0]).toBe(1);
+    });
+});
+
+test("Multiple Table Alias SELECT", () => {
+    return demoQuery("FROM Test AS a, Test AS b SELECT a.n, b.n").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(100);
+        expect(r[1][0]).toBe(0);
+        expect(r[1][1]).toBe(0);
+        expect(r[2][0]).toBe(0);
+        expect(r[2][1]).toBe(1);
+    });
+});
+
+test("Qualified Table SELECT", () => {
+    return demoQuery("FROM Test AS a, Test AS b SELECT Test.n, b.n").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(100);
+        expect(r[1][0]).toBe(0);
+        expect(r[1][1]).toBe(0);
+        expect(r[2][0]).toBe(0);
+        expect(r[2][1]).toBe(1);
+    });
+});
+
+test("Auto-alias Table SELECT", () => {
+    return demoQuery("FROM Test, Test SELECT Test.n, Test_1.n").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(100);
+        expect(r[1][0]).toBe(0);
+        expect(r[1][1]).toBe(0);
+        expect(r[2][0]).toBe(0);
+        expect(r[2][1]).toBe(1);
+    });
+});
+
 test("Table Valued Functions in FROM", () => {
     return demoQuery("FROM RANGE(1)").then(r => {
         // Remember header row

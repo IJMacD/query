@@ -757,34 +757,28 @@ async function Query (query, options = {}) {
 
         // Now for the real column resolution
 
-        //                 // Resolve a possible alias
-        // let node = colNodes[colAlias[col]];
-        // if (typeof node !== "undefined") {
-        //     let [ join, colName ] = node.id.split(".", 2);
-
-        //     console.log({ join, colName });
-
-        //     if (typeof join === "undefined") {
-        //         return; // undefined
-        //     }
-
-        //     const data = row.data[join];
-
-        //     if (typeof data === "undefined") {
-        //         // Possibly the result of a LEFT JOIN of a null row
-        //         return; // undefined
-        //     }
-
-        //     const val = resolvePath(data, colName);
-
-        //     if (typeof val !== "undefined") {
-        //         return val;
-        //     }
-        // }
-
         let head = col;
         let tail;
         while(head.length > 0) {
+
+            // FROM Table AS t SELECT t.value
+            if (head in tableAlias) {
+                const t = tableAlias[head];
+
+                // resolveValue() is called when searching for a join
+                // if we're at that stage row['data'][t.join] will be
+                // empty so we need to return undefined.
+                return row['data'][t.join] ?
+                    resolvePath(row['data'][t.join], tail) :
+                    void 0;
+            }
+
+            // FROM Table SELECT Table.value
+            const matching = parsedTables.filter(t => t.name === head);
+            if (matching.length > 0) {
+                const t = matching[0];
+                return resolvePath(row['data'][t.join], tail);
+            }
 
             if (head in row['data']) {
                 return resolvePath(row['data'][head], tail);

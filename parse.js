@@ -199,6 +199,7 @@ function parseFrom (from) {
         join: using,
         predicate,
         inner,
+        node,
         explain: "",
         rowCount: 0
       };

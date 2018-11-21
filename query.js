@@ -168,7 +168,7 @@ async function Query (query, options = {}) {
         let results;
 
         if (table.name in TABLE_VALUED_FUNCTIONS) {
-            results = TABLE_VALUED_FUNCTIONS[table.name]();
+            results = TABLE_VALUED_FUNCTIONS[table.name](...table.node.children.map(c => executeExpression([], c)));
         }
         else {
             if (typeof callbacks.primaryTable === "undefined") {
@@ -245,7 +245,7 @@ async function Query (query, options = {}) {
                 let results;
 
                 if (table.name in TABLE_VALUED_FUNCTIONS) {
-                    results = TABLE_VALUED_FUNCTIONS[table.name]();
+                    results = TABLE_VALUED_FUNCTIONS[table.name](...table.node.children.map(c => executeExpression([], c)));
                 }
                 else {
                     if (typeof callbacks.primaryTable === "undefined") {

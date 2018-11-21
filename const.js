@@ -83,7 +83,16 @@ const OPERATORS = {
 };
 
 const TABLE_VALUED_FUNCTIONS = {
-    RANGE: (start, end, step=1) => [{n:0},{n:1},{n:2},{n:3},{n:4},{n:5},{n:6},{n:7},{n:8},{n:9}],
+    RANGE: (start, end=undefined, step=1) => {
+        if (typeof end === "undefined") {
+            end = start;
+            start = 0;
+        }
+        const diff = end - start + 1;
+        const count = Math.ceil(diff / step);
+        console.log({ start, end, step, diff, count });
+        return Array(count).fill(0).map((n,i) => ({ value: start + i * step }));
+    },
 };
 
 module.exports = {

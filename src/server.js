@@ -22,6 +22,9 @@ app.use(express.static("static"));
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
+app.get('/query.js', (req, res) => res.sendFile(path.join(__dirname, "../frontend/query-server.js")));
+app.get('/main.js', (req, res) => res.sendFile(path.join(__dirname, "../frontend/main.js")));
+
 app.post('/query', (req, res) => {
     const query = req.body['query'];
 

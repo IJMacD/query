@@ -1,4 +1,4 @@
-const Query = require('../query');
+const Query = require('../src/query');
 
 describe("Constants", () => {
     test("String", () => {

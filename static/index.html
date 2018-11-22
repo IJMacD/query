@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="shortcut icon" href="/favicon.ico">
+        <link rel="stylesheet" href="style.css">
+        <title>Admin Query</title>
+    </head>
+    <body>
+        <div style="display: flex; flex-direction: column; height: 100%;">
+            <form id="query-form">
+                <input type="text" id="input" name="q">
+                <button type="submit">Query</button>
+            </form>
+            <ol id="query-suggest"></ol>
+            <div id="output"></div>
+        </div>
+        <script src="query.js"></script>
+        <script src="main.js"></script>
+    </body>
+</html>

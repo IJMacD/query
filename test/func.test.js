@@ -1,4 +1,4 @@
-const demoQuery = require('../demo-query');
+const demoQuery = require('../src/demo-query');
 
 describe("Aggregate Functions", () => {
   test("COUNT", () => {

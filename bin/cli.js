@@ -2,9 +2,9 @@
 require('fetch-everywhere');
 require('dotenv').config();
 
-const ilQuery = require('../query');
-const demoQuery = require('../demo-query');
-const Formatter = require('../formatter');
+const ilQuery = require('../src/query');
+const demoQuery = require('../src/demo-query');
+const Formatter = require('../src/formatter');
 
 const [ node, script, ...rest ] = process.argv;
 

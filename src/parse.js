@@ -42,6 +42,7 @@ function parseQuery (query) {
       .filter(o => o.start != -1)
       .sort((a,b) => a.start - b.start);
 
+  /** @type {{ [clause: string]: string }} */
   const parsed = {};
 
   for(let i = 0; i < parts.length; i++) {

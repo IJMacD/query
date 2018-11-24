@@ -19,6 +19,14 @@ const {
     isNullDate,
 } = require('./util');
 
+const {
+    intersectResults,
+    exceptResults,
+    unionResults,
+    unionAllResults,
+    distinctResults
+} = require('./compound');
+
 const { NODE_TYPES } = require('./parser');
 
 /**
@@ -48,18 +56,34 @@ async function Query (query, options = {}) {
     const output_buffer = [];
     const output = row => output_buffer.push(row);
 
-    const parsedQuery = parseQuery(query);
+    if (/INTERSECT/.test(query)) {
+        const [ resultsL, resultsR ] = await runQueries(query.split("INTERSECT", 2), options);
+        return intersectResults(resultsL, resultsR);
+    }
 
-    // console.log(parsedQuery);
+    if (/EXCEPT/.test(query)) {
+        const [ resultsL, resultsR ] = await runQueries(query.split("EXCEPT", 2), options);
+        return exceptResults(await resultsL, await resultsR);
+    }
 
-    if (parsedQuery.transpose) {
-        const m = /^\s*\((.*)\)\s*$/.exec(parsedQuery.transpose);
+    const unionMatch = /UNION (ALL)?/.exec(query)
+    if (unionMatch) {
+        const qLEnd = unionMatch.index;
+        const qRStart = qLEnd + unionMatch[0].length;
+        const all = unionMatch[1] === "ALL";
+        const queryL = query.substring(0, qLEnd);
+        const queryR = query.substring(qRStart);
+        const [ resultsL, resultsR ] = await runQueries([queryL, queryR], options);
+        return all ? unionAllResults(resultsL, resultsR) : unionResults(resultsL, resultsR);
+    }
 
-        if (!m) {
-            throw new Error(`Empty TRANSPOSE body "${parsedQuery.transpose}"`);
-        }
+    if (/DISTINCT/.test(query)) {
+        const queryL = query.replace(/DISTINCT/g, "");
+        return distinctResults(await Query(queryL, options));
+    }
 
-        const subQuery = await Query(m[1], options);
+    if (/^TRANSPOSE/.test(query)) {
+        const subQuery = await Query(query.replace(/TRANSPOSE\s+/, ""), options);
 
         const out = [];
 
@@ -67,24 +91,17 @@ async function Query (query, options = {}) {
             const headers = subQuery[0];
             const dummyArray = Array(subQuery.length - 1).fill("");
 
-            if (headers[0] !== "headers") {
-                // Try to make this invertable
-                out.push(['headers', ...dummyArray.map((x,i) => `row ${i}`)]);
-            }
-
             for (let i = 0; i < headers.length; i++) {
-                if (headers[0] === "headers") {
-                    // If header 0 is "headers" it probably means we're inverting a transpose
-                    // So ignore the column containing "headers", "row 0", "row 1" etc.
-                    out.push([...dummyArray.map((x, j) => subQuery[j+1][i])]);
-                } else {
-                    out.push([headers[i], ...dummyArray.map((x, j) => subQuery[j+1][i])]);
-                }
+                out.push([headers[i], ...dummyArray.map((x, j) => subQuery[j+1][i])]);
             }
 
-            return out;
         }
+        return out;
     }
+
+    const parsedQuery = parseQuery(query);
+
+    // console.log(parsedQuery);
 
     if (!parsedQuery.from && !parsedQuery.select) {
         throw new Error("You must specify FROM or SELECT");
@@ -1174,4 +1191,14 @@ async function Query (query, options = {}) {
 
         return newRows;
     }
+}
+
+/**
+ *
+ * @param {string[]} queries
+ * @param {*} options
+ * @returns {Promise<any[][][]>}
+ */
+function runQueries (queries, options) {
+    return Promise.all(queries.map(q => Query(q, options)));
 }

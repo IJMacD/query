@@ -290,3 +290,35 @@ test("Table Valued Functions with expressions in FROM", () => {
         expect(r[1][0]).not.toBeNull();
     });
 });
+
+test("Transpose", () => {
+    return demoQuery("TRANSPOSE FROM Test").then(r => {
+        // INCLUDE header row here
+        expect(r.length).toBe(3);
+        expect(r[0][0]).toBe("n");
+        expect(r[1][0]).toBe("n2");
+        expect(r[2][0]).toBe("n3");
+
+        expect(r[0][1]).toBe(0);
+        expect(r[0][2]).toBe(1);
+        expect(r[0][3]).toBe(2);
+
+        expect(r[1][3]).toBe(1);
+    })
+});
+
+test("Double Transpose", () => {
+    return demoQuery("TRANSPOSE TRANSPOSE FROM Test").then(r => {
+        // Now disclude header row here
+        expect(r.length - 1).toBe(10);
+        expect(r[0][0]).toBe("n");
+        expect(r[0][1]).toBe("n2");
+        expect(r[0][2]).toBe("n3");
+
+        expect(r[1][0]).toBe(0);
+        expect(r[2][0]).toBe(1);
+        expect(r[3][0]).toBe(2);
+
+        expect(r[3][1]).toBe(1);
+    })
+});

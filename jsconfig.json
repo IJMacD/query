@@ -4,6 +4,7 @@
       "es2018",
       "dom"
     ],
-    "checkJs": true
+    "checkJs": true,
+    "downlevelIteration": true
   }
 }

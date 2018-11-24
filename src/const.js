@@ -2,7 +2,7 @@ const moment = require('moment');
 
 const { isNullDate } = require('./util');
 
-const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING", "EXPLAIN", "TRANSPOSE" ];
+const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING", "EXPLAIN" ];
 const CONDITION_REGEX = /([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
 const FUNCTION_REGEX = /^([a-z_]+)\(([^)]*)\)$/i;
 

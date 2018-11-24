@@ -47,8 +47,54 @@ test("Simple LIMIT", () => {
     });
 });
 
-test("Descending ORDER", () => {
-    return demoQuery("FROM Test ORDER BY 0 DESC").then(r => {
+test("ORDER Ascending name", () => {
+    return demoQuery("FROM Test ORDER BY n ASC").then(r => {
+        expect(r[1][0]).toBe(0);
+        expect(r[10][0]).toBe(9);
+    });
+});
+
+test("ORDER Ascending name implicit", () => {
+    return demoQuery("FROM Test ORDER BY n").then(r => {
+        expect(r[1][0]).toBe(0);
+        expect(r[10][0]).toBe(9);
+    });
+});
+
+test("ORDER Descending name", () => {
+    return demoQuery("FROM Test ORDER BY 1 DESC").then(r => {
+        expect(r[1][0]).toBe(9);
+        expect(r[10][0]).toBe(0);
+    });
+});
+
+test("ORDER Ascending number", () => {
+    return demoQuery("FROM Test ORDER BY 1 ASC").then(r => {
+        expect(r[1][0]).toBe(0);
+        expect(r[10][0]).toBe(9);
+    });
+});
+
+test("ORDER Descending number", () => {
+    return demoQuery("FROM Test ORDER BY 1 DESC").then(r => {
+        expect(r[1][0]).toBe(9);
+        expect(r[10][0]).toBe(0);
+    });
+});
+
+test("ORDER Multiple Column", () => {
+    return demoQuery("FROM Test ORDER BY n2 DESC, n").then(r => {
+        expect(r[1][0]).toBe(8);
+        expect(r[1][1]).toBe(4);
+        expect(r[2][0]).toBe(9);
+        expect(r[2][1]).toBe(4);
+        expect(r[10][0]).toBe(1);
+        expect(r[10][1]).toBe(0);
+    });
+});
+
+test("ORDER alias", () => {
+    return demoQuery("FROM Test SELECT n AS foo ORDER BY foo DESC").then(r => {
         expect(r[1][0]).toBe(9);
         expect(r[10][0]).toBe(0);
     });

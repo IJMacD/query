@@ -497,7 +497,8 @@ async function Query (query, options = {}) {
             const desc = asc_desc === "DESC" ? -1 : 1;
 
             // Simplest case: col is actually a column index
-            let colNum = parseInt(col);
+            // ORDER BY column indices are 1-based
+            let colNum = +col - 1;
 
             // If it's not a column index, check if its a named column in selection
             if (isNaN(colNum) && typeof colAlias[col] !== "undefined") {

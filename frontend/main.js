@@ -1,11 +1,16 @@
 /** @type {HTMLInputElement} */
-const input = document.getElementById("input");
+const input =  /* @type {HTMLInputElement} */ (document.getElementById("input"));
 const output = document.getElementById("output");
 const queryForm = document.getElementById("query-form");
 const querySuggest = document.getElementById("query-suggest");
 
 const QUERY_HISTORY = "query_history";
 let queryHistory = loadHistory();
+
+/**
+ * Use <object> instead of <img>
+ */
+const OBJECT_IMAGE = false;
 
 queryForm.addEventListener("submit", e => {
     e.preventDefault();
@@ -59,21 +64,21 @@ function sendQuery () {
     input.disabled = true;
     const start = Date.now();
     query(input.value)
-    .then(data => {
-        const duration = (Date.now() - start) / 1000;
-        output.innerHTML = renderTable({ rows: data, duration });
-        saveHistory(input.value);
-    }, e => {
-        output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;
-    })
-    .then(() => {
-        input.disabled = false;
-    });
+        .then(data => {
+            const duration = (Date.now() - start) / 1000;
+            output.innerHTML = renderTable({ rows: data, duration });
+            saveHistory(input.value);
+        }, e => {
+            output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;
+        })
+        .then(() => {
+            input.disabled = false;
+        });
 }
 
 /**
-    * @param {any[][]} rows
-    */
+ * @param {{ rows: any[][], duration: number }} options
+ */
 function renderTable({ rows, duration }) {
     const headerRow = rows.shift();
 
@@ -115,7 +120,7 @@ function formatCell ({ cell }) {
     cell = cell.replace(/https?:\/\/[^,]+/g, url => {
         let content = url;
         if (/\.(jpe?g|gif|png|webp)$/i.test(url)) {
-            content = `<object data="${url}" height="64"></object>`;
+            content = OBJECT_IMAGE ? `<object data="${url}" height="64"></object>` : `<img src="${url}" height="64" />`;
         }
         return `<a href="${url}" target="_blank">${content}</a>`;
     });

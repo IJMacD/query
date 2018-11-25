@@ -164,20 +164,40 @@ describe("Table Valued Functions", function() {
   test("RANGE(10)", () => {
     return demoQuery("FROM RANGE(10)").then(r => {
       // remember header row
-      expect(r.length - 1).toBe(11);
+      expect(r.length - 1).toBe(10);
       expect(r[1][0]).toBe(0);
       expect(r[2][0]).toBe(1);
-      expect(r[11][0]).toBe(10);
+      expect(r[10][0]).toBe(9);
+    });
+  });
+
+  test("RANGE(-10)", () => {
+    return demoQuery("FROM RANGE(-10)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(10);
+      expect(r[1][0]).toBe(0);
+      expect(r[2][0]).toBe(-1);
+      expect(r[10][0]).toBe(-9);
     });
   });
 
   test("RANGE(5,25)", () => {
     return demoQuery("FROM RANGE(5,25)").then(r => {
       // remember header row
-      expect(r.length - 1).toBe(21);
+      expect(r.length - 1).toBe(20);
       expect(r[1][0]).toBe(5);
       expect(r[2][0]).toBe(6);
-      expect(r[21][0]).toBe(25);
+      expect(r[20][0]).toBe(24);
+    });
+  });
+
+  test("RANGE(15,8)", () => {
+    return demoQuery("FROM RANGE(15,8)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(7);
+      expect(r[1][0]).toBe(15);
+      expect(r[2][0]).toBe(14);
+      expect(r[7][0]).toBe(9);
     });
   });
 
@@ -188,6 +208,45 @@ describe("Table Valued Functions", function() {
       expect(r[1][0]).toBe(2);
       expect(r[2][0]).toBe(5);
       expect(r[3][0]).toBe(8);
+    });
+  });
+
+  test("RANGE(2,9,-3)", () => {
+    return demoQuery("FROM RANGE(2,9,-3)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(3);
+      expect(r[1][0]).toBe(2);
+      expect(r[2][0]).toBe(5);
+      expect(r[3][0]).toBe(8);
+    });
+  });
+
+  test("RANGE(9,2,3)", () => {
+    return demoQuery("FROM RANGE(9,2,3)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(3);
+      expect(r[1][0]).toBe(9);
+      expect(r[2][0]).toBe(6);
+      expect(r[3][0]).toBe(3);
+    });
+  });
+
+  test("RANGE(9,2,-3)", () => {
+    return demoQuery("FROM RANGE(9,2,-3)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(3);
+      expect(r[1][0]).toBe(9);
+      expect(r[2][0]).toBe(6);
+      expect(r[3][0]).toBe(3);
+    });
+  });
+
+  test("RANGE(9,3,-3)", () => {
+    return demoQuery("FROM RANGE(9,3,-3)").then(r => {
+      // remember header row
+      expect(r.length - 1).toBe(2);
+      expect(r[1][0]).toBe(9);
+      expect(r[2][0]).toBe(6);
     });
   });
 })

@@ -88,9 +88,13 @@ const TABLE_VALUED_FUNCTIONS = {
             end = start;
             start = 0;
         }
-        const diff = end - start + 1;
+        const diff = Math.abs(end - start);
+        step = Math.abs(step);
         const count = Math.ceil(diff / step);
-        return Array(count).fill(0).map((n,i) => ({ value: start + i * step }));
+
+        return start < end ?
+            Array(count).fill(0).map((n,i) => ({ value: start + i * step })) :
+            Array(count).fill(0).map((n,i) => ({ value: start - i * step }));
     },
 };
 

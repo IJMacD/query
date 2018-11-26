@@ -83,7 +83,7 @@ async function Query (query, options = {}) {
     }
 
     if (/^TRANSPOSE/.test(query)) {
-        const subQuery = await Query(query.replace(/TRANSPOSE\s+/, ""), options);
+        const subQuery = await Query(query.replace(/TRANSPOSE\s*/, ""), options);
 
         const out = [];
 

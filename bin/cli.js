@@ -13,6 +13,8 @@ const query = rest.filter(a => a[0] !== "-").join(" ");
 
 const demoMode = args.includes("--demo");
 
+const debugMode = args.includes("--debug");
+
 let mime = "text/plain";
 let name;
 
@@ -31,6 +33,6 @@ for (let arg of args) {
     }
 }
 
-(demoMode ? demoQuery : ilQuery)(query).then(result => {
+(demoMode ? demoQuery : ilQuery)(query, debugMode).then(result => {
     console.log(Formatter.format(result, { mime, name }));
 }).catch(e => console.error(e));

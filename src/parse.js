@@ -38,9 +38,9 @@ function parseQuery (query) {
   // TODO: Real Lexer/Parser!
 
   const parts = CLAUSES
-    .map(clause => ({ clause, start: redacted.indexOf(clause) }))
-      .filter(o => o.start != -1)
-      .sort((a,b) => a.start - b.start);
+        .map(clause => ({ clause, start: redacted.indexOf(clause) }))
+        .filter(o => o.start !== -1)
+        .sort((a,b) => a.start - b.start);
 
   /** @type {{ [clause: string]: string }} */
   const parsed = {};

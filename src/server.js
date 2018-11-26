@@ -16,6 +16,8 @@ const args = rest.filter(a => a[0] === "-");
 
 const demoMode = args.includes("--demo");
 
+const debugMode = args.includes("--debug");
+
 app.use(express.urlencoded({ extended: false }));
 
 app.use(express.static("static"));
@@ -69,7 +71,7 @@ function handleQuery (req, res, query, type) {
 
     const q = demoMode ? demoQuery : ilQuery;
 
-    q(query).then(result => {
+    q(query, debugMode).then(result => {
         const mime = type || determineMimeType(req.header("accept"));
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];

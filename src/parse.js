@@ -197,14 +197,13 @@ function parseFrom (from) {
 
       const name = String(node.id);
       const using = "";
-      const inner = false;
 
       return {
         name,
         alias: node.alias,
         join: using,
         predicate: node.predicate,
-        inner,
+        inner: node.inner,
         params: node.children,
         explain: "",
         rowCount: 0

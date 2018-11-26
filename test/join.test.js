@@ -25,7 +25,7 @@ test("SELECT columns FROM JOIN on object", () => {
 test("JOIN on array", () => {
   return demoQuery("FROM Test_4, A").then(r => {
     // Don't forget header row
-    expect(r.length - 1).toBe(20);
+    expect(r.length - 1).toBe(22);
     expect(r[1][0]).toBe('K');
     expect(r[1][1]).toBe(-1);
     expect(r[2][0]).toBe('K');
@@ -34,11 +34,34 @@ test("JOIN on array", () => {
     expect(r[3][1]).toBe(-2);
     expect(r[4][0]).toBe('L');
     expect(r[4][1]).toBe(-12);
+    expect(r[5][0]).toBe('L');
+    expect(r[5][1]).toBe(-13);
+    expect(r[6][0]).toBe('M');
+    expect(r[6][1]).toBeNull();
   });
 });
 
-test("SELECT columns FROM JOIN on array", () => {
+test("SELECT columns JOIN on array", () => {
   return demoQuery("FROM Test_4, A SELECT n, c").then(r => {
+    // Don't forget header row
+    expect(r.length - 1).toBe(22);
+    expect(r[1][0]).toBe(-1);
+    expect(r[1][1]).toBe('K');
+    expect(r[2][0]).toBe(-11);
+    expect(r[2][1]).toBe('K');
+    expect(r[3][0]).toBe(-2);
+    expect(r[3][1]).toBe('L');
+    expect(r[4][0]).toBe(-12);
+    expect(r[4][1]).toBe('L');
+    expect(r[5][0]).toBe(-13);
+    expect(r[5][1]).toBe('L');
+    expect(r[6][0]).toBeNull();
+    expect(r[6][1]).toBe('M');
+  });
+});
+
+test("INNER JOIN on array", () => {
+  return demoQuery("FROM Test_4, A INNER SELECT n, c").then(r => {
     // Don't forget header row
     expect(r.length - 1).toBe(20);
     expect(r[1][0]).toBe(-1);
@@ -49,6 +72,10 @@ test("SELECT columns FROM JOIN on array", () => {
     expect(r[3][1]).toBe('L');
     expect(r[4][0]).toBe(-12);
     expect(r[4][1]).toBe('L');
+    expect(r[5][0]).toBe(-13);
+    expect(r[5][1]).toBe('L');
+    expect(r[6][0]).toBe(-3);
+    expect(r[6][1]).toBe('N');
   });
 });
 
@@ -126,12 +153,12 @@ test("Invariant Filtered Self CROSS JOIN", () => {
   });
 });
 
-// test("Expression Filtered Self CROSS JOIN", () => {
-//     return demoQuery("FROM Test AS a, Test AS b WHERE a.n + b.n = 3").then(r => {
-//         // Don't forget header row
-//         expect(r.length - 1).toBe(4);
-//     });
-// });
+test("Expression Filtered Self CROSS JOIN", () => {
+    return demoQuery("FROM Test AS a, Test AS b WHERE a.n + b.n = 3").then(r => {
+        // Don't forget header row
+        expect(r.length - 1).toBe(4);
+    });
+});
 
 test("Expression Predicate Self CROSS JOIN", () => {
   return demoQuery("FROM Test AS a, Test AS b ON a.n + 1 = b.n").then(r => {
@@ -144,5 +171,13 @@ test("Expression Access Predicate Self CROSS JOIN", () => {
   return demoQuery("FROM Test AS a, Test AS b ON a.n + b.n = 3").then(r => {
       // Don't forget header row
       expect(r.length - 1).toBe(4);
+  });
+});
+
+
+test("Self CROSS JOIN misaligned", () => {
+  return demoQuery("FROM Test AS a, Test AS b ON a.n = b.n2").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(10);
   });
 });

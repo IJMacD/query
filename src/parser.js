@@ -96,6 +96,11 @@ module.exports = {
                                 }
                                 i++; // predicate
                                 next = tokenList[i];
+                            } else if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "INNER") {
+                                i++; // INNER
+                                const child = out.children[out.children.length - 1];
+                                child.inner = true;
+                                next = tokenList[i];
                             }
 
                             if (next && next.type === TOKEN_TYPES.COMMA) {

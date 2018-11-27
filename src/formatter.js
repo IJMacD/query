@@ -54,8 +54,24 @@ function renderSQLInsert (data, { tableName = "data" } = {}) {
   const headers = data.shift();
   const headerList = headers.map(h => `"${h}"`).join(", ");
   const create = `CREATE TABLE IF NOT EXISTS ${tableName} (${headerList})`;
-  const insert = `INSERT INTO ${tableName} (${headerList}) VALUES\n${data.map(row => `('${row.join("', '")}')`).join(",\n")}`;
+  const insert = `INSERT INTO ${tableName} (${headerList}) VALUES\n${data.map(row => `(${row.map(formatSQLValue).join(", ")})`).join(",\n")}`;
   return `${create};\n${insert};\n`
+}
+
+function formatSQLValue (val) {
+  if (val instanceof Date) {
+    return `'${moment(val).utc().format("YYYY-MM-DD HH:mm:ss")}'`;
+  }
+
+  if (typeof val === "number") {
+    return val;
+  }
+
+  if (val === null) {
+    return "null";
+  }
+
+  return `'${String(val).replace(/'/g, "''")}'`;
 }
 
 /**

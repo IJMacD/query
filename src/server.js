@@ -35,6 +35,7 @@ app.post('/query', (req, res) => {
 
 app.get('/query.:type', (req, res) => {
     const query = req.query['q'];
+    const insert = req.query['insert'];
     const type = req.params['type'];
     let mime;
     switch (type) {
@@ -47,12 +48,15 @@ app.get('/query.:type', (req, res) => {
         case "html":
             mime = "text/html";
             break;
+        case "sql":
+            mime = "application/sql";
+            break;
         case "txt":
             mime = "text/plain";
             break;
     }
 
-    handleQuery(req, res, query, mime);
+    handleQuery(req, res, query, mime, insert);
 });
 
 app.get('/query', (req, res) => {
@@ -61,7 +65,7 @@ app.get('/query', (req, res) => {
     handleQuery(req, res, query);
 });
 
-function handleQuery (req, res, query, type) {
+function handleQuery (req, res, query, type, name) {
     console.log(`${new Date().toString().substr(16, 8)} ${query}`);
 
     if (req.header("origin")) {
@@ -76,7 +80,7 @@ function handleQuery (req, res, query, type) {
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];
         res.header("Content-Type", mime);
-        res.send(Formatter.format(result, { mime, locale }));
+        res.send(Formatter.format(result, { mime, locale, name }));
     }).catch(e => {
         res.status(400);
         res.header("Content-Type", "text/plain");
@@ -93,7 +97,7 @@ app.listen(port, () => console.log(`Query server listening on port ${port}!`));
  * @returns {string}
  */
 function determineMimeType (mime) {
-    const accepted = ["application/json", "text/csv", "text/html", "text/plain"];
+    const accepted = ["application/json", "text/csv", "text/html", "application/sql", "text/plain"];
 
     for (const type of accepted) {
         if (mime.includes(type)) {

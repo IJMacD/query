@@ -158,6 +158,26 @@ describe("Value Functions", () => {
       });
     });
   });
+
+  describe("DURATION", () => {
+    test("1s", () => {
+      return demoQuery("SELECT DURATION(1000)").then(r => {
+        expect(r[1][0]).toBe("0:01");
+      });
+    });
+
+    test("12h 34m 56s", () => {
+      return demoQuery("SELECT DURATION(45296000)").then(r => {
+        expect(r[1][0]).toBe("12:34:56");
+      });
+    });
+
+    test("2d 16h 10m 0s", () => {
+      return demoQuery("SELECT DURATION(231000000)").then(r => {
+        expect(r[1][0]).toBe("2 days, 16 hours");
+      });
+    });
+  });
 });
 
 describe("Table Valued Functions", function() {

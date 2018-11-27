@@ -8,7 +8,10 @@
             "type": "node",
             "request": "launch",
             "name": "Start Server",
-            "program": "${workspaceFolder}/src/server.js"
+            "program": "${workspaceFolder}/src/server.js",
+            "args": [
+                "--debug"
+            ]
         },
         {
             "type": "node",

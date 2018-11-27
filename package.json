@@ -19,7 +19,8 @@
     "dotenv": "^5.0.1",
     "express": "^4.16.3",
     "fetch-everywhere": "^1.0.5",
-    "moment": "^2.22.1"
+    "moment": "^2.22.1",
+    "moment-duration-format": "^2.2.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.1.5",

@@ -12,6 +12,7 @@ const {
     parseFrom,
     parseWhere,
     parseGroupBy,
+    parseOrderBy,
 } = require('./parse');
 
 const {
@@ -509,21 +510,7 @@ async function Query (query, options = {}) {
      ***************/
     if (orderBy) {
         // Parse the orderBy clause into an array of objects
-        const parsedOrders = orderBy.split(",").map(order => {
-            const [ col, asc_desc ] = order.trim().split(" ");
-            const desc = asc_desc === "DESC" ? -1 : 1;
-
-            // Simplest case: col is actually a column index
-            // ORDER BY column indices are 1-based
-            let colNum = +col - 1;
-
-            // If it's not a column index, check if its a named column in selection
-            if (isNaN(colNum) && typeof colAlias[col] !== "undefined") {
-                colNum = colAlias[col]
-            }
-
-            return { colNum, col, desc };
-        });
+        const parsedOrders = parseOrderBy(orderBy);
 
         // Pre-create ordering value array for each row
         rows.forEach(row => {
@@ -542,7 +529,7 @@ async function Query (query, options = {}) {
                     String(va).localeCompare(vb);
 
                 if (sort !== 0) {
-                    sort *= o.desc;
+                    sort *= o.desc ? -1 : 1;
 
                     return sort;
                 }
@@ -980,7 +967,7 @@ async function Query (query, options = {}) {
 
     /**
      * @param {any[]} row
-     * @param {{ col: string, colNum: number, desc: number }} parsedOrder
+     * @param {Node} parsedOrder
      * @param {number} depth
      */
     function getOrderingValue (row, parsedOrder, depth) {
@@ -989,12 +976,21 @@ async function Query (query, options = {}) {
         // The first time this row is visited (at this depth) we'll
         // calculate its ordering value.
         if (typeof va === "undefined") {
-            let v = isNaN(parsedOrder.colNum) ?
-                resolveValue(row, parsedOrder.col) :
-                row[parsedOrder.colNum];
+            let v;
+
+            if (parsedOrder.type === NODE_TYPES.NUMBER) {
+                // Column numbers are 1-indexed
+                v = row[+parsedOrder.id - 1];
+            }
+            else if (parsedOrder.type === NODE_TYPES.SYMBOL && parsedOrder.id in colAlias) {
+                v = row[colAlias[parsedOrder.id]];
+            }
+            else {
+                v = executeExpression(row, parsedOrder);
+            }
 
             if (typeof v === "undefined") {
-                throw new Error("Order by unknown column: " + parsedOrder.col);
+                throw new Error("Order by unknown column: " + parsedOrder.source);
             }
 
             // Try to coerce into number if possible

@@ -15,6 +15,7 @@ module.exports = {
   parseFrom,
   parseGroupBy,
   parseArgumentList,
+  parseOrderBy,
 };
 
 /**
@@ -231,4 +232,24 @@ function parseGroupBy (groupBy) {
     const ast = parser.parse(tokens, s);
     return ast;
   });
+}
+
+/**
+ *
+ * @param {string} orderBy
+ * @returns {Node[]}
+ */
+function parseOrderBy (orderBy) {
+    const re = /ASC|DESC/g;
+    return orderBy.split(",").map(s => {
+        const ascDesc = re.exec(s);
+        s = s.replace(re, "");
+
+        const tokens = tokenizer.tonkenize(s);
+        const ast = parser.parse(tokens, s);
+
+        ast.desc = Boolean(ascDesc && ascDesc[0] === "DESC");
+
+        return ast;
+    });
 }

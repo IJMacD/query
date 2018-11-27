@@ -47,7 +47,7 @@ test("Simple LIMIT", () => {
     });
 });
 
-describe("ORDER", () => {
+describe("ORDER BY", () => {
     test("Ascending name", () => {
         return demoQuery("FROM Test ORDER BY n ASC").then(r => {
             expect(r[1][0]).toBe(0);
@@ -113,128 +113,132 @@ describe("ORDER", () => {
     });
 });
 
-test("GROUP BY n", () => {
-    return demoQuery("FROM Test GROUP BY n").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(10);
+describe("GROUP BY", () => {
+    test("n", () => {
+        return demoQuery("FROM Test GROUP BY n").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(10);
+        });
+    });
+
+    test("n2", () => {
+        return demoQuery("FROM Test GROUP BY n2").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(5);
+        });
+    });
+
+    test("n3", () => {
+        return demoQuery("FROM Test GROUP BY n3").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(4);
+        });
+    });
+
+    test("n, n2", () => {
+        return demoQuery("FROM Test GROUP BY n, n2").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(10);
+        });
+    });
+
+    test("n2, n3", () => {
+        return demoQuery("FROM Test GROUP BY n2, n3").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(7);
+        });
+    });
+
+    test("dates by value", () => {
+        return demoQuery("FROM Test_2 GROUP BY d").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(6);
+        });
+    });
+
+    test("Expressions", () => {
+        return demoQuery("FROM Test GROUP BY n - n2").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(6);
+        });
     });
 });
 
-test("GROUP BY n2", () => {
-    return demoQuery("FROM Test GROUP BY n2").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(5);
+describe("Aggregate Queries", () => {
+    test("COUNT(*) GROUP BY n", () => {
+        return demoQuery("FROM Test GROUP BY n SELECT COUNT(*)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(10);
+            expect(r[1][0]).toBe(1);
+            expect(r[2][0]).toBe(1);
+            expect(r[3][0]).toBe(1);
+        });
     });
-});
 
-test("GROUP BY n3", () => {
-    return demoQuery("FROM Test GROUP BY n3").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(4);
+    test("COUNT(*) GROUP BY n2", () => {
+        return demoQuery("FROM Test GROUP BY n2 SELECT COUNT(*)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(5);
+            expect(r[1][0]).toBe(2);
+            expect(r[2][0]).toBe(2);
+            expect(r[3][0]).toBe(2);
+            expect(r[4][0]).toBe(2);
+            expect(r[5][0]).toBe(2);
+        });
     });
-});
 
-test("GROUP BY n, n2", () => {
-    return demoQuery("FROM Test GROUP BY n, n2").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(10);
+    test("COUNT(*) GROUP BY n3", () => {
+        return demoQuery("FROM Test GROUP BY n3 SELECT COUNT(*)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(4);
+            expect(r[1][0]).toBe(3);
+            expect(r[2][0]).toBe(3);
+            expect(r[3][0]).toBe(3);
+            expect(r[4][0]).toBe(1);
+        });
     });
-});
 
-test("GROUP BY n2, n3", () => {
-    return demoQuery("FROM Test GROUP BY n2, n3").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(7);
+    test("SUM(n2) GROUP BY n", () => {
+        return demoQuery("FROM Test GROUP BY n SELECT SUM(n2)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(10);
+            expect(r[1][0]).toBe(0);
+            expect(r[2][0]).toBe(0);
+            expect(r[3][0]).toBe(1);
+            expect(r[4][0]).toBe(1);
+        });
     });
-});
 
-test("Aggregate COUNT(*) GROUP BY n", () => {
-    return demoQuery("FROM Test GROUP BY n SELECT COUNT(*)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(10);
-        expect(r[1][0]).toBe(1);
-        expect(r[2][0]).toBe(1);
-        expect(r[3][0]).toBe(1);
+    test("SUM(n) GROUP BY n2", () => {
+        return demoQuery("FROM Test GROUP BY n2 SELECT SUM(n)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(5);
+            expect(r[1][0]).toBe(1);
+            expect(r[2][0]).toBe(5);
+            expect(r[3][0]).toBe(9);
+            expect(r[4][0]).toBe(13);
+            expect(r[5][0]).toBe(17);
+        });
     });
-});
 
-test("Aggregate COUNT(*) GROUP BY n2", () => {
-    return demoQuery("FROM Test GROUP BY n2 SELECT COUNT(*)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(5);
-        expect(r[1][0]).toBe(2);
-        expect(r[2][0]).toBe(2);
-        expect(r[3][0]).toBe(2);
-        expect(r[4][0]).toBe(2);
-        expect(r[5][0]).toBe(2);
+    test("AVG(n) GROUP BY n2", () => {
+        return demoQuery("FROM Test GROUP BY n2 SELECT AVG(n)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(5);
+            expect(r[1][0]).toBe(0.5);
+            expect(r[2][0]).toBe(2.5);
+            expect(r[3][0]).toBe(4.5);
+            expect(r[4][0]).toBe(6.5);
+            expect(r[5][0]).toBe(8.5);
+        });
     });
-});
 
-test("Aggregate COUNT(*) GROUP BY n3", () => {
-    return demoQuery("FROM Test GROUP BY n3 SELECT COUNT(*)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(4);
-        expect(r[1][0]).toBe(3);
-        expect(r[2][0]).toBe(3);
-        expect(r[3][0]).toBe(3);
-        expect(r[4][0]).toBe(1);
-    });
-});
-
-test("Aggregate SUM(n2) GROUP BY n", () => {
-    return demoQuery("FROM Test GROUP BY n SELECT SUM(n2)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(10);
-        expect(r[1][0]).toBe(0);
-        expect(r[2][0]).toBe(0);
-        expect(r[3][0]).toBe(1);
-        expect(r[4][0]).toBe(1);
-    });
-});
-
-test("Aggregate SUM(n) GROUP BY n2", () => {
-    return demoQuery("FROM Test GROUP BY n2 SELECT SUM(n)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(5);
-        expect(r[1][0]).toBe(1);
-        expect(r[2][0]).toBe(5);
-        expect(r[3][0]).toBe(9);
-        expect(r[4][0]).toBe(13);
-        expect(r[5][0]).toBe(17);
-    });
-});
-
-test("Aggregate AVG(n) GROUP BY n2", () => {
-    return demoQuery("FROM Test GROUP BY n2 SELECT AVG(n)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(5);
-        expect(r[1][0]).toBe(0.5);
-        expect(r[2][0]).toBe(2.5);
-        expect(r[3][0]).toBe(4.5);
-        expect(r[4][0]).toBe(6.5);
-        expect(r[5][0]).toBe(8.5);
-    });
-});
-
-test("GROUP BY dates by value", () => {
-    return demoQuery("FROM Test_2 GROUP BY d").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(6);
-    });
-});
-
-test("Expressions in GROUP BY", () => {
-    return demoQuery("FROM Test GROUP BY n - n2").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(6);
-    });
-});
-
-test("Expressions in Aggregate Functions", () => {
-    return demoQuery("FROM Test SELECT SUM(n + n)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(1);
-        expect(r[1][0]).toBe(90);
+    test("Expressions", () => {
+        return demoQuery("FROM Test SELECT SUM(n + n)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe(90);
+        });
     });
 });
 
@@ -280,27 +284,29 @@ test("Auto-alias Table SELECT", () => {
     });
 });
 
-test("Table Valued Functions in FROM", () => {
-    return demoQuery("FROM RANGE(1)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(1);
-        expect(r[1][0]).not.toBeNull();
+describe("Table Valued Functions", () => {
+    test("in FROM", () => {
+        return demoQuery("FROM RANGE(1)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).not.toBeNull();
+        });
     });
-});
 
-test("Table Valued Functions with multiple paramaters in FROM", () => {
-    return demoQuery("FROM RANGE(1,2)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(1);
-        expect(r[1][0]).not.toBeNull();
+    test("with multiple paramaters in FROM", () => {
+        return demoQuery("FROM RANGE(1,2)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).not.toBeNull();
+        });
     });
-});
 
-test("Table Valued Functions with expressions in FROM", () => {
-    return demoQuery("FROM RANGE(1,3*2)").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(5);
-        expect(r[1][0]).not.toBeNull();
+    test("with expressions in FROM", () => {
+        return demoQuery("FROM RANGE(1,3*2)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(5);
+            expect(r[1][0]).not.toBeNull();
+        });
     });
 });
 

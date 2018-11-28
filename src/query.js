@@ -17,7 +17,7 @@ const {
 
 const {
     scalar,
-    isNullDate,
+    isValidDate,
 } = require('./util');
 
 const {
@@ -29,6 +29,8 @@ const {
 } = require('./compound');
 
 const { NODE_TYPES } = require('./parser');
+
+class SymbolError extends Error { }
 
 /**
  * @typedef {import('./parser').Node} Node
@@ -216,6 +218,7 @@ async function Query (query, options = {}) {
             return row;
         });
 
+        // Filter out any rows we can early to avoid extra processing
         rows = filterRows(rows);
 
         table.rowCount = rows.length;
@@ -284,6 +287,7 @@ async function Query (query, options = {}) {
 
             rows = applyJoin(table, rows);
 
+            // Filter out any rows we can early to avoid extra processing
             rows = filterRows(rows);
 
             table.rowCount = rows.length;
@@ -454,7 +458,15 @@ async function Query (query, options = {}) {
                 continue;
             }
 
-            row[i] = executeExpression(row, node);
+            try {
+                row[i] = executeExpression(row, node);
+            } catch (e) {
+                if (e instanceof SymbolError) {
+                    row[i] = null;
+                } else {
+                    throw e;
+                }
+            }
         }
     }
 
@@ -488,21 +500,7 @@ async function Query (query, options = {}) {
      * Having Filtering
      ******************/
     if (parsedHaving) {
-        for (const child of parsedHaving.children) {
-            const compare = OPERATORS[child.operator];
-            if (!compare) {
-                throw new Error("Unrecognised operator: " + child.operator);
-            }
-
-            rows = rows.filter(r => {
-                // Having clause can only use constants, result-set columns or aggregate functions
-                // We don't have access to original `result` objects
-                let a = resolveHavingValue(r, child.operand1);
-                let b = resolveHavingValue(r, child.operand2);
-
-                return compare(a, b);
-            });
-        }
+        rows = filterRowsByPredicate(rows, parsedHaving);
     }
 
     /****************
@@ -576,7 +574,11 @@ async function Query (query, options = {}) {
         if (node.type === NODE_TYPES.FUNCTION_CALL) {
             const fnName = node.id;
             if (fnName in AGGREGATE_FUNCTIONS) {
-                // Don't compute aggregate functions until after grouping
+                // Don't evaluate aggregate functions until after grouping
+                if (row['group']) {
+                    const fn = AGGREGATE_FUNCTIONS[fnName];
+                    return fn(aggregateValues(row['group'], node.children[0]));
+                }
                 return;
             }
             if (fnName in userFunctions) {
@@ -595,14 +597,25 @@ async function Query (query, options = {}) {
                 }
             }
         } else if (node.type === NODE_TYPES.SYMBOL) {
-            return resolveValue(row, String(node.id));
+            const val = resolveValue(row, String(node.id));
+            if (typeof val === "undefined") {
+                throw new SymbolError("Unable to resolve symbol: " + node.id);
+            }
+            return val;
         } else if (node.type === NODE_TYPES.STRING) {
-            return node.id;
+            // We need to check for date here and convert if necessary
+            if (/^\d{4}-\d{2}-\d{2}/.test(String(node.id))) {
+                const d = new Date(node.id);
+                if (isValidDate(d)) {
+                    return d;
+                }
+            }
+            return String(node.id);
         } else if (node.type === NODE_TYPES.NUMBER) {
-            return node.id;
+            return +node.id;
         } else if (node.type === NODE_TYPES.KEYWORD) {
             // Pass keywords like YEAR, SECOND, INT, FLOAT as strings
-            return node.id;
+            return String(node.id);
         } else if (node.type === NODE_TYPES.OPERATOR) {
             const op = OPERATORS[node.id];
             if (op) {
@@ -629,32 +642,20 @@ async function Query (query, options = {}) {
      */
     function filterRows (rows, strict = false) {
         if (parsedWhere) {
-            for (const child of parsedWhere.children) {
-                const compare = OPERATORS[child.operator];
-                if (!compare) {
-                    throw new Error("Unrecognised operator: " + child.operator);
+            return rows.filter(r => {
+                try {
+                    return executeExpression(r, parsedWhere);
+                } catch (e) {
+                    if (e instanceof SymbolError) {
+                        // If we got a symbol error it means we don't have enough
+                        // symbols yet. If we're not strict we need to return true
+                        // to carry on. If we are strict then the row fails.
+                        return !strict;
+                    } else {
+                        throw e;
+                    }
                 }
-
-                rows = rows.filter(r => {
-                    const a = resolveValue(r, child.operand1);
-                    const b = resolveValue(r, child.operand2);
-
-                    // Check to see if we have enough information to process this yet
-
-                    if (!strict
-                        && typeof a === "undefined") {
-                        return true;
-                    }
-                    if (!strict
-                        && typeof b === "undefined"
-                        && typeof child.operand2 !== "undefined") {
-                        // n.b. `b` can be undefined (e.g. a IS NULL)
-                        return true;
-                    }
-
-                    return compare(a, b);
-                });
-            }
+            });
         }
         return rows;
     }
@@ -714,6 +715,8 @@ async function Query (query, options = {}) {
         if (str === "TRUE") return true;
         if (str === "FALSE") return false;
 
+        if (str === "null") return null;
+
         // Check for quoted string
         if ((str.startsWith("'") && str.endsWith("'")) ||
                 (str.startsWith('"') && str.endsWith('"'))) {
@@ -726,7 +729,7 @@ async function Query (query, options = {}) {
                 // Must start with a number - for some reason
                 // 'Room 2' parses as a valid date
                 const d = new Date(stripped);
-                if (!isNullDate(d)) {
+                if (isValidDate(d)) {
                     return d;
                 }
             }
@@ -854,45 +857,6 @@ async function Query (query, options = {}) {
         }
 
         return; // undefined
-    }
-
-    function resolveHavingValue (row, col) {
-
-        // HAVING values must be in result set or constants (or aggregate function)
-
-        let colNum = colAlias[col];
-        if (typeof colNum === "undefined") {
-            colNum = colNodes.findIndex(node => node.source === col);
-        }
-
-        if (colNum >= 0) {
-            const la = row[colNum];
-            // Convert to number if possible
-            return !isNaN(+la) ? +la : la;
-        }
-
-        const ca = resolveConstant(col);
-        if (typeof ca !== "undefined") {
-            return ca;
-        }
-
-        // TODO: Reimplement HAVING using Nodes
-        // const match = FUNCTION_REGEX.exec(col);
-        // if (match) {
-        //     const fn = AGGREGATE_FUNCTIONS[match[1]];
-        //     if (!fn) {
-        //         throw new Error("Function not found: " + match[1]);
-        //     }
-
-        //     if (!row['group']) {
-        //         throw new Error("Aggregate function called on non-group of rows");
-        //     }
-
-        //     return fn(aggregateValues(row['group'], match[2]));
-        // }
-
-        throw new Error("Invalid HAVING predicate: " + col);
-
     }
 
     /**
@@ -1038,12 +1002,62 @@ async function Query (query, options = {}) {
         return parsedTables.find(t => t.name === name && t.join !== undefined);
     }
 
-    function findWhere (condition) {
-        return parsedWhere && parsedWhere.children.find(w => w.operand1 === condition || w.operand2 === condition);
+    /**
+     *
+     * @param {string} symbol
+     * @param {string|string[]} operator
+     */
+    function findWhere (symbol, operator="=") {
+        if (!parsedWhere) {
+            return; // undefined
+        }
+
+        return traverseWhereTree(parsedWhere, symbol, operator);
+    }
+
+    /**
+     *
+     * @param {Node} node
+     * @param {string} symbol
+     * @param {string|string[]} operator
+     */
+    function traverseWhereTree (node, symbol, operator="=") {
+        if (node.type !== NODE_TYPES.OPERATOR) {
+            return; // undefined
+        }
+
+        if (operator === null || node.id === operator ||
+            (Array.isArray(operator) && operator.includes(String(node.id))))
+        {
+            let operand1 = node.children[0];
+            let operand2 = node.children[1];
+
+            if (operand2.type === NODE_TYPES.SYMBOL) {
+                [ operand1, operand2 ] = [ operand2, operand1 ];
+            }
+
+            if (operand1.type === NODE_TYPES.SYMBOL &&
+                operand1.id === symbol &&
+                (operand2.type === NODE_TYPES.NUMBER ||
+                operand2.type === NODE_TYPES.STRING))
+            {
+                return operand2.id;
+            }
+        }
+        else if (node.id === "AND") {
+            const child1 = traverseWhereTree(node.children[0], symbol, operator);
+            if (typeof child1 !== "undefined") {
+                return child1;
+            }
+
+            const child2 = traverseWhereTree(node.children[1], symbol, operator);
+            return child2;
+        } else {
+            return; // undefined
+        }
     }
 
     function findJoin (table, rows) {
-
         if (table.join) {
             // If we have an explicit join, check it first.
 

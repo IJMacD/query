@@ -242,6 +242,20 @@ describe("Aggregate Queries", () => {
     });
 });
 
+describe("HAVING", () => {
+    test("Non-aggregate", () => {
+        return demoQuery("FROM Test HAVING n > 4").then (r => {
+            expect(r.length - 1).toBe(5);
+        });
+    });
+
+    test("Aggregate", () => {
+        return demoQuery("FROM Test GROUP BY n2 HAVING COUNT(*) > 1").then (r => {
+            expect(r.length - 1).toBe(5);
+        });
+    });
+})
+
 test("Table Alias SELECT", () => {
     return demoQuery("FROM Test AS a SELECT a.n").then(r => {
         // Remember header row

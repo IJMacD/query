@@ -2,6 +2,7 @@ module.exports = {
   scalar,
   repeat,
   isNullDate,
+  isValidDate,
   deepClone,
   matchAll,
 };
@@ -42,6 +43,15 @@ function repeat (char, n) {
 */
 function isNullDate (date) {
   return date instanceof Date && isNaN(+date);
+}
+
+/**
+* Returns true iff param is Date object AND is valid
+* @param {any} date
+* @returns {boolean}
+*/
+function isValidDate (date) {
+  return date instanceof Date && !isNaN(+date);
 }
 
 /**

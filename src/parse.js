@@ -81,47 +81,19 @@ function parseSelect (select) {
 }
 
 /**
-* @typedef WhereNode
-* @prop {string} type
-* @prop {WhereNode[]} [children]
-* @prop {string} [operator]
-* @prop {string} [operand1]
-* @prop {string} [operand2]
-*/
-
-/**
 * Parse a where clause into a tree
 * @param {string} where
-* @return {WhereNode}
+* @return {Node}
 */
 function parseWhere (where) {
   if (!where) {
       return;
   }
 
-  const whereParts = where.split("AND");
+  const tokens = tokenizer.tonkenize(where);
+  const ast = parser.parse(tokens, where);
 
-  /** @type {WhereNode} */
-  const out = {
-      type: "AND",
-      children: [],
-  };
-
-  whereParts.forEach(part => {
-      const match = part.match(CONDITION_REGEX);
-      if (!match) {
-          throw new Error(`Unrecognised WHERE/HAVING clause: \`${part}\``);
-      }
-
-      out.children.push({
-          type: "OPERATOR",
-          operator: match[2].trim(),
-          operand1: match[1].trim(),
-          operand2: match[3].trim(),
-      });
-  });
-
-  return out;
+  return ast;
 }
 
 /**

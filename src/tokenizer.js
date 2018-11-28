@@ -83,15 +83,11 @@ module.exports = {
                     continue;
                 }
 
-                const pT = prevToken();
-
-                if (pT && (pT.type !== this.TOKEN_TYPES.BRACKET || pT.value === ")")) {
-                    m = /^([<>+=!*\/|-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|AND\b)/i.exec(ss);
-                    if (m) {
-                        out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[1], start: i });
-                        i += m[1].length;
-                        continue;
-                    }
+                m = /^([<>+=!*\/|-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b)/i.exec(ss);
+                if (m) {
+                    out.push({ type: this.TOKEN_TYPES.OPERATOR, value: m[1], start: i });
+                    i += m[1].length;
+                    continue;
                 }
 
                 m = /^([a-z_][a-z0-9_\.]*|\*)/i.exec(ss); // Asterisk as in: COUNT(*)

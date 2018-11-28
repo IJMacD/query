@@ -75,6 +75,7 @@ const OPERATORS = {
     '>': (a,b) => a > b,
     '<=': (a,b) => a <= b,
     '>=': (a,b) => a >= b,
+    'NOT': a => !a,
     'IS NULL': a => typeof a === "undefined" || a === null || a === "" || Number.isNaN(a) || isNullDate(a),
     'IS NOT NULL': a => !OPERATORS['IS NULL'](a),
     'LIKE': (a,b) => new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a),

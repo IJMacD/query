@@ -182,15 +182,27 @@ module.exports = {
 
                     if (t.value === "*") {
                         next = tokenList[i];
-                        if (!next || next.type === TOKEN_TYPES.COMMA || next.type === TOKEN_TYPES.KEYWORD) {
+                        if (!next ||
+                            next.type === TOKEN_TYPES.COMMA ||
+                            next.type === TOKEN_TYPES.KEYWORD ||
+                            next.type === TOKEN_TYPES.BRACKET)
+                        {
                             // This is not an operator i.e. `SELECT *`
                             return { type: NODE_TYPES.SYMBOL, id: "*", source: "*" };
                         }
                     }
 
+                    // Unary operators
+
+                    // Unary prefix
+                    if (t.value === "NOT") {
+                        out.children[0] = descend();
+                    }
+                    else
+                    // Unary postfix
                     if (t.value !== "IS NULL" &&
-                        t.value !== "IS NOT NULL"
-                    ) {
+                        t.value !== "IS NOT NULL")
+                    {
                         out.children[1] = descend();
                     }
 
@@ -239,14 +251,16 @@ module.exports = {
  * @param {Node} node
  */
 function appendChild (array, node) {
-    if (node.type === NODE_TYPES.OPERATOR) {
+    if (node.type === NODE_TYPES.OPERATOR &&
+        node.id !== "NOT") // unary prefix operator
+    {
         const prev = array[array.length-1];
 
-        if (prev.type === NODE_TYPES.OPERATOR &&
+        if (prev && prev.type === NODE_TYPES.OPERATOR &&
             getPrecedence(prev) < getPrecedence(node)
         ) {
             // apply operator precedence
-            appendChild(prev.children, node); // add this as a child of the AND instead
+            appendChild(prev.children, node);
             return;
         }
 

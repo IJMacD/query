@@ -3,8 +3,8 @@ require('dotenv').config();
 
 const query = require('../src/query');
 
-describe("Simple Queries", () => {
-    test("Tutor Query", () => {
+describe("Tutor Queries", () => {
+    test("Simple Tutor Query", () => {
         return query("FROM Tutor").then(r => {
             expect(r.length - 1).toBeGreaterThan(0);
         });
@@ -72,6 +72,32 @@ describe("Lesson Queries", () => {
 
     test("With tutor name", () => {
         return query("FROM Lesson WHERE start > '2018-12-01' AND tutor.name = 'Kemmiss Pun'").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+});
+
+describe("Course Queries", () => {
+    test("by id", () => {
+        return query("FROM Course WHERE id = 8820").then(r => {
+            expect(r.length - 1).toBe(1);
+        });
+    }, 60000);
+
+    test("by title", () => {
+        return query("FROM Course WHERE title = 'Love to Write'").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("by tutor id", () => {
+        return query("FROM Course WHERE tutor.id = 9").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("by tutor name", () => {
+        return query("FROM Course WHERE tutor.name = 'Kemmiss Pun'").then(r => {
             expect(r.length - 1).toBeGreaterThan(0);
         });
     }, 60000);

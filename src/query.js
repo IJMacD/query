@@ -516,18 +516,18 @@ async function Query (query, options = {}) {
         });
 
         rows = rows.sort((a,b) => {
-            for (let i = 0; i < parsedOrders.length; i++) {
-                const o = parsedOrders[i];
+            for (let depth = 0; depth < parsedOrders.length; depth++) {
+                const orderNode = parsedOrders[depth];
 
-                const va = getOrderingValue(a, o, i);
-                const vb = getOrderingValue(b, o, i);
+                const valA = getOrderingValue(a, orderNode, depth);
+                const valB = getOrderingValue(b, orderNode, depth);
 
-                let sort = (Number.isFinite(va) && Number.isFinite(vb)) ?
-                    (va - vb) :
-                    String(va).localeCompare(vb);
+                let sort = (Number.isFinite(valA) && Number.isFinite(valB)) ?
+                    (valA - valB) :
+                    String(valA).localeCompare(valB);
 
                 if (sort !== 0) {
-                    sort *= o.desc ? -1 : 1;
+                    sort *= orderNode.desc ? -1 : 1;
 
                     return sort;
                 }
@@ -565,6 +565,16 @@ async function Query (query, options = {}) {
 
     return output_buffer;
 
+    /***************************************************************************
+     * #########################################################################
+     * #                                                                       #
+     * # END OF PROCESSING                                                     #
+     * #                                                                       #
+     * # Everything below is a helper function                                 #
+     * #                                                                       #
+     * #########################################################################
+     **************************************************************************/
+
     /**
      * Execute an expresion from AST nodes
      * @param {ResultRow} row
@@ -573,6 +583,7 @@ async function Query (query, options = {}) {
     function evaluateExpression(row, node) {
         if (node.type === NODE_TYPES.FUNCTION_CALL) {
             const fnName = node.id;
+
             if (fnName in AGGREGATE_FUNCTIONS) {
                 // Don't evaluate aggregate functions until after grouping
                 if (row['group']) {
@@ -581,6 +592,7 @@ async function Query (query, options = {}) {
                 }
                 return;
             }
+
             if (fnName in userFunctions) {
                 const args = node.children.map(c => evaluateExpression(row, c));
                 try {
@@ -589,6 +601,7 @@ async function Query (query, options = {}) {
                     return null;
                 }
             }
+
             if (fnName in VALUE_FUNCTIONS) {
                 try {
                     return VALUE_FUNCTIONS[fnName](...node.children.map(c => evaluateExpression(row, c)));
@@ -598,9 +611,11 @@ async function Query (query, options = {}) {
             }
         } else if (node.type === NODE_TYPES.SYMBOL) {
             const val = resolveValue(row, String(node.id));
+
             if (typeof val === "undefined") {
                 throw new SymbolError("Unable to resolve symbol: " + node.id);
             }
+
             return val;
         } else if (node.type === NODE_TYPES.STRING) {
             // We need to check for date here and convert if necessary
@@ -610,6 +625,7 @@ async function Query (query, options = {}) {
                     return d;
                 }
             }
+
             return String(node.id);
         } else if (node.type === NODE_TYPES.NUMBER) {
             return +node.id;
@@ -618,9 +634,11 @@ async function Query (query, options = {}) {
             return String(node.id);
         } else if (node.type === NODE_TYPES.OPERATOR) {
             const op = OPERATORS[node.id];
+
             if (op) {
                 return op(...node.children.map(c => evaluateExpression(row, c)));
             }
+
             throw new Error(`Unsupported operator '${node.id}'`);
         } else if (node.type === NODE_TYPES.CLAUSE
             && (node.id === "WHERE" || node.id === "ON")

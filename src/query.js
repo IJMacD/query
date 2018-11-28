@@ -188,7 +188,7 @@ async function Query (query, options = {}) {
         let results;
 
         if (table.name in TABLE_VALUED_FUNCTIONS) {
-            results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => executeExpression([], c)));
+            results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));
         }
         else {
             if (typeof callbacks.primaryTable === "undefined") {
@@ -266,7 +266,7 @@ async function Query (query, options = {}) {
                 let results;
 
                 if (table.name in TABLE_VALUED_FUNCTIONS) {
-                    results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => executeExpression([], c)));
+                    results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));
                 }
                 else {
                     if (typeof callbacks.primaryTable === "undefined") {
@@ -459,7 +459,7 @@ async function Query (query, options = {}) {
             }
 
             try {
-                row[i] = executeExpression(row, node);
+                row[i] = evaluateExpression(row, node);
             } catch (e) {
                 if (e instanceof SymbolError) {
                     row[i] = null;
@@ -570,7 +570,7 @@ async function Query (query, options = {}) {
      * @param {ResultRow} row
      * @param {Node} node
      */
-    function executeExpression(row, node) {
+    function evaluateExpression(row, node) {
         if (node.type === NODE_TYPES.FUNCTION_CALL) {
             const fnName = node.id;
             if (fnName in AGGREGATE_FUNCTIONS) {
@@ -582,7 +582,7 @@ async function Query (query, options = {}) {
                 return;
             }
             if (fnName in userFunctions) {
-                const args = node.children.map(c => executeExpression(row, c));
+                const args = node.children.map(c => evaluateExpression(row, c));
                 try {
                     return userFunctions[fnName](...args);
                 } catch (e) {
@@ -591,7 +591,7 @@ async function Query (query, options = {}) {
             }
             if (fnName in VALUE_FUNCTIONS) {
                 try {
-                    return VALUE_FUNCTIONS[fnName](...node.children.map(c => executeExpression(row, c)));
+                    return VALUE_FUNCTIONS[fnName](...node.children.map(c => evaluateExpression(row, c)));
                 } catch (e) {
                     return null;
                 }
@@ -619,14 +619,14 @@ async function Query (query, options = {}) {
         } else if (node.type === NODE_TYPES.OPERATOR) {
             const op = OPERATORS[node.id];
             if (op) {
-                return op(...node.children.map(c => executeExpression(row, c)));
+                return op(...node.children.map(c => evaluateExpression(row, c)));
             }
             throw new Error(`Unsupported operator '${node.id}'`);
         } else if (node.type === NODE_TYPES.CLAUSE
             && (node.id === "WHERE" || node.id === "ON")
         ) {
             if (node.children.length > 0) {
-                return Boolean(executeExpression(row, node.children[0]));
+                return Boolean(evaluateExpression(row, node.children[0]));
             } else {
                 throw new Error(`Empty predicate clause: ${node.id}`);
             }
@@ -644,7 +644,7 @@ async function Query (query, options = {}) {
         if (parsedWhere) {
             return rows.filter(r => {
                 try {
-                    return executeExpression(r, parsedWhere);
+                    return evaluateExpression(r, parsedWhere);
                 } catch (e) {
                     if (e instanceof SymbolError) {
                         // If we got a symbol error it means we don't have enough
@@ -667,7 +667,7 @@ async function Query (query, options = {}) {
      * @return {ResultRow[]}
      */
     function filterRowsByPredicate (rows, predicate) {
-        return rows.filter(r => executeExpression(r, predicate));
+        return rows.filter(r => evaluateExpression(r, predicate));
     }
 
     /**
@@ -915,7 +915,7 @@ async function Query (query, options = {}) {
             return rows.map(r => true);
         }
 
-        let values = rows.map(row => executeExpression(row, expr));
+        let values = rows.map(row => evaluateExpression(row, expr));
 
         // All aggregate functions ignore null except COUNT(*)
         // We'll use our convenient 'IS NOT NULL' function to do the
@@ -950,7 +950,7 @@ async function Query (query, options = {}) {
                 v = row[colAlias[parsedOrder.id]];
             }
             else {
-                v = executeExpression(row, parsedOrder);
+                v = evaluateExpression(row, parsedOrder);
             }
 
             if (typeof v === "undefined") {
@@ -978,7 +978,7 @@ async function Query (query, options = {}) {
         const groupByMap = {};
 
         for(const row of rows) {
-            const key = JSON.stringify(parsedGroupBy.map(g => executeExpression(row, g)));
+            const key = JSON.stringify(parsedGroupBy.map(g => evaluateExpression(row, g)));
 
             if (!groupByMap[key]) {
                 groupByMap[key] = [];

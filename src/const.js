@@ -55,7 +55,7 @@ const VALUE_FUNCTIONS = {
 };
 
 const AGGREGATE_FUNCTIONS = {
-    'COUNT': a => a.length,
+    'COUNT': a => a.filter(x => x).length, // Count truthy values
     'SUM': v => v.reduce((total,val) => total + (+val), 0), // Be sure to coerce into number
     'AVG': v => AGGREGATE_FUNCTIONS.SUM(v) / v.length,
     'MIN': v => Math.min(...v),

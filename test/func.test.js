@@ -17,6 +17,14 @@ describe("Aggregate Functions", () => {
   //   });
   // });
 
+  test("COUNT expression", () => {
+    return demoQuery("FROM Test SELECT COUNT(n > 4)").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe(5);
+    });
+  });
+
   test("SUM", () => {
     return demoQuery("FROM Test SELECT SUM(n)").then(r => {
       // Don't forget header row

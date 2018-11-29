@@ -353,5 +353,12 @@ test("Double Transpose", () => {
         expect(r[3][0]).toBe(2);
 
         expect(r[3][1]).toBe(1);
-    })
+    });
+});
+
+test("Common Table Expression", () => {
+    return demoQuery("WITH foo AS (FROM Test AS a, Test AS b ON a.n3 = b.n3 SELECT *,b.n2 AS bn2) FROM foo ORDER BY bn2").then (r => {
+        expect(r.length - 1).toBe(28);
+        expect(r[0]).toHaveLength(4); // should be 7?
+    });
 });

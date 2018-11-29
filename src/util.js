@@ -5,6 +5,7 @@ module.exports = {
   isValidDate,
   deepClone,
   matchAll,
+  matchInBrackets,
 };
 
 /**
@@ -94,4 +95,32 @@ function matchAll(string, regex) {
 	} while (match || !regex.global);
 
 	return out;
+}
+
+/**
+ *
+ * @param {string} input
+ * @returns {string}
+ */
+function matchInBrackets (input) {
+  const brackets = matchAll(input, /[\(\)]/g);
+
+  if (brackets.length === 0) {
+    return null;
+  }
+
+  let depth = 0;
+  for (const bracket of brackets) {
+    if (bracket[0] === "(") {
+      depth++;
+    } else {
+      depth--;
+    }
+
+    if (depth === 0) {
+      return input.substring(brackets[0].index + 1, bracket.index);
+    }
+  }
+
+  throw Error("Unmatched bracket");
 }

@@ -1,5 +1,4 @@
 const {
-    FUNCTION_REGEX,
     VALUE_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
     OPERATORS,
@@ -18,6 +17,7 @@ const {
 const {
     scalar,
     isValidDate,
+    matchInBrackets,
 } = require('./util');
 
 const {
@@ -58,6 +58,20 @@ async function Query (query, options = {}) {
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
+
+    const CTEs = {};
+
+    const match = /^WITH ([a-z0-9_]+) AS\s+/.exec(query);
+    if (match)
+    {
+        const name = match[1];
+        const cte = matchInBrackets(query);
+
+        CTEs[name] = queryResultToObjectArray(await Query(cte, options));
+
+        const endIdx = match[0].length + 2 + cte.length;
+        query = query.substr(endIdx);
+    }
 
     if (/INTERSECT/.test(query)) {
         const [ resultsL, resultsR ] = await runQueries(query.split("INTERSECT", 2), options);
@@ -187,7 +201,10 @@ async function Query (query, options = {}) {
         /** @type {Array} */
         let results;
 
-        if (table.name in TABLE_VALUED_FUNCTIONS) {
+        if (table.name in CTEs) {
+            results = CTEs[table.name];
+        }
+        else if (table.name in TABLE_VALUED_FUNCTIONS) {
             results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));
         }
         else {
@@ -1229,4 +1246,29 @@ async function Query (query, options = {}) {
  */
 function runQueries (queries, options) {
     return Promise.all(queries.map(q => Query(q, options)));
+}
+
+/**
+ *
+ * @param {any[][]} result
+ * @returns {any[]}
+ */
+function queryResultToObjectArray (result) {
+    const headers = result.shift();
+
+    return result.map(r => zip(headers, r));
+}
+
+/**
+ *
+ * @param {string[]} keys
+ * @param {any[]} values
+ * @returns {{ [key: string]: any }}
+ */
+function zip (keys, values) {
+    const out = {};
+    for (let i = 0; i < keys.length; i++) {
+        out[keys[i]] = values[i];
+    }
+    return out;
 }

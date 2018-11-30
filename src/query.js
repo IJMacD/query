@@ -429,6 +429,10 @@ async function Query (query, options = {}) {
                 let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
                 colNodes.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.join}.${c}` })));
+
+                if (parsedTables.length > 1) {
+                    newCols = newCols.map(c => `${table.alias || table.name}.${c}`);
+                }
                 colHeaders.push(...newCols);
             }
         } else {
@@ -811,9 +815,13 @@ async function Query (query, options = {}) {
                 // resolveValue() is called when searching for a join
                 // if we're at that stage row['data'][t.join] will be
                 // empty so we need to return undefined.
-                return row['data'][t.join] ?
-                    resolvePath(row['data'][t.join], tail) :
-                    void 0;
+                const data = row['data'][t.join];
+
+                if (typeof data === "undefined") {
+                    return void 0;
+                }
+
+                return resolvePath(row['data'][t.join], tail);
             }
 
             // FROM Table SELECT Table.value
@@ -878,7 +886,14 @@ async function Query (query, options = {}) {
             return data;
             // throw new Error("No path provided");
         }
-        // resolve path
+
+        // Check if the object key name exists with literal dots
+        // nb. this can only search one level deep
+        if (path in data) {
+            return data[path];
+        }
+
+        // resolve dotted path
         let val = data;
         for (const name of path.split(".")) {
             val = val[name];

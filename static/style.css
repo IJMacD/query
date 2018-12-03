@@ -82,6 +82,11 @@ img::after {
     line-height: 64px;
     font-weight: bold;
 }
+.null::before {
+    content: "null";
+    color: #CCC;
+    font-style: italic;
+}
 @media (max-width: 480px) {
     form,
     #output {

@@ -97,7 +97,7 @@ function renderTable({ rows, duration }) {
 
 function formatCell ({ cell }) {
     if (cell === null) {
-        return "NULL";
+        return `<span class="null"></span>`;
     }
 
     cell = String(cell);

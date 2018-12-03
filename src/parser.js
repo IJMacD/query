@@ -291,8 +291,13 @@ function getPrecedence (node) {
         case "*":
         case "/":
             return 3;
+        case "LIKE":
+        case "NOT LIKE":
+        case "REGEXP":
+        case "NOT REGEXP":
+            return 4;
         default:
-            return -1;
+            return 100;
     }
 }
 

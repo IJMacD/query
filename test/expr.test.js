@@ -1,4 +1,5 @@
 const Query = require('../src/query');
+const demoQuery = require('../src/demo-query');
 
 describe("Constants", () => {
     test("String", () => {
@@ -255,3 +256,161 @@ describe("Logic Operators", () => {
         });
     });
 });
+
+describe("Operator Precedence", () => {
+    test("* =", () => {
+        return demoQuery("FROM Test WHERE n * 2 = 4").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe(2);
+            expect(r[1][1]).toBe(1);
+        });
+    });
+
+    test("* = *", () => {
+        return demoQuery("FROM Test WHERE n * 2 = 3 * 2").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe(3);
+            expect(r[1][1]).toBe(1);
+        });
+    });
+
+    test("* <", () => {
+        return demoQuery("FROM Test WHERE n * 2 < 6").then(r => {
+            expect(r.length - 1).toBe(3);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+        });
+    });
+
+    test("< *", () => {
+        return demoQuery("FROM Test WHERE 15 < 3 * n").then(r => {
+            expect(r.length - 1).toBe(4);
+            expect(r[1][0]).toBe(6);
+            expect(r[1][1]).toBe(3);
+        });
+    });
+
+    test("- < *", () => {
+        return demoQuery("FROM Test WHERE 20 - 5 < 3 * n").then(r => {
+            expect(r.length - 1).toBe(4);
+            expect(r[1][0]).toBe(6);
+            expect(r[1][1]).toBe(3);
+        });
+    });
+
+    test("= AND =", () => {
+        return demoQuery("FROM Test WHERE n = 2 AND n2 = 1").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe(2);
+            expect(r[1][1]).toBe(1);
+        });
+    });
+
+    test("> AND =", () => {
+        return demoQuery("FROM Test WHERE n > 4 AND n2 = 2").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe(5);
+            expect(r[1][1]).toBe(2);
+        });
+    });
+
+    test("> AND <", () => {
+        return demoQuery("FROM Test WHERE n > 4 AND n2 < 4").then(r => {
+            expect(r.length - 1).toBe(3);
+            expect(r[1][0]).toBe(5);
+            expect(r[1][1]).toBe(2);
+        });
+    });
+
+    test("* > AND < -", () => {
+        return demoQuery("FROM Test WHERE n * 2 > 4 AND n2 < 10 - 6").then(r => {
+            expect(r.length - 1).toBe(5);
+            expect(r[1][0]).toBe(3);
+            expect(r[1][1]).toBe(1);
+        });
+    });
+
+    test("> AND LIKE", () => {
+        return demoQuery("FROM Test, Test_2 WHERE n > 4 AND c LIKE 'b'").then(r => {
+            expect(r.length - 1).toBe(5);
+            expect(r[1][0]).toBe(5);
+            expect(r[1][1]).toBe(2);
+            expect(r[1][3]).toBe('b');
+        });
+    });
+
+    test("> AND NOT LIKE", () => {
+        return demoQuery("FROM Test, Test_2 WHERE n > 4 AND c NOT LIKE 'b'").then(r => {
+            expect(r.length - 1).toBe(45);
+            expect(r[1][0]).toBe(5);
+            expect(r[1][1]).toBe(2);
+            expect(r[1][3]).toBe('a');
+        });
+    });
+
+    test("= AND NOT LIKE", () => {
+        return demoQuery("FROM Test, Test_2 WHERE n = 6 AND c NOT LIKE 'b'").then(r => {
+            expect(r.length - 1).toBe(9);
+            expect(r[1][0]).toBe(6);
+            expect(r[1][1]).toBe(3);
+            expect(r[1][3]).toBe('a');
+        });
+    });
+
+    test("NOT LIKE AND =", () => {
+        return demoQuery("FROM Test, Test_2 WHERE c NOT LIKE 'b' AND n = 5").then(r => {
+            expect(r.length - 1).toBe(9);
+            expect(r[1][0]).toBe(5);
+            expect(r[1][1]).toBe(2);
+            expect(r[1][3]).toBe('a');
+        });
+    });
+
+    test("NOT LIKE AND <", () => {
+        return demoQuery("FROM Test, Test_2 WHERE c NOT LIKE 'b' AND n < 5").then(r => {
+            expect(r.length - 1).toBe(45);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][3]).toBe('a');
+        });
+    });
+
+    test("> AND NOT LIKE", () => {
+        return demoQuery("FROM Test, Test_2 WHERE 4 > n2 AND c NOT LIKE 'b'").then(r => {
+            expect(r.length - 1).toBe(72);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][3]).toBe('a');
+        });
+    });
+
+    test(" * > - AND NOT LIKE", () => {
+        return demoQuery("FROM Test, Test_2 WHERE 3 * 2 > n - 1 AND c NOT LIKE 'a'").then(r => {
+            expect(r.length - 1).toBe(63);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][3]).toBe('b');
+        });
+    });
+
+    test("|| LIKE", () => {
+        return demoQuery("FROM Test_2 WHERE c || 'z' LIKE 'az'").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe('a');
+        });
+    });
+
+    test("|| NOT LIKE", () => {
+        return demoQuery("FROM Test_2 WHERE c || 'z' NOT LIKE 'az'").then(r => {
+            expect(r.length - 1).toBe(9);
+            expect(r[1][0]).toBe('b');
+        });
+    });
+
+    test("|| NOT LIKE ||", () => {
+        return demoQuery("FROM Test_2 WHERE c || 'z' NOT LIKE 'a' || '%'").then(r => {
+            expect(r.length - 1).toBe(9);
+            expect(r[1][0]).toBe('b');
+        });
+    });
+})

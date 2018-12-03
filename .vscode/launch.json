@@ -7,7 +7,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Start Server",
+            "name": "query Server",
             "program": "${workspaceFolder}/src/server.js",
             "args": [
                 "--debug"
@@ -16,7 +16,16 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Demo Server",
+            "program": "${workspaceFolder}/src/server.js",
+            "args": [
+                "--demo"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "cli",
             "program": "${workspaceFolder}\\bin\\cli.js",
             "args": [
                 "--demo",

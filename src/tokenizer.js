@@ -90,7 +90,7 @@ module.exports = {
                     continue;
                 }
 
-                m = /^([a-z_][a-z0-9_\.]*|\*)/i.exec(ss); // Asterisk as in: COUNT(*)
+                m = /^([a-z_][a-z0-9_\.\*]*)/i.exec(ss); // Asterisk as in: COUNT(*)
                 if (m) {
                     out.push({ type: this.TOKEN_TYPES.NAME, value: m[0], start: i });
                     i += m[0].length;

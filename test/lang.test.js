@@ -298,6 +298,19 @@ test("Auto-alias Table SELECT", () => {
     });
 });
 
+test("SELECT Table.*", () => {
+    return demoQuery("FROM Test SELECT Test.*").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(10);
+        expect(r[0][0]).toBe("n");
+        expect(r[0][1]).toBe("n2");
+        expect(r[1][0]).toBe(0);
+        expect(r[1][1]).toBe(0);
+        expect(r[2][0]).toBe(1);
+        expect(r[2][1]).toBe(0);
+    });
+});
+
 describe("Table Valued Functions", () => {
     test("in FROM", () => {
         return demoQuery("FROM RANGE(1)").then(r => {

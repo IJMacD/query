@@ -392,17 +392,27 @@ async function Query (query, options = {}) {
 
     for (const { node } of cols) {
 
+        const nodeId = String(node.id);
+
         // Special Treatment for *
-        if (node.type === NODE_TYPES.SYMBOL && node.id === "*") {
+        if (node.type === NODE_TYPES.SYMBOL && nodeId.endsWith("*")) {
             if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
                 colNodes.push(node);
-                colHeaders.push("*");
+                colHeaders.push(node.id);
                 continue;
             }
 
-            // Add all the scalar columns for all tables
-            for (const table of parsedTables) {
+            const tName = nodeId.substring(0, nodeId.indexOf("."));
+
+            const tables = node.id === "*" ? parsedTables : [ tableAlias[tName] ];
+
+            // Add all the scalar columns for required tables
+            for (const table of tables) {
+                if (typeof table === "undefined") {
+                    continue;
+                }
+
                 const { join } = table;
 
                 let tableObj;
@@ -436,11 +446,6 @@ async function Query (query, options = {}) {
                 colHeaders.push(...newCols);
             }
         } else {
-            let path;
-            if (rows.length > 0) {
-                path = findPath(rows[0], node.source);
-            }
-
             colNodes.push(node);
             colHeaders.push(node.alias || node.source);
 

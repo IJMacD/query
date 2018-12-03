@@ -70,6 +70,7 @@ function parseSelect (select) {
     const source = "SELECT " + select;
     const tokens = tokenizer.tonkenize(source);
     const ast = parser.parse(tokens, source);
+    // console.log({ tokens, ast });
 
     if (!ast || !ast.children) {
         throw new Error("Empty SELECT statement");
@@ -169,7 +170,7 @@ function parseFrom (from) {
       }
 
       const name = String(node.id);
-      const using = "";
+      const using = void 0; // other parts of code expect this to be undefined before joining
 
       return {
         name,

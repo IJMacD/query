@@ -116,6 +116,60 @@ describe("Simple Joins", () => {
         });
     }, 60000);
 
+    test("Lesson, Course JOIN", () => {
+        return query("FROM Lesson, Course").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Lesson, Course JOIN", () => {
+        return query("FROM Lesson, Course").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Room, Lesson JOIN", () => {
+        return query("FROM Room, Lesson").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Room, Centre JOIN", () => {
+        return query("FROM Room, Centre").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Centre, Room JOIN", () => {
+        return query("FROM Centre, Room").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Centre, Lesson JOIN", () => {
+        return query("FROM Centre, Lesson").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Lesson, Centre JOIN", () => {
+        return query("FROM Lesson, Centre").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Lesson, Attendee JOIN", () => {
+        return query("FROM Lesson, Attendee").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
+    test("Lesson, Attendee, Student JOIN", () => {
+        return query("FROM Lesson, Attendee, Student").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    }, 60000);
+
     test("Lesson, Tutor JOIN with SELECT", () => {
         return query("FROM Lesson, Tutor SELECT start,name").then(r => {
             expect(r.length - 1).toBeGreaterThan(0);

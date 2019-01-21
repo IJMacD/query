@@ -413,4 +413,13 @@ describe("Operator Precedence", () => {
             expect(r[1][0]).toBe('b');
         });
     });
+
+    test("|| NOT LIKE || AND ", () => {
+        return demoQuery("FROM Test, Test_2 WHERE c || 'z' NOT LIKE 'a' || '%' AND n = 4").then(r => {
+            expect(r.length - 1).toBe(9);
+            expect(r[1][0]).toBe(4);
+            expect(r[1][1]).toBe(2);
+            expect(r[1][3]).toBe('b');
+        });
+    });
 })

@@ -103,6 +103,14 @@ describe("Course Queries", () => {
     }, 60000);
 });
 
+describe("Student Queries", () => {
+    test("Student by name", () => {
+        return query("FROM Student WHERE name LIKE 'Chan%'").then(r => {
+            expect(r.length - 1).toBeGreaterThan(0);
+        });
+    })
+})
+
 describe("Simple Joins", () => {
     test("Lesson, Tutor JOIN", () => {
         return query("FROM Lesson, Tutor").then(r => {

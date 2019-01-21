@@ -1,5 +1,13 @@
 * {
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-sizing: border-box;
+}
+html {
+    height: 100%;
+}
+body {
+    height: 100%;
+    margin: 0;
 }
 form {
     display: flex;
@@ -68,19 +76,22 @@ tfoot td {
 }
 img {
     position: relative;
+    display: inline-block; /* Force new block rendering context */
 }
 img::after {
     content: "404";
-    position: absolute;
-    width: 100%;
-    height: 100%;
+    position: relative;
+    width: 64px;
+    height: 64px;
     background-color: beige;
     left: 0;
     color: rgba(0,0,0,0.25);
-    text-align: center;
+    text-align: left;
     top: 0;
     line-height: 64px;
     font-weight: bold;
+    display: block;
+    /* background-image: linear-gradient(to bottom right, red, white 10%, red 10%, red 20%, white 20%, white 30%, red 30%, red 40%, white 40%, white 50%, red 50%, red 60%, white 60%, white 70%, red 70%, red 80%, white 80%, white 90%, red 90%); */
 }
 .null::before {
     content: "null";

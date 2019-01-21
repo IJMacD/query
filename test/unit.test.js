@@ -3,7 +3,7 @@ const Parser = require("../src/parser");
 
 describe("Tokenizer", () => {
   test("SELECT list", () => {
-    const tokens = Tokenizer.tonkenize("SELECT a, b, c");
+    const tokens = Tokenizer.tokenize("SELECT a, b, c");
     expect(tokens).toEqual([
       {start: 0, type: 3, value: "SELECT"},
       {start: 7, type: 4, value: "a"},
@@ -18,7 +18,7 @@ describe("Tokenizer", () => {
 describe("Parser", () => {
   test("SELECT list", () => {
     const source = "SELECT a, b, c";
-    const tokens = Tokenizer.tonkenize(source);
+    const tokens = Tokenizer.tokenize(source);
     const ast = Parser.parse(tokens, source);
 
     expect(ast).toEqual({

@@ -68,7 +68,7 @@ function parseQuery (query) {
  */
 function parseSelect (select) {
     const source = "SELECT " + select;
-    const tokens = tokenizer.tonkenize(source);
+    const tokens = tokenizer.tokenize(source);
     const ast = parser.parse(tokens, source);
     // console.log({ tokens, ast });
 
@@ -91,7 +91,7 @@ function parseWhere (where) {
       return;
   }
 
-  const tokens = tokenizer.tonkenize(where);
+  const tokens = tokenizer.tokenize(where);
   const ast = parser.parse(tokens, where);
 
   return ast;
@@ -120,7 +120,7 @@ function parseFrom (from) {
     return [];
   }
 
-  const tokens = tokenizer.tonkenize("FROM " + from);
+  const tokens = tokenizer.tokenize("FROM " + from);
   const ast = parser.parse(tokens, "FROM " + from);
   // console.log(tokens);
   // console.log(require('util').inspect(ast, {depth:null}));
@@ -158,7 +158,7 @@ function parseFrom (from) {
       //   table = table.substring(0, onIdx);
       // }
 
-      // const tokens = on && tokenizer.tonkenize("ON " + on);
+      // const tokens = on && tokenizer.tokenize("ON " + on);
       // const predicate = on && parser.parse(tokens, on);
 
       // const name = table.trim();
@@ -201,7 +201,7 @@ function parseArgumentList (list) {
  */
 function parseGroupBy (groupBy) {
   return groupBy.split(",").map(s => {
-    const tokens = tokenizer.tonkenize(s);
+    const tokens = tokenizer.tokenize(s);
     const ast = parser.parse(tokens, s);
     return ast;
   });
@@ -218,7 +218,7 @@ function parseOrderBy (orderBy) {
         const ascDesc = re.exec(s);
         s = s.replace(re, "");
 
-        const tokens = tokenizer.tonkenize(s);
+        const tokens = tokenizer.tokenize(s);
         const ast = parser.parse(tokens, s);
 
         ast.desc = Boolean(ascDesc && ascDesc[0] === "DESC");

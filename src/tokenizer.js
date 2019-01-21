@@ -22,7 +22,7 @@ module.exports = {
      * @param {string} string
      * @return {Token[]}
      */
-    tonkenize (string) {
+    tokenize (string) {
         const len = string.length;
         let i = 0;
 

@@ -76,7 +76,7 @@ module.exports = {
             } else {
                 const ss = string.substr(i);
 
-                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS|USING|ON|INNER)\b/i.exec(ss);
+                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS|USING|ON|INNER|OVER|PARTITION BY)\b/i.exec(ss);
                 if (m) {
                     out.push({ type: this.TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;

@@ -59,6 +59,9 @@ async function Query (query, options = {}) {
     const output_buffer = [];
     const output = row => output_buffer.push(row);
 
+    /***************************
+     * Common Table Expressions
+     ***************************/
     const CTEs = {};
 
     const match = /^WITH ([a-z0-9_]+) AS\s+/.exec(query);
@@ -72,6 +75,10 @@ async function Query (query, options = {}) {
         const endIdx = match[0].length + 2 + cte.length;
         query = query.substr(endIdx);
     }
+
+    /****************
+     * Set Functions
+     ****************/
 
     if (/INTERSECT/.test(query)) {
         const [ resultsL, resultsR ] = await runQueries(query.split("INTERSECT", 2), options);
@@ -99,6 +106,10 @@ async function Query (query, options = {}) {
         return distinctResults(await Query(queryL, options));
     }
 
+    /**************
+     * Matrix
+     **************/
+
     if (/^TRANSPOSE/.test(query)) {
         const subQuery = await Query(query.replace(/TRANSPOSE\s*/, ""), options);
 
@@ -115,6 +126,10 @@ async function Query (query, options = {}) {
         }
         return out;
     }
+
+    /* ########################################################
+     * Beginning of simple (i.e. non-compound) query parsing
+     * ######################################################## */
 
     const parsedQuery = parseQuery(query);
 
@@ -485,7 +500,16 @@ async function Query (query, options = {}) {
             }
 
             try {
-                row[i] = evaluateExpression(row, node);
+                // First check if we're evaluating a window function
+                if (node.over && node.id in AGGREGATE_FUNCTIONS) {
+                    const partitionVal = evaluateExpression(row, node.over);
+                    const group = rows.filter(r => evaluateExpression(r, node.over) === partitionVal);
+
+                    const fn = AGGREGATE_FUNCTIONS[node.id];
+                    row[i] = fn(aggregateValues(group, node.children[0]));
+                } else {
+                    row[i] = evaluateExpression(row, node);
+                }
             } catch (e) {
                 if (e instanceof SymbolError) {
                     row[i] = null;
@@ -507,7 +531,7 @@ async function Query (query, options = {}) {
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    if (colNodes.some(node => node && node.id in AGGREGATE_FUNCTIONS)) {
+    if (colNodes.some(node => node && node.id in AGGREGATE_FUNCTIONS && !node.over)) {
         if (!groupBy) {
             // If we have aggregate functions but we're not grouping,
             // then apply aggregate functions to whole set
@@ -966,6 +990,8 @@ async function Query (query, options = {}) {
      * @returns {any[]}
      */
     function aggregateValues (rows, expr, distinct = false) {
+        // COUNT(*) includes all rows, NULLS and all
+        // we don't need to evaluate anything and can just bail early
         if (expr.id === "*") {
             return rows.map(r => true);
         }

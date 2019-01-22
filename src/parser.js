@@ -16,9 +16,12 @@ const { TOKEN_TYPES } = require('./tokenizer');
   * @prop {number} type
   * @prop {string|number} id
   * @prop {string} [alias]
+  * @prop {boolean} [inner]
   * @prop {Node} [predicate]
   * @prop {Node[]} [children]
   * @prop {string} [source]
+  * @prop {Node} [over]
+  * @prop {boolean} [desc]
   */
 
 const NODE_TYPES = {
@@ -38,13 +41,14 @@ module.exports = {
      * @param {string} source
      * @returns {Node}
      */
-    parse (tokenList, source) {
+    parse (tokenList, source="") {
         let i = 0;
 
         /**
          * @returns {Node}
          */
         function descend () {
+            /** @type {Node} */
             let out = {};
             const t = tokenList[i];
             let next;
@@ -59,53 +63,77 @@ module.exports = {
                         appendChild(out.children, descend());
 
                         next = tokenList[i];
-                        if (next) {
-                            if (next.type === TOKEN_TYPES.KEYWORD && next.value === "AS") {
-                                i++; // AS
-                                next = tokenList[i];
-                                if (next.type === TOKEN_TYPES.NAME) {
-                                    const child = out.children[out.children.length - 1];
-                                    child.alias = next.value;
-                                    child.source += ` AS ${next.value}`;
-                                } else {
-                                    throw new Error("Name expected");
-                                }
-                                i++; // alias
-                                next = tokenList[i];
-                            }
-
-                            if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "ON") {
-                                i++; // ON
-                                next = tokenList[i];
-                                if (next.type === TOKEN_TYPES.NAME) {
-                                    const child = out.children[out.children.length - 1];
-                                    child.predicate = descendExpression();
-                                    child.source += ` ON ${child.predicate.source}`;
-                                } else {
-                                    throw new Error("Name expected");
-                                }
-                            } else if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "USING") {
-                                i++; // USING
-                                next = tokenList[i];
-                                if (next.type === TOKEN_TYPES.NAME) {
-                                    const child = out.children[out.children.length - 1];
-                                    child.predicate = descend();
-                                    child.source += ` USING ${child.predicate.source}`;
-                                } else {
-                                    throw new Error("Name expected");
-                                }
-                                i++; // predicate
-                                next = tokenList[i];
-                            } else if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "INNER") {
-                                i++; // INNER
+                        if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "AS") {
+                            i++; // AS
+                            next = tokenList[i];
+                            if (next.type === TOKEN_TYPES.NAME) {
                                 const child = out.children[out.children.length - 1];
-                                child.inner = true;
+                                child.alias = next.value;
+                                child.source += ` AS ${next.value}`;
+                            } else {
+                                throw new Error("Name expected");
+                            }
+                            i++; // alias
+                            next = tokenList[i];
+                        }
+
+                        if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "OVER") {
+                            i++; // OVER
+                            next = tokenList[i];
+                            if (next && next.type === TOKEN_TYPES.BRACKET && next.value === "(") {
+                                const child = out.children[out.children.length - 1];
+                                child.over = { type: NODE_TYPES.STRING, id: "true" };
+
+                                i++; // Bracket
+                                next = tokenList[i];
+                                if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "PARTITION BY") {
+                                    i++; // PARTITION BY
+                                    next = tokenList[i];
+
+                                    if (next && next.type === TOKEN_TYPES.NAME) {
+                                        child.over = { type: NODE_TYPES.SYMBOL, id: next.value };
+                                    }
+                                    i++; // Name
+                                    next = tokenList[i];
+
+                                }
+
+                                i++; // End Bracket
                                 next = tokenList[i];
                             }
+                        }
 
-                            if (next && next.type === TOKEN_TYPES.COMMA) {
-                                i++; // Comma
+                        if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "ON") {
+                            i++; // ON
+                            next = tokenList[i];
+                            if (next.type === TOKEN_TYPES.NAME) {
+                                const child = out.children[out.children.length - 1];
+                                child.predicate = descendExpression();
+                                child.source += ` ON ${child.predicate.source}`;
+                            } else {
+                                throw new Error("Name expected");
                             }
+                        } else if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "USING") {
+                            i++; // USING
+                            next = tokenList[i];
+                            if (next.type === TOKEN_TYPES.NAME) {
+                                const child = out.children[out.children.length - 1];
+                                child.predicate = descend();
+                                child.source += ` USING ${child.predicate.source}`;
+                            } else {
+                                throw new Error("Name expected");
+                            }
+                            i++; // predicate
+                            next = tokenList[i];
+                        } else if (next && next.type === TOKEN_TYPES.KEYWORD && next.value === "INNER") {
+                            i++; // INNER
+                            const child = out.children[out.children.length - 1];
+                            child.inner = true;
+                            next = tokenList[i];
+                        }
+
+                        if (next && next.type === TOKEN_TYPES.COMMA) {
+                            i++; // Comma
                         }
                     }
 

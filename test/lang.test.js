@@ -385,3 +385,40 @@ test("Common Table Expression", () => {
         expect(r[1][4]).toBe(0);
     });
 });
+
+describe("Window Functions", () => {
+    test("Over all rows", () => {
+        return demoQuery("FROM Test SELECT *,SUM(n) OVER ()").then (r => {
+            expect(r.length - 1).toBe(10);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][2]).toBe(0);
+            expect(r[1][3]).toBe(45);
+
+            expect(r[2][3]).toBe(45);
+            expect(r[3][3]).toBe(45);
+            expect(r[4][3]).toBe(45);
+            expect(r[5][3]).toBe(45);
+        });
+    });
+
+    test("Over partition", () => {
+        return demoQuery("FROM Test SELECT *,SUM(n) OVER (PARTITION BY n2),SUM(n2) OVER (PARTITION BY n3)").then (r => {
+            expect(r.length - 1).toBe(10);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][2]).toBe(0);
+            expect(r[1][3]).toBe(1);
+            expect(r[1][4]).toBe(1);
+
+            expect(r[3][3]).toBe(5);
+            expect(r[3][4]).toBe(1);
+
+            expect(r[7][3]).toBe(13);
+            expect(r[7][4]).toBe(10);
+
+            expect(r[10][3]).toBe(17);
+            expect(r[10][4]).toBe(4);
+        });
+    });
+})

@@ -165,6 +165,14 @@ describe("GROUP BY", () => {
 });
 
 describe("Aggregate Queries", () => {
+    test("COUNT(*) no GROUP BY", () => {
+        return demoQuery("FROM Test SELECT COUNT(*)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe(10);
+        });
+    });
+
     test("COUNT(*) GROUP BY n", () => {
         return demoQuery("FROM Test GROUP BY n SELECT COUNT(*)").then(r => {
             // Remember header row

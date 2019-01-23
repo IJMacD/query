@@ -130,12 +130,6 @@ describe("Simple Joins", () => {
         });
     }, 60000);
 
-    test("Lesson, Course JOIN", () => {
-        return query("FROM Lesson, Course").then(r => {
-            expect(r.length - 1).toBeGreaterThan(0);
-        });
-    }, 60000);
-
     test("Room, Lesson JOIN", () => {
         return query("FROM Room, Lesson").then(r => {
             expect(r.length - 1).toBeGreaterThan(0);

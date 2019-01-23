@@ -214,7 +214,7 @@ describe("Logic Operators", () => {
         });
     });
 
-    test(">", () => {
+    test(">=", () => {
         return Query("SELECT 4 >= 4").then(r => {
             expect(r[1][0]).toBe(true);
         });
@@ -375,8 +375,8 @@ describe("Operator Precedence", () => {
         });
     });
 
-    test("> AND NOT LIKE", () => {
-        return demoQuery("FROM Test, Test_2 WHERE 4 > n2 AND c NOT LIKE 'b'").then(r => {
+    test("+ > AND NOT LIKE", () => {
+        return demoQuery("FROM Test, Test_2 WHERE 2 + 2 > n2 AND c NOT LIKE 'b'").then(r => {
             expect(r.length - 1).toBe(72);
             expect(r[1][0]).toBe(0);
             expect(r[1][1]).toBe(0);

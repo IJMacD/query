@@ -13,7 +13,7 @@ describe("Tutor Queries", () => {
     test("Tutor Query by id", () => {
         return query("FROM Tutor WHERE id = 9").then(r => {
             expect(r.length - 1).toBe(1);
-            expect(r[1][0]).toBe("9");
+            expect(r[1][0]).toBe(9);
             expect(r[1][1]).toBe('Kemmiss Pun');
         });
     });
@@ -21,7 +21,7 @@ describe("Tutor Queries", () => {
     test("Tutor Query by name", () => {
         return query("FROM Tutor WHERE name = 'Iain MacDonald'").then(r => {
             expect(r.length - 1).toBe(1);
-            expect(r[1][0]).toBe("3967");
+            expect(r[1][0]).toBe(3967);
             expect(r[1][1]).toBe('Iain MacDonald');
         });
     });

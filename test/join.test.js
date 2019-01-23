@@ -174,10 +174,16 @@ test("Expression Access Predicate Self CROSS JOIN", () => {
   });
 });
 
-
 test("Self CROSS JOIN misaligned", () => {
   return demoQuery("FROM Test AS a, Test AS b ON a.n = b.n2").then(r => {
       // Don't forget header row
       expect(r.length - 1).toBe(10);
+  });
+});
+
+test("Multiple JOINs", () => {
+  return demoQuery("FROM Test AS a, Test AS b ON a.n3 = b.n3, Test").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(280);
   });
 });

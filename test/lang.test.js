@@ -421,4 +421,20 @@ describe("Window Functions", () => {
             expect(r[10][4]).toBe(4);
         });
     });
+
+    test("Over partition expression", () => {
+        return demoQuery("FROM Test SELECT *,SUM(n) OVER (PARTITION BY n2 - n3)").then (r => {
+            expect(r.length - 1).toBe(10);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][2]).toBe(0);
+            expect(r[1][3]).toBe(4);
+
+            expect(r[3][3]).toBe(33);
+
+            expect(r[7][3]).toBe(33);
+
+            expect(r[9][3]).toBe(8);
+        });
+    });
 })

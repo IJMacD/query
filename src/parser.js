@@ -123,10 +123,7 @@ module.exports = {
                             if (peek(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
                                 next();
 
-                                if (peek(TOKEN_TYPES.NAME)) {
-                                    next_token = next();
-                                    child.over = { type: NODE_TYPES.SYMBOL, id: next_token.value };
-                                }
+                                child.over = descendExpression();
                             }
 
                             expect(TOKEN_TYPES.BRACKET, ")");
@@ -266,14 +263,11 @@ module.exports = {
 
             let node = descend();
 
-            while (i < tokenList.length) {
-                if (peek(TOKEN_TYPES.OPERATOR)) {
-                    const arr = [node];
-                    appendChild(arr, descend());
-                    // Haha I've just invented the double pointer in javascript
-                    node = arr[0];
-                }
-                else break;
+            while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
+                const arr = [node];
+                appendChild(arr, descend());
+                // Haha I've just invented the double pointer in javascript
+                node = arr[0];
             }
 
             return node;

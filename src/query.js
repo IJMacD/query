@@ -503,7 +503,7 @@ async function Query (query, options = {}) {
                 // First check if we're evaluating a window function
                 if (node.over && node.id in AGGREGATE_FUNCTIONS) {
                     const partitionVal = evaluateExpression(row, node.over);
-                    const group = rows.filter(r => evaluateExpression(r, node.over) === partitionVal);
+                    const group = rows.filter(r => collateEqual(evaluateExpression(r, node.over), partitionVal));
 
                     const fn = AGGREGATE_FUNCTIONS[node.id];
                     row[i] = fn(aggregateValues(group, node.children[0]));
@@ -1317,4 +1317,21 @@ function zip (keys, values) {
         out[keys[i]] = values[i];
     }
     return out;
+}
+
+/**
+ * Compares two values to see if they are equal by collation rules
+ * @param {any} a
+ * @param {any} b
+ * @returns {boolean}
+ */
+function collateEqual (a, b) {
+    if (typeof a !== typeof b) return false;
+
+    if (typeof a === "object") {
+        // Assume it is like a date and try to compare numerically
+        return +a === +b;
+    }
+
+    return a === b;
 }

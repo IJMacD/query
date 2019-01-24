@@ -39,10 +39,29 @@ class SymbolError extends Error { }
 module.exports = Query;
 
 /**
+* @typedef {import('./parse').ParsedTable} ParsedTable
+*/
+
+/**
  * @typedef QueryCallbacks
  * @prop {(ParsedFrom) => Promise<any[]>|any[]} primaryTable
  * @prop {(ParsedFrom, results: any[]) => Promise} [beforeJoin]
  * @prop {(ParsedFrom, results: any[]) => Promise} [afterJoin]
+ */
+
+/**
+ * @typedef QueryContext
+ * @property {Node[]} cols
+ * @property {ParsedTable[]} parsedTables
+ * @property {Node} parsedWhere
+ * @property {Node} parsedHaving
+ * @property {string} orderBy
+ * @property {string} groupBy
+ * @property {(path: string) => string|number|boolean|Date} resolveConstant
+ * @property {(data: any, path: string) => any} resolvePath
+ * @property {(row: ResultRow, col: string) => any} resolveValue
+ * @property {(name: string) => ParsedTable} findTable
+ * @property {(symbol: string, operator?: string|string[]) => string|number} findWhere
  */
 
 /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
@@ -139,14 +158,6 @@ async function Query (query, options = {}) {
         parsedQuery.select = "*";
     }
 
-    /**
-    * @typedef {import('./parse').ParsedColumn} ParsedColumn
-    */
-
-    /**
-    * @typedef {import('./parse').ParsedTable} ParsedTable
-    */
-
     const select = parseSelect(parsedQuery.select);
     /** @type {Node[]} */
     const cols = select.children;
@@ -162,6 +173,7 @@ async function Query (query, options = {}) {
     const groupBy = parsedQuery['group by'];
     const analyse = parsedQuery.explain === "ANALYSE" || parsedQuery.explain === "ANALYZE";
 
+    /** @type {QueryContext} */
     const self = {
         cols,
         parsedTables,
@@ -1079,7 +1091,7 @@ async function Query (query, options = {}) {
     /**
      *
      * @param {string} symbol
-     * @param {string|string[]} operator
+     * @param {string|string[]} [operator]
      */
     function findWhere (symbol, operator="=") {
         if (!parsedWhere) {
@@ -1094,6 +1106,7 @@ async function Query (query, options = {}) {
      * @param {Node} node
      * @param {string} symbol
      * @param {string|string[]} operator
+     * @returns {string|number}
      */
     function traverseWhereTree (node, symbol, operator="=") {
         if (node.type !== NODE_TYPES.OPERATOR) {

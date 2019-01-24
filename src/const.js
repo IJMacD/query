@@ -18,6 +18,7 @@ const VALUE_FUNCTIONS = {
     'TIME': d => moment(d).format("HH:mm:ss"),
     'DATETIME': d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
     'DURATION': m => moment.duration(m, "milliseconds").format(),
+    'JSON_STRINGIFY': v => JSON.stringify(v),
 
     EXTRACT (part, v) {
         const m = moment(v);
@@ -61,6 +62,7 @@ const AGGREGATE_FUNCTIONS = {
     'MIN': v => Math.min(...v),
     'MAX': v => Math.max(...v),
     'LISTAGG': v => v.join(),
+    'JSON_ARRAYAGG': VALUE_FUNCTIONS.JSON_STRINGIFY,
 };
 
 const OPERATORS = {

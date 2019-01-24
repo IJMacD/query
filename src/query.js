@@ -101,11 +101,6 @@ async function Query (query, options = {}) {
         return all ? unionAllResults(resultsL, resultsR) : unionResults(resultsL, resultsR);
     }
 
-    if (/DISTINCT/.test(query)) {
-        const queryL = query.replace(/DISTINCT/g, "");
-        return distinctResults(await Query(queryL, options));
-    }
-
     /**************
      * Matrix
      **************/
@@ -152,8 +147,9 @@ async function Query (query, options = {}) {
     * @typedef {import('./parse').ParsedTable} ParsedTable
     */
 
-    /** @type {ParsedColumn[]} */
-    const cols = parseSelect(parsedQuery.select);
+    const select = parseSelect(parsedQuery.select);
+    /** @type {Node[]} */
+    const cols = select.children;
     /** @type {ParsedTable[]} */
     const parsedTables = parseFrom(parsedQuery.from);
     // console.log(parsedTables);
@@ -405,7 +401,7 @@ async function Query (query, options = {}) {
      * Columns
      ******************/
 
-    for (const { node } of cols) {
+    for (const node of cols) {
 
         const nodeId = String(node.id);
 
@@ -556,6 +552,13 @@ async function Query (query, options = {}) {
         rows = filterRowsByPredicate(rows, parsedHaving);
     }
 
+    /*******************
+     * Distinct
+     *******************/
+    if (select.distinct) {
+        rows = distinctResults(rows);
+    }
+
     /****************
      * Sorting
      ***************/
@@ -662,6 +665,8 @@ async function Query (query, options = {}) {
                     return null;
                 }
             }
+
+            throw new Error(`Tried to call a non-existant function (${fnName})`);
         } else if (node.type === NODE_TYPES.SYMBOL) {
             const val = resolveValue(row, String(node.id));
 
@@ -959,26 +964,11 @@ async function Query (query, options = {}) {
 
         // Fill in aggregate values
         colNodes.forEach((node, i) => {
-
             if (node.id in AGGREGATE_FUNCTIONS) {
                 const fn = AGGREGATE_FUNCTIONS[node.id];
-
-                if (fn) {
-                   // TODO: Reimplement DISTINCT
-                   // old code:
-                   // if (col.startsWith("DISTINCT")) {
-                   //     distinct = true;
-                   //     col = col.substr(8).trim();
-                   // }
-
-                   const distinct = false;
-
-                    row[i] = fn(aggregateValues(rows, node.children[0], distinct));
-                } else {
-                    throw new Error("Function not found: " + node.id);
-                }
-
-                return;
+                row[i] = fn(aggregateValues(rows, node.children[0], node.distinct));
+            } else {
+                throw new Error("Function not found: " + node.id);
             }
         });
 

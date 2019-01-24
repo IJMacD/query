@@ -23,6 +23,7 @@ const { TOKEN_TYPES } = require('./tokenizer');
   * @prop {Node} [over]
   * @prop {Node} [order]
   * @prop {boolean} [desc]
+  * @prop {boolean} [distinct]
   */
 
 const NODE_TYPES = {
@@ -100,6 +101,11 @@ module.exports = {
                     out.id = t.value;
                     out.children = [];
 
+                    if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
+                        next();
+                        out.distinct = true;
+                    }
+
                     while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
                         appendChild(out.children, descend());
 
@@ -117,7 +123,7 @@ module.exports = {
                             next();
 
                             const child = out.children[out.children.length - 1];
-                            child.over = { type: NODE_TYPES.STRING, id: "true" };
+                            child.over = { type: NODE_TYPES.NUMBER, id: 1 };
 
                             expect(TOKEN_TYPES.BRACKET, "(");
 
@@ -175,6 +181,12 @@ module.exports = {
                         out.type = NODE_TYPES.FUNCTION_CALL;
                         out.id = t.value;
                         out.children = [];
+
+                        if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
+                            next();
+
+                            out.distinct = true;
+                        }
 
                         while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
                             appendChild(out.children, descend());

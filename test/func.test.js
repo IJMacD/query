@@ -33,6 +33,14 @@ describe("Aggregate Functions", () => {
     });
   });
 
+  test("SUM DISTINCT", () => {
+    return demoQuery("FROM Test SELECT SUM(DISTINCT n2)").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe(10);
+    });
+  });
+
   test("AVG", () => {
     return demoQuery("FROM Test SELECT AVG(n)").then(r => {
       // Don't forget header row
@@ -62,6 +70,14 @@ describe("Aggregate Functions", () => {
       // Don't forget header row
       expect(r.length - 1).toBe(1);
       expect(r[1][0]).toBe('0,1,2,3,4,5,6,7,8,9');
+    });
+  });
+
+  test("LISTAGG DISTINCT", () => {
+    return demoQuery("FROM Test SELECT LISTAGG(DISTINCT n2)").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe('0,1,2,3,4');
     });
   });
 });

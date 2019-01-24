@@ -64,7 +64,7 @@ function parseQuery (query) {
 
 /**
  * @param {string} select
- * @returns {ParsedColumn[]}
+ * @returns {Node}
  */
 function parseSelect (select) {
     const source = "SELECT " + select;
@@ -76,9 +76,7 @@ function parseSelect (select) {
         throw new Error("Empty SELECT statement");
     }
 
-    return ast.children.map(child => {
-        return { value: String(child.id), alias: child.alias, node: child };
-    });
+    return ast;
 }
 
 /**

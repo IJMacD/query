@@ -504,6 +504,9 @@ async function Query (query, options = {}) {
                 if (node.over && node.id in AGGREGATE_FUNCTIONS) {
                     const partitionVal = evaluateExpression(row, node.over);
                     const group = rows.filter(r => collateEqual(evaluateExpression(r, node.over), partitionVal));
+                    if (node.order) {
+                        group.sort((ra, rb) => evaluateExpression(ra, node.order) - evaluateExpression(rb, node.order));
+                    }
 
                     const fn = AGGREGATE_FUNCTIONS[node.id];
                     row[i] = fn(aggregateValues(group, node.children[0]));

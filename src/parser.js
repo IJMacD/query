@@ -21,6 +21,7 @@ const { TOKEN_TYPES } = require('./tokenizer');
   * @prop {Node[]} [children]
   * @prop {string} [source]
   * @prop {Node} [over]
+  * @prop {Node} [order]
   * @prop {boolean} [desc]
   */
 
@@ -124,6 +125,13 @@ module.exports = {
                                 next();
 
                                 child.over = descendExpression();
+                            }
+
+
+                            if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
+                                next();
+
+                                child.order = descendExpression();
                             }
 
                             expect(TOKEN_TYPES.BRACKET, ")");

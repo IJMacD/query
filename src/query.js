@@ -505,7 +505,7 @@ async function Query (query, options = {}) {
                     }
 
                     const fn = AGGREGATE_FUNCTIONS[node.id];
-                    row[i] = fn(aggregateValues(group, node.children[0]));
+                    row[i] = fn(aggregateValues(group, node.children[0], node.distinct));
                 } else {
                     row[i] = evaluateExpression(row, node);
                 }

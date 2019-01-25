@@ -217,7 +217,6 @@ async function Query (query, options = {}) {
     } else {
         const table = parsedTables[0];
         table.join = table.alias || table.name;
-        table.inner = false;
 
         const start = Date.now();
 
@@ -543,18 +542,29 @@ async function Query (query, options = {}) {
      *********************/
     // Now see if there are any aggregate functions to apply
     if (colNodes.some(node => node && node.id in AGGREGATE_FUNCTIONS && !node.over)) {
-        if (!groupBy) {
-            // If we have aggregate functions but we're not grouping,
-            // then apply aggregate functions to whole set
-            const aggRow = rows[0];
-            aggRow['group'] = rows;
-
-            rows = [
-                aggRow // Single row result set
-            ];
+        if (rows.length === 0) {
+            // Special case for COUNT(*)
+            const index = colNodes.findIndex(n => n.id === "COUNT");
+            if (index >= 0) {
+                const row = [];
+                row[index] = 0;
+                rows = [row];
+            }
         }
+        else {
+            if (!groupBy) {
+                // If we have aggregate functions but we're not grouping,
+                // then apply aggregate functions to whole set
+                const aggRow = rows[0];
+                aggRow['group'] = rows;
 
-        rows = rows.map(row => computeAggregates(row['group'], colNodes));
+                rows = [
+                    aggRow // Single row result set
+                ];
+            }
+
+            rows = rows.map(row => computeAggregates(row['group'], colNodes));
+        }
     }
 
     /*******************

@@ -9,19 +9,27 @@ describe("Aggregate Functions", () => {
     });
   });
 
-  // test("COUNT DISTINCT", () => {
-  //   return demoQuery("FROM Test, Test_2 SELECT COUNT(DISTINCT n)").then(r => {
-  //     // Don't forget header row
-  //     expect(r.length - 1).toBe(1);
-  //     expect(r[1][0]).toBe(10);
-  //   });
-  // });
+  test("COUNT DISTINCT", () => {
+    return demoQuery("FROM Test, Test_2 SELECT COUNT(DISTINCT n)").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe(10);
+    });
+  });
 
   test("COUNT expression", () => {
     return demoQuery("FROM Test SELECT COUNT(n > 4)").then(r => {
       // Don't forget header row
       expect(r.length - 1).toBe(1);
       expect(r[1][0]).toBe(5);
+    });
+  });
+
+  test("COUNT empty", () => {
+    return demoQuery("FROM Test WHERE n > 10 SELECT COUNT(*)").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe(0);
     });
   });
 

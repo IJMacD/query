@@ -437,4 +437,21 @@ describe("Window Functions", () => {
             expect(r[9][3]).toBe(8);
         });
     });
-})
+
+    test("With Alias", () => {
+        return demoQuery("FROM Test SELECT *,SUM(n) OVER () AS s").then (r => {
+            expect(r.length - 1).toBe(10);
+            expect(r[0][3]).toBe("s");
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][2]).toBe(0);
+            expect(r[1][3]).toBe(45);
+
+            expect(r[2][3]).toBe(45);
+            expect(r[3][3]).toBe(45);
+            expect(r[4][3]).toBe(45);
+            expect(r[5][3]).toBe(45);
+        });
+    });
+});

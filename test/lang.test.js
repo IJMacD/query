@@ -20,9 +20,21 @@ test("SELECT selects columns", () => {
     });
 });
 
-test("Column Alias", () => {
-    return demoQuery("SELECT 'hello' AS greeting").then(r => {
-        expect(r[0][0]).toBe("greeting");
+describe("Column Alias", () => {
+    test("Simple Alias", () => {
+        return demoQuery("SELECT 'hello' AS greeting").then(r => {
+            expect(r[0][0]).toBe("greeting");
+            expect(r[1][0]).toBe("hello");
+        });
+    });
+
+    test("Alias Reference", () => {
+        return demoQuery("SELECT 9 AS num, num + num AS num2").then(r => {
+            expect(r[0][0]).toBe("num");
+            expect(r[1][0]).toBe(9);
+            expect(r[0][1]).toBe("num2");
+            expect(r[1][1]).toBe(18);
+        });
     });
 });
 

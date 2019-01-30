@@ -6,6 +6,11 @@ module.exports = {
   format
 };
 
+/**
+ *
+ * @param {any[][]} data
+ * @param {{ mime?: string, locale?: string, name?: string }} options
+ */
 function format (data, { mime = "text/plain", locale = undefined, name = undefined } = {}) {
   switch (mime) {
     case "application/json":
@@ -34,9 +39,14 @@ function format (data, { mime = "text/plain", locale = undefined, name = undefin
   }
 }
 
+/**
+ *
+ * @param {any} data
+ * @returns {string}
+ */
 function formatPlainTextVal (data) {
     if (data === null || typeof data === "undefined") {
-        return "NULL";
+        return "";
     }
 
     if (data instanceof Date) {
@@ -49,6 +59,8 @@ function formatPlainTextVal (data) {
 /**
  *
  * @param {any[][]} data
+ * @param {{ tableName?: string }} options
+ * @returns {string}
  */
 function renderSQLInsert (data, { tableName = "data" } = {}) {
   const headers = data.shift();
@@ -58,13 +70,18 @@ function renderSQLInsert (data, { tableName = "data" } = {}) {
   return `${create};\n${insert};\n`
 }
 
+/**
+ *
+ * @param {any} val
+ * @returns {string}
+ */
 function formatSQLValue (val) {
   if (val instanceof Date) {
     return `'${moment(val).utc().format("YYYY-MM-DD HH:mm:ss")}'`;
   }
 
   if (typeof val === "number") {
-    return val;
+    return String(val);
   }
 
   if (val === null) {
@@ -136,6 +153,11 @@ function renderTable({ rows, locale }) {
       </table>`;
 }
 
+/**
+ *
+ * @param {{ cell: any, locale: string }} options
+ * @returns {string}
+ */
 function formatHTML ({ cell, locale }) {
   if (cell === null) {
     return "";

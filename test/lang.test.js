@@ -20,9 +20,21 @@ test("SELECT selects columns", () => {
     });
 });
 
-test("Column Alias", () => {
-    return demoQuery("SELECT 'hello' AS greeting").then(r => {
-        expect(r[0][0]).toBe("greeting");
+describe("Column Alias", () => {
+    test("Simple Alias", () => {
+        return demoQuery("SELECT 'hello' AS greeting").then(r => {
+            expect(r[0][0]).toBe("greeting");
+            expect(r[1][0]).toBe("hello");
+        });
+    });
+
+    test("Alias Reference", () => {
+        return demoQuery("SELECT 9 AS num, num + num AS num2").then(r => {
+            expect(r[0][0]).toBe("num");
+            expect(r[1][0]).toBe(9);
+            expect(r[0][1]).toBe("num2");
+            expect(r[1][1]).toBe(18);
+        });
     });
 });
 
@@ -437,4 +449,21 @@ describe("Window Functions", () => {
             expect(r[9][3]).toBe(8);
         });
     });
-})
+
+    test("With Alias", () => {
+        return demoQuery("FROM Test SELECT *,SUM(n) OVER () AS s").then (r => {
+            expect(r.length - 1).toBe(10);
+            expect(r[0][3]).toBe("s");
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][2]).toBe(0);
+            expect(r[1][3]).toBe(45);
+
+            expect(r[2][3]).toBe(45);
+            expect(r[3][3]).toBe(45);
+            expect(r[4][3]).toBe(45);
+            expect(r[5][3]).toBe(45);
+        });
+    });
+});

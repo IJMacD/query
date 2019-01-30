@@ -856,12 +856,25 @@ async function Query (query, options = {}) {
             return constant;
         }
 
-        // If row is null, there's nothing left we can do
-        if (row === null || !row['data']) {
-            return;
+        // If row is null, there's nothing we can do
+        if (row === null) {
+            throw Error("Resolve Value Error: NULL Row");
         }
 
-        // Now for the real column resolution
+        // First check if we have an exact alias match,
+        // this trumps other methods in name collisions
+        if (typeof colAlias[col] !== "undefined") {
+            const i = colAlias[col];
+
+            if (typeof row[i] !== "undefined") {
+                return row[i];
+            }
+        }
+
+        // All methods after this require row data
+        if (!row['data']) {
+            throw Error("Resolve Value Error: No row data");
+        }
 
         let head = col;
         let tail;

@@ -109,16 +109,6 @@ module.exports = {
                     while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
                         appendChild(out.children, descend());
 
-                        if (peek(TOKEN_TYPES.KEYWORD, "AS")) {
-                            next();
-
-                            next_token = expect(TOKEN_TYPES.NAME);
-
-                            const child = out.children[out.children.length - 1];
-                            child.alias = next_token.value;
-                            child.source += ` AS ${next_token.value}`;
-                        }
-
                         if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
                             next();
 
@@ -141,6 +131,16 @@ module.exports = {
                             }
 
                             expect(TOKEN_TYPES.BRACKET, ")");
+                        }
+
+                        if (peek(TOKEN_TYPES.KEYWORD, "AS")) {
+                            next();
+
+                            next_token = expect(TOKEN_TYPES.NAME);
+
+                            const child = out.children[out.children.length - 1];
+                            child.alias = next_token.value;
+                            child.source += ` AS ${next_token.value}`;
                         }
 
                         if (peek(TOKEN_TYPES.KEYWORD, "ON")) {

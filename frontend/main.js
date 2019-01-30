@@ -42,7 +42,7 @@ input.addEventListener("keyup", e => {
     showSuggestions();
 });
 querySuggest.addEventListener("click", e => {
-    if (e.target.localName === "li") {
+    if (e.target instanceof HTMLLIElement) {
         input.value = e.target.textContent;
         showSuggestions();
         input.focus();

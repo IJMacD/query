@@ -124,12 +124,57 @@ async function afterJoin (table, rows) {
 async function beforeJoin (table, rows) {
     switch (table.name) {
         case 'Users':
+        {
             const postsTable = this.findTable("Posts");
+            /** @type {any[]} */
+            const users = await getJSON(`${API_ROOT}users`);
             if (postsTable) {
-                table.join = "Users";
-                table.predicate = Parser.parseString(`${table.join}.id = ${postsTable.join}.userId`);
+                table.join = "Posts.Users";
+                // table.predicate = Parser.parseString(`${table.join}.id = ${postsTable.join}.userId`);
+                rows.forEach(row => {
+                    row['data'][table.join] = users.find(u => u.id === row['data'][postsTable.join].userId);
+                });
             }
             break;
+        }
+        case 'Comments':
+        {
+            const postsTable = this.findTable("Posts");
+            /** @type {any[]} */
+            const comments = await getJSON(`${API_ROOT}comments`);
+            if (postsTable) {
+                table.join = "Posts.Comments";
+                rows.forEach(row => {
+                    row['data'][table.join] = comments.filter(c => c.postId === row['data'][postsTable.join].id);
+                });
+            }
+            break;
+        }
+        case 'Posts':
+        {
+            /** @type {any[]} */
+            const posts = await getJSON(`${API_ROOT}posts`);
+
+            const usersTable = this.findTable("Users");
+            if (usersTable) {
+                table.join = "Users.Posts";
+                rows.forEach(row => {
+                    row['data'][table.join] = posts.filter(p => p.userId === row['data'][usersTable.join].id);
+                });
+                break;
+            }
+
+            const commentsTable = this.findTable("Comments");
+            if (commentsTable) {
+                table.join = "Comments.Posts";
+                rows.forEach(row => {
+                    row['data'][table.join] = posts.find(p => p.id === row['data'][commentsTable.join].postId);
+                });
+                break;
+            }
+
+            break;
+        }
     }
 }
 

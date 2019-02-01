@@ -3,35 +3,35 @@ const path = require('path');
 require('fetch-everywhere');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const ilQuery = require('../src/query');
-const demoQuery = require('../src/demo-query');
+const ilQuery = require('../src/providers/query');
+const demoQuery = require('../src/providers/demo');
 const Formatter = require('../src/formatter');
 
 const [ node, script, ...rest ] = process.argv;
 
-const args = rest.filter(a => a[0] === "-");
+const opts = rest.filter(a => a[0] === "-");
 const query = rest.filter(a => a[0] !== "-").join(" ");
 
 /**
  * @type {(query: string, options) => Promise<any[][]>}
  */
-const QueryExecutor = args.includes("--demo") ? demoQuery : ilQuery;
+const QueryExecutor = opts.includes("--demo") ? demoQuery : ilQuery;
 
-const debug = args.includes("--debug");
+const debug = opts.includes("--debug");
 
 let mime = "text/plain";
 let name;
 
-for (let arg of args) {
-    switch (arg[1]) {
+for (let opt of opts) {
+    switch (opt[1]) {
         case "f":
-            if (arg.startsWith("-f=plain")) mime = "text/plain";
-            else if (arg.startsWith("-f=csv")) mime = "text/csv";
-            else if (arg.startsWith("-f=json")) mime = "application/json";
-            else if (arg.startsWith("-f=html")) mime = "text/html";
-            else if (arg.startsWith("-f=sql")) {
+            if (opt.startsWith("-f=plain")) mime = "text/plain";
+            else if (opt.startsWith("-f=csv")) mime = "text/csv";
+            else if (opt.startsWith("-f=json")) mime = "application/json";
+            else if (opt.startsWith("-f=html")) mime = "text/html";
+            else if (opt.startsWith("-f=sql")) {
                 mime = "application/sql";
-                name = arg.split(":")[1];
+                name = opt.split(":")[1];
             }
             break;
     }

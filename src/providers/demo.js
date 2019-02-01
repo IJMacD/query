@@ -1,4 +1,4 @@
-const Query = require('./query');
+const Query = require('../query');
 
 function primaryTable (table) {
     if (table.name === "Test") {

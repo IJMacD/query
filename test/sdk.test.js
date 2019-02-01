@@ -1,7 +1,7 @@
 require('fetch-everywhere');
 require('dotenv').config();
 
-const query = require('../src/query');
+const query = require('../src/providers/query');
 
 describe("Tutor Queries", () => {
     test("Simple Tutor Query", () => {

@@ -1,4 +1,4 @@
-const demoQuery = require('../src/demo-query');
+const demoQuery = require('../src/providers/demo');
 
 test("JOIN on object", () => {
   return demoQuery("FROM Test_3, O").then(r => {

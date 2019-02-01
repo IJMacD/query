@@ -6,8 +6,8 @@ const path = require('path');
 
 const port = 3000;
 
-const ilQuery = require('./query');
-const demoQuery = require('./demo-query');
+const ilQuery = require('./providers/query');
+const demoQuery = require('./providers/demo');
 const Formatter = require('./formatter');
 
 const [ node, script, ...rest ] = process.argv;

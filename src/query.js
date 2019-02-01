@@ -235,6 +235,11 @@ async function Query (query, options = {}) {
             }
 
             results = await callbacks.primaryTable.call(self, table) || [];
+
+            if (!Array.isArray(results)) {
+                console.log(results);
+                throw Error("Provider Error: Expected array but got " + typeof results);
+            }
         }
 
         const totalTime = Date.now() - start;
@@ -999,11 +1004,13 @@ async function Query (query, options = {}) {
 
         // Fill in aggregate values
         colNodes.forEach((node, i) => {
-            if (node.id in AGGREGATE_FUNCTIONS) {
-                const fn = AGGREGATE_FUNCTIONS[node.id];
-                row[i] = fn(aggregateValues(rows, node.children[0], node.distinct));
-            } else {
-                throw new Error("Function not found: " + node.id);
+            if (node.type === NODE_TYPES.FUNCTION_CALL) {
+                if (node.id in AGGREGATE_FUNCTIONS) {
+                    const fn = AGGREGATE_FUNCTIONS[node.id];
+                    row[i] = fn(aggregateValues(rows, node.children[0], node.distinct));
+                } else {
+                    throw new Error("Function not found: " + node.id);
+                }
             }
         });
 

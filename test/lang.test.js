@@ -186,35 +186,46 @@ describe("Aggregate Queries", () => {
     });
 
     test("COUNT(*) GROUP BY n", () => {
-        return demoQuery("FROM Test GROUP BY n SELECT COUNT(*)").then(r => {
+        return demoQuery("FROM Test GROUP BY n SELECT n, COUNT(*)").then(r => {
             // Remember header row
             expect(r.length - 1).toBe(10);
-            expect(r[1][0]).toBe(1);
-            expect(r[2][0]).toBe(1);
-            expect(r[3][0]).toBe(1);
+            expect(r[1][1]).toBe(1);
+            expect(r[2][1]).toBe(1);
+            expect(r[3][1]).toBe(1);
         });
     });
 
     test("COUNT(*) GROUP BY n2", () => {
-        return demoQuery("FROM Test GROUP BY n2 SELECT COUNT(*)").then(r => {
+        return demoQuery("FROM Test GROUP BY n2 SELECT n2, COUNT(*)").then(r => {
             // Remember header row
             expect(r.length - 1).toBe(5);
-            expect(r[1][0]).toBe(2);
-            expect(r[2][0]).toBe(2);
-            expect(r[3][0]).toBe(2);
-            expect(r[4][0]).toBe(2);
-            expect(r[5][0]).toBe(2);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(2);
+
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe(2);
+
+            expect(r[3][1]).toBe(2);
+            expect(r[4][1]).toBe(2);
+            expect(r[5][1]).toBe(2);
         });
     });
 
     test("COUNT(*) GROUP BY n3", () => {
-        return demoQuery("FROM Test GROUP BY n3 SELECT COUNT(*)").then(r => {
+        return demoQuery("FROM Test GROUP BY n3 SELECT n3, COUNT(*)").then(r => {
             // Remember header row
             expect(r.length - 1).toBe(4);
-            expect(r[1][0]).toBe(3);
-            expect(r[2][0]).toBe(3);
-            expect(r[3][0]).toBe(3);
-            expect(r[4][0]).toBe(1);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(3);
+
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe(3);
+
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe(3);
+
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe(1);
         });
     });
 

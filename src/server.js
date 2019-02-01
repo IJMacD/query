@@ -8,6 +8,7 @@ const port = 3000;
 
 const ilQuery = require('./providers/query');
 const demoQuery = require('./providers/demo');
+const placeholderQuery = require('./providers/placeholder');
 const Formatter = require('./formatter');
 
 const [ node, script, ...rest ] = process.argv;
@@ -15,6 +16,7 @@ const [ node, script, ...rest ] = process.argv;
 const args = rest.filter(a => a[0] === "-");
 
 const demoMode = args.includes("--demo");
+const placeholderMode = args.includes("--placeholder");
 
 const debugMode = args.includes("--debug");
 
@@ -73,7 +75,7 @@ function handleQuery (req, res, query, type, name) {
         res.setHeader("Access-Control-Allow-Credentials", "true");
     }
 
-    const q = demoMode ? demoQuery : ilQuery;
+    const q = demoMode ? demoQuery : placeholderMode ? placeholderQuery : ilQuery;
 
     q(query, debugMode).then(result => {
         const mime = type || determineMimeType(req.header("accept"));

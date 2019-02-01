@@ -30,6 +30,8 @@
             "args": [
                 "--demo",
                 "FROM Test AS a, Test AS b ON a.n + 1 = b.n"
+                // "--placeholder",
+                // "FROM Posts GROUP BY userId SELECT userId, COUNT(*)"
             ]
         }
     ]

@@ -1,4 +1,4 @@
-const { TOKEN_TYPES } = require('./tokenizer');
+const { tokenize, TOKEN_TYPES } = require('./tokenizer');
 
  /**
   * @typedef Token
@@ -295,6 +295,10 @@ module.exports = {
         }
 
         return descendExpression();
+    },
+
+    parseString (sql) {
+        return this.parse(tokenize(sql), sql);
     },
 
     NODE_TYPES,

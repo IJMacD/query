@@ -86,14 +86,14 @@ module.exports = {
             } else {
                 const ss = string.substr(i);
 
-                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS|USING|ON|INNER|OVER|PARTITION BY|DISTINCT)\b/i.exec(ss);
+                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AS|USING|ON|INNER|OVER|PARTITION BY|DISTINCT|FILTER)\b/i.exec(ss);
                 if (m) {
                     out.push({ type: TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;
                     continue;
                 }
 
-                m = /^([<>+=!*\/|-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b)/i.exec(ss);
+                m = /^([<>+=!*\/|%-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b)/i.exec(ss);
                 if (m) {
                     out.push({ type: TOKEN_TYPES.OPERATOR, value: m[1], start: i });
                     i += m[1].length;

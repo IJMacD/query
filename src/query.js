@@ -1007,7 +1007,14 @@ async function Query (query, options = {}) {
             if (node.type === NODE_TYPES.FUNCTION_CALL) {
                 if (node.id in AGGREGATE_FUNCTIONS) {
                     const fn = AGGREGATE_FUNCTIONS[node.id];
-                    row[i] = fn(aggregateValues(rows, node.children[0], node.distinct));
+
+                    let filteredRows = rows;
+
+                    if (node.filter) {
+                        filteredRows = filteredRows.filter(row => evaluateExpression(row, node.filter));
+                    }
+
+                    row[i] = fn(aggregateValues(filteredRows, node.children[0], node.distinct));
                 } else {
                     throw new Error("Function not found: " + node.id);
                 }

@@ -22,6 +22,7 @@ const { tokenize, TOKEN_TYPES } = require('./tokenizer');
   * @prop {string} [source]
   * @prop {Node} [over]
   * @prop {Node} [order]
+  * @prop {Node} [filter]
   * @prop {boolean} [desc]
   * @prop {boolean} [distinct]
   */
@@ -191,7 +192,17 @@ module.exports = {
                         }
 
                         expect(TOKEN_TYPES.BRACKET, ")");
-                        next_token = current();
+
+                        if (peek(TOKEN_TYPES.KEYWORD, "FILTER")) {
+
+                            expect(TOKEN_TYPES.BRACKET, "(");
+
+                            expect(TOKEN_TYPES.KEYWORD, "WHERE");
+
+                            out.filter = descendExpression();
+
+                            expect(TOKEN_TYPES.BRACKET, ")");
+                        }
 
                         if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
 
@@ -210,7 +221,7 @@ module.exports = {
                             expect(TOKEN_TYPES.BRACKET, ")");
                         }
 
-                        out.source = source.substring(t.start, next_token && next_token.start).trim();
+                        out.source = source.substring(t.start, current() && current().start).trim();
 
                         return out;
                     }

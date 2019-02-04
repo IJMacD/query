@@ -186,12 +186,11 @@ describe("Aggregate Queries", () => {
     });
 
     test("COUNT(*) GROUP BY n", () => {
-        return demoQuery("FROM Test GROUP BY n SELECT n, COUNT(*)").then(r => {
+        return demoQuery("FROM Test GROUP BY n SELECT COUNT(*)").then(r => {
             // Remember header row
             expect(r.length - 1).toBe(10);
-            expect(r[1][1]).toBe(1);
-            expect(r[2][1]).toBe(1);
-            expect(r[3][1]).toBe(1);
+            const col = r.slice(1).map(row => row[0]);
+            expect(col).toEqual([1,1,1,1,1,1,1,1,1,1]);
         });
     });
 
@@ -269,6 +268,15 @@ describe("Aggregate Queries", () => {
             // Remember header row
             expect(r.length - 1).toBe(1);
             expect(r[1][0]).toBe(90);
+        });
+    });
+
+    test("FILTER", () => {
+        return demoQuery("FROM Test SELECT SUM(n) FILTER(WHERE n % 2 = 0), SUM(n) FILTER(WHERE n % 2 = 1)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe(20);
+            expect(r[1][1]).toBe(25);
         });
     });
 });

@@ -57,6 +57,9 @@ module.exports = {
                 return false;
             }
 
+            // If we're returning true: move to next node automatically
+            next();
+
             return true;
         }
 
@@ -102,39 +105,13 @@ module.exports = {
                     out.children = [];
 
                     if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
-                        next();
                         out.distinct = true;
                     }
 
                     while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
                         appendChild(out.children, descend());
 
-                        if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
-                            next();
-
-                            const child = out.children[out.children.length - 1];
-                            child.over = { type: NODE_TYPES.NUMBER, id: 1 };
-
-                            expect(TOKEN_TYPES.BRACKET, "(");
-
-                            if (peek(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
-                                next();
-
-                                child.over = descendExpression();
-                            }
-
-
-                            if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
-                                next();
-
-                                child.order = descendExpression();
-                            }
-
-                            expect(TOKEN_TYPES.BRACKET, ")");
-                        }
-
                         if (peek(TOKEN_TYPES.KEYWORD, "AS")) {
-                            next();
 
                             next_token = expect(TOKEN_TYPES.NAME);
 
@@ -144,29 +121,24 @@ module.exports = {
                         }
 
                         if (peek(TOKEN_TYPES.KEYWORD, "ON")) {
-                            next();
 
                             const child = out.children[out.children.length - 1];
                             child.predicate = descendExpression();
                             child.source += ` ON ${child.predicate.source}`;
 
                         } else if (peek(TOKEN_TYPES.KEYWORD, "USING")) {
-                            next();
 
                             const child = out.children[out.children.length - 1];
                             child.predicate = descend();
                             child.source += ` USING ${child.predicate.source}`;
 
                         } else if (peek(TOKEN_TYPES.KEYWORD, "INNER")) {
-                            next();
 
                             const child = out.children[out.children.length - 1];
                             child.inner = true;
                         }
 
-                        if (peek(TOKEN_TYPES.COMMA)) {
-                            next();
-                        }
+                        peek(TOKEN_TYPES.COMMA);
                     }
 
                     next_token = current();
@@ -175,16 +147,13 @@ module.exports = {
                     return out;
                 case TOKEN_TYPES.NAME:
                     next();
-                    if (peek(TOKEN_TYPES.BRACKET, "(")) {
-                        next();
 
+                    if (peek(TOKEN_TYPES.BRACKET, "(")) {
                         out.type = NODE_TYPES.FUNCTION_CALL;
                         out.id = t.value;
                         out.children = [];
 
                         if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
-                            next();
-
                             out.distinct = true;
                         }
 
@@ -197,9 +166,7 @@ module.exports = {
                             }
 
                             if (peek(TOKEN_TYPES.COMMA)) {
-                                next();
                             } else if (peek(TOKEN_TYPES.KEYWORD)) {
-                                next();
                                 next_token = current();
 
                                 // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
@@ -225,6 +192,23 @@ module.exports = {
 
                         expect(TOKEN_TYPES.BRACKET, ")");
                         next_token = current();
+
+                        if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
+
+                            out.over = { type: NODE_TYPES.NUMBER, id: 1 };
+
+                            expect(TOKEN_TYPES.BRACKET, "(");
+
+                            if (peek(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
+                                out.over = descendExpression();
+                            }
+
+                            if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
+                                out.order = descendExpression();
+                            }
+
+                            expect(TOKEN_TYPES.BRACKET, ")");
+                        }
 
                         out.source = source.substring(t.start, next_token && next_token.start).trim();
 
@@ -284,6 +268,7 @@ module.exports = {
             let node = descend();
 
             while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
+                i--; // Back-up so that descend() can consume operator
                 const arr = [node];
                 appendChild(arr, descend());
                 // Haha I've just invented the double pointer in javascript

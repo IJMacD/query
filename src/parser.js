@@ -39,69 +39,128 @@ const NODE_TYPES = {
 };
 
 module.exports = {
+
+    parse,
+
+    parseString (sql) {
+        return parse(tokenize(sql), sql);
+    },
+
+    NODE_TYPES,
+}
+
+/**
+ * @param {Token[]} tokenList
+ * @param {string} source
+ * @returns {Node}
+ */
+function parse (tokenList, source="") {
+    let i = 0;
+
+    function peek (type, value=undefined) {
+        const current = tokenList[i];
+
+        if (!current) {
+            return false;
+        }
+
+        if ((type !== current.type) || (typeof value != "undefined" && value !== current.value)) {
+            return false;
+        }
+
+        // If we're returning true: move to next node automatically
+        next();
+
+        return true;
+    }
+
+    function expect (type, value=undefined) {
+        const current = tokenList[i];
+
+        const expected = `token[${type}${typeof value !== "undefined" ? ` '${value}'`: ""}]`;
+
+        if (!current) {
+            throw new Error(`ParseError: Expected ${expected} but ran out of tokens.`);
+        }
+
+        if ((type !== current.type) && (typeof value != "undefined" && value !== current.value)) {
+            throw new Error(`ParseError: Expected ${expected} got token[${current.type} '${current.value}']`);
+        }
+
+        return tokenList[i++];
+    }
+
+    function current () {
+        return tokenList[i];
+    }
+
+    function next () {
+        return tokenList[i++];
+    }
+
     /**
-     * @param {Token[]} tokenList
-     * @param {string} source
      * @returns {Node}
      */
-    parse (tokenList, source="") {
-        let i = 0;
+    function descend () {
+        /** @type {Node} */
+        let out = {};
+        const t = current();
+        let next_token;
 
-        function peek (type, value=undefined) {
-            const current = tokenList[i];
+        switch (t.type) {
+            case TOKEN_TYPES.KEYWORD:
+                next();
 
-            if (!current) {
-                return false;
-            }
+                out.type = NODE_TYPES.CLAUSE;
+                out.id = t.value;
+                out.children = [];
 
-            if ((type !== current.type) || (typeof value != "undefined" && value !== current.value)) {
-                return false;
-            }
+                if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
+                    out.distinct = true;
+                }
 
-            // If we're returning true: move to next node automatically
-            next();
+                while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
+                    appendChild(out.children, descend());
 
-            return true;
-        }
+                    if (peek(TOKEN_TYPES.KEYWORD, "AS")) {
 
-        function expect (type, value=undefined) {
-            const current = tokenList[i];
+                        next_token = expect(TOKEN_TYPES.NAME);
 
-            const expected = `token[${type}${typeof value !== "undefined" ? ` '${value}'`: ""}]`;
+                        const child = out.children[out.children.length - 1];
+                        child.alias = next_token.value;
+                        child.source += ` AS ${next_token.value}`;
+                    }
 
-            if (!current) {
-                throw new Error(`ParseError: Expected ${expected} but ran out of tokens.`);
-            }
+                    if (peek(TOKEN_TYPES.KEYWORD, "ON")) {
 
-            if ((type !== current.type) && (typeof value != "undefined" && value !== current.value)) {
-                throw new Error(`ParseError: Expected ${expected} got token[${current.type} '${current.value}']`);
-            }
+                        const child = out.children[out.children.length - 1];
+                        child.predicate = descendExpression();
+                        child.source += ` ON ${child.predicate.source}`;
 
-            return tokenList[i++];
-        }
+                    } else if (peek(TOKEN_TYPES.KEYWORD, "USING")) {
 
-        function current () {
-            return tokenList[i];
-        }
+                        const child = out.children[out.children.length - 1];
+                        child.predicate = descend();
+                        child.source += ` USING ${child.predicate.source}`;
 
-        function next () {
-            return tokenList[i++];
-        }
+                    } else if (peek(TOKEN_TYPES.KEYWORD, "INNER")) {
 
-        /**
-         * @returns {Node}
-         */
-        function descend () {
-            /** @type {Node} */
-            let out = {};
-            const t = current();
-            let next_token;
+                        const child = out.children[out.children.length - 1];
+                        child.inner = true;
+                    }
 
-            switch (t.type) {
-                case TOKEN_TYPES.KEYWORD:
-                    next();
+                    peek(TOKEN_TYPES.COMMA);
+                }
 
-                    out.type = NODE_TYPES.CLAUSE;
+                next_token = current();
+                out.source = source.substring(t.start, next_token && next_token.start).trim();
+
+                return out;
+            case TOKEN_TYPES.NAME:
+                next();
+
+                if (peek(TOKEN_TYPES.BRACKET, "(")) {
+                    out.type = NODE_TYPES.FUNCTION_CALL;
                     out.id = t.value;
                     out.children = [];
 
@@ -112,192 +171,136 @@ module.exports = {
                     while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
                         appendChild(out.children, descend());
 
-                        if (peek(TOKEN_TYPES.KEYWORD, "AS")) {
-
-                            next_token = expect(TOKEN_TYPES.NAME);
-
-                            const child = out.children[out.children.length - 1];
-                            child.alias = next_token.value;
-                            child.source += ` AS ${next_token.value}`;
+                        next_token = current();
+                        if (!next_token) {
+                            throw new Error("Unexpected end");
                         }
 
-                        if (peek(TOKEN_TYPES.KEYWORD, "ON")) {
+                        if (peek(TOKEN_TYPES.COMMA)) {
+                        } else if (peek(TOKEN_TYPES.KEYWORD)) {
+                            next_token = current();
 
-                            const child = out.children[out.children.length - 1];
-                            child.predicate = descendExpression();
-                            child.source += ` ON ${child.predicate.source}`;
-
-                        } else if (peek(TOKEN_TYPES.KEYWORD, "USING")) {
-
-                            const child = out.children[out.children.length - 1];
-                            child.predicate = descend();
-                            child.source += ` USING ${child.predicate.source}`;
-
-                        } else if (peek(TOKEN_TYPES.KEYWORD, "INNER")) {
-
-                            const child = out.children[out.children.length - 1];
-                            child.inner = true;
+                            // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
+                            if (next_token.type === TOKEN_TYPES.NAME ||
+                                next_token.type === TOKEN_TYPES.STRING ||
+                                next_token.type === TOKEN_TYPES.NUMBER ||
+                                next_token.type === TOKEN_TYPES.OPERATOR
+                            ) {
+                                appendChild(out.children, descend());
+                            } else {
+                                throw new Error(`ParseError: Unexpected token type ${next_token.type}`);
+                            }
                         }
-
-                        peek(TOKEN_TYPES.COMMA);
                     }
 
-                    next_token = current();
-                    out.source = source.substring(t.start, next_token && next_token.start).trim();
+                    if (out.id === "EXTRACT") {
+                        const extractPart = out.children[0];
+                        if (extractPart) extractPart.type = NODE_TYPES.KEYWORD;
+                    } else if (out.id === "CAST") {
+                        const castType = out.children[1];
+                        if (castType) castType.type = NODE_TYPES.KEYWORD;
+                    }
 
-                    return out;
-                case TOKEN_TYPES.NAME:
-                    next();
+                    expect(TOKEN_TYPES.BRACKET, ")");
 
-                    if (peek(TOKEN_TYPES.BRACKET, "(")) {
-                        out.type = NODE_TYPES.FUNCTION_CALL;
-                        out.id = t.value;
-                        out.children = [];
+                    if (peek(TOKEN_TYPES.KEYWORD, "FILTER")) {
 
-                        if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
-                            out.distinct = true;
+                        expect(TOKEN_TYPES.BRACKET, "(");
+
+                        expect(TOKEN_TYPES.KEYWORD, "WHERE");
+
+                        out.filter = descendExpression();
+
+                        expect(TOKEN_TYPES.BRACKET, ")");
+                    }
+
+                    if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
+
+                        out.over = { type: NODE_TYPES.NUMBER, id: 1 };
+
+                        expect(TOKEN_TYPES.BRACKET, "(");
+
+                        if (peek(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
+                            out.over = descendExpression();
                         }
 
-                        while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
-                            appendChild(out.children, descend());
-
-                            next_token = current();
-                            if (!next_token) {
-                                throw new Error("Unexpected end");
-                            }
-
-                            if (peek(TOKEN_TYPES.COMMA)) {
-                            } else if (peek(TOKEN_TYPES.KEYWORD)) {
-                                next_token = current();
-
-                                // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
-                                if (next_token.type === TOKEN_TYPES.NAME ||
-                                    next_token.type === TOKEN_TYPES.STRING ||
-                                    next_token.type === TOKEN_TYPES.NUMBER ||
-                                    next_token.type === TOKEN_TYPES.OPERATOR
-                                ) {
-                                    appendChild(out.children, descend());
-                                } else {
-                                    throw new Error(`ParseError: Unexpected token type ${next_token.type}`);
-                                }
-                            }
-                        }
-
-                        if (out.id === "EXTRACT") {
-                            const extractPart = out.children[0];
-                            if (extractPart) extractPart.type = NODE_TYPES.KEYWORD;
-                        } else if (out.id === "CAST") {
-                            const castType = out.children[1];
-                            if (castType) castType.type = NODE_TYPES.KEYWORD;
+                        if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
+                            out.order = descendExpression();
                         }
 
                         expect(TOKEN_TYPES.BRACKET, ")");
-
-                        if (peek(TOKEN_TYPES.KEYWORD, "FILTER")) {
-
-                            expect(TOKEN_TYPES.BRACKET, "(");
-
-                            expect(TOKEN_TYPES.KEYWORD, "WHERE");
-
-                            out.filter = descendExpression();
-
-                            expect(TOKEN_TYPES.BRACKET, ")");
-                        }
-
-                        if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
-
-                            out.over = { type: NODE_TYPES.NUMBER, id: 1 };
-
-                            expect(TOKEN_TYPES.BRACKET, "(");
-
-                            if (peek(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
-                                out.over = descendExpression();
-                            }
-
-                            if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
-                                out.order = descendExpression();
-                            }
-
-                            expect(TOKEN_TYPES.BRACKET, ")");
-                        }
-
-                        out.source = source.substring(t.start, current() && current().start).trim();
-
-                        return out;
                     }
 
-                    return { type: NODE_TYPES.SYMBOL, id: t.value, source: t.value };
-                case TOKEN_TYPES.STRING:
-                    next();
-                    return { type: NODE_TYPES.STRING, id: t.value, source: `'${t.value}'` };
-                case TOKEN_TYPES.NUMBER:
-                    next();
-                    return { type: NODE_TYPES.NUMBER, id: +t.value, source: t.value };
-                case TOKEN_TYPES.OPERATOR:
-                    next();
-                    out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [], source: "" };
-
-                    if (t.value === "*") {
-                        next_token = current();
-                        if (!next_token ||
-                            next_token.type === TOKEN_TYPES.COMMA ||
-                            next_token.type === TOKEN_TYPES.KEYWORD ||
-                            next_token.type === TOKEN_TYPES.BRACKET)
-                        {
-                            // This is not an operator i.e. `SELECT *`
-                            return { type: NODE_TYPES.SYMBOL, id: "*", source: "*" };
-                        }
-                    }
-
-                    // Unary operators
-
-                    // Unary prefix
-                    if (t.value === "NOT") {
-                        out.children[0] = descend();
-                    }
-                    else
-                    // Unary postfix
-                    if (t.value !== "IS NULL" &&
-                        t.value !== "IS NOT NULL")
-                    {
-                        out.children[1] = descend();
-                    }
-
-                    next_token = current();
-                    out.source = source.substring(t.start, next_token && next_token.start).trim();
+                    out.source = source.substring(t.start, current() && current().start).trim();
 
                     return out;
-                case TOKEN_TYPES.COMMA:
-                    throw new Error(`ParseError: Unexpected comma at ${t.start}`);
-                default:
-                    throw new Error("ParseError: Only able to parse some tokens. Got token type " + t.type);
-            }
+                }
+
+                return { type: NODE_TYPES.SYMBOL, id: t.value, source: t.value };
+            case TOKEN_TYPES.STRING:
+                next();
+                return { type: NODE_TYPES.STRING, id: t.value, source: `'${t.value}'` };
+            case TOKEN_TYPES.NUMBER:
+                next();
+                return { type: NODE_TYPES.NUMBER, id: +t.value, source: t.value };
+            case TOKEN_TYPES.OPERATOR:
+                next();
+                out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [], source: "" };
+
+                if (t.value === "*") {
+                    next_token = current();
+                    if (!next_token ||
+                        next_token.type === TOKEN_TYPES.COMMA ||
+                        next_token.type === TOKEN_TYPES.KEYWORD ||
+                        next_token.type === TOKEN_TYPES.BRACKET)
+                    {
+                        // This is not an operator i.e. `SELECT *`
+                        return { type: NODE_TYPES.SYMBOL, id: "*", source: "*" };
+                    }
+                }
+
+                // Unary operators
+
+                // Unary prefix
+                if (t.value === "NOT") {
+                    out.children[0] = descend();
+                }
+                else
+                // Unary postfix
+                if (t.value !== "IS NULL" &&
+                    t.value !== "IS NOT NULL")
+                {
+                    out.children[1] = descend();
+                }
+
+                next_token = current();
+                out.source = source.substring(t.start, next_token && next_token.start).trim();
+
+                return out;
+            case TOKEN_TYPES.COMMA:
+                throw new Error(`ParseError: Unexpected comma at ${t.start}`);
+            default:
+                throw new Error("ParseError: Only able to parse some tokens. Got token type " + t.type);
+        }
+    }
+
+    function descendExpression () {
+
+        let node = descend();
+
+        while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
+            i--; // Back-up so that descend() can consume operator
+            const arr = [node];
+            appendChild(arr, descend());
+            // Haha I've just invented the double pointer in javascript
+            node = arr[0];
         }
 
-        function descendExpression () {
+        return node;
 
-            let node = descend();
+    }
 
-            while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
-                i--; // Back-up so that descend() can consume operator
-                const arr = [node];
-                appendChild(arr, descend());
-                // Haha I've just invented the double pointer in javascript
-                node = arr[0];
-            }
-
-            return node;
-
-        }
-
-        return descendExpression();
-    },
-
-    parseString (sql) {
-        return this.parse(tokenize(sql), sql);
-    },
-
-    NODE_TYPES,
+    return descendExpression();
 }
 
 /**

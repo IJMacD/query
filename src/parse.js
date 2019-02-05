@@ -168,7 +168,7 @@ function parseFrom (from) {
       }
 
       const name = String(node.id);
-      const using = void 0; // other parts of code expect this to be undefined before joining
+      const using = name; // ast.using
 
       return {
         name,

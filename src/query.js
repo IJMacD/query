@@ -28,7 +28,7 @@ const {
     distinctResults
 } = require('./compound');
 
-const { NODE_TYPES } = require('./parser');
+const { parseString, NODE_TYPES } = require('./parser');
 
 class SymbolError extends Error { }
 
@@ -57,11 +57,19 @@ module.exports = Query;
  * @property {Node} parsedHaving
  * @property {string} orderBy
  * @property {string} groupBy
+ *
  * @property {(path: string) => string|number|boolean|Date} resolveConstant
  * @property {(data: any, path: string) => any} resolvePath
  * @property {(row: ResultRow, col: string) => any} resolveValue
+ *
  * @property {(name: string) => ParsedTable} findTable
  * @property {(symbol: string, operator?: string|string[]) => string|number} findWhere
+ *
+ * @property {(table: ParsedTable, targetTable: ParsedTable) => void} setJoin
+ * @property {(table: ParsedTable, predicate: string) => void} setJoinPredicate
+ *
+ * @property {(row: ResultRow, table: ParsedTable) => any} getRowData
+ * @property {(row: ResultRow, table: ParsedTable, data: any) => void} setRowData
  */
 
 /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
@@ -188,6 +196,12 @@ async function Query (query, options = {}) {
 
         findTable,
         findWhere,
+
+        setJoin,
+        setJoinPredicate,
+
+        getRowData,
+        setRowData,
     };
 
     /** @type {Node[]} */
@@ -301,9 +315,9 @@ async function Query (query, options = {}) {
 
             const startup = Date.now() - start;
 
-            table.join = findJoin(table, rows);
+            const findResult = findJoin(table, rows);
 
-            if (typeof table.join === "undefined") {
+            if (!findResult) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
 
@@ -324,7 +338,7 @@ async function Query (query, options = {}) {
                 table.explain += " cross-join";
 
                 for (const row of rows) {
-                    row['data'][table.join] = results;
+                    setRowData(row, table, results);
                 }
 
             }
@@ -440,13 +454,11 @@ async function Query (query, options = {}) {
                     continue;
                 }
 
-                const { join } = table;
-
                 let tableObj;
 
                 // We need to find a non-null row to extract columns from
                 for (const tmpR of rows) {
-                    tableObj = tmpR && tmpR['data'][join];
+                    tableObj = getRowData(tmpR, table);
                     if (tableObj) break;
                 }
 
@@ -890,22 +902,22 @@ async function Query (query, options = {}) {
                 const t = tableAlias[head];
 
                 // resolveValue() is called when searching for a join
-                // if we're at that stage row['data'][t.join] will be
+                // if we're at that stage getRowData(row, t) will be
                 // empty so we need to return undefined.
-                const data = row['data'][t.join];
+                const data = getRowData(row, t);
 
                 if (typeof data === "undefined") {
                     return void 0;
                 }
 
-                return resolvePath(row['data'][t.join], tail);
+                return resolvePath(getRowData(row, t), tail);
             }
 
             // FROM Table SELECT Table.value
             const matching = parsedTables.filter(t => t.name === head);
             if (matching.length > 0) {
                 const t = matching[0];
-                return resolvePath(row['data'][t.join], tail);
+                return resolvePath(getRowData(row, t), tail);
             }
 
             if (head in row['data']) {
@@ -1181,6 +1193,18 @@ async function Query (query, options = {}) {
         }
     }
 
+    /**
+     * Given a set of rows, try to identify where a table can be joined.
+     *
+     * It will look at data on the table object and search the rows to try
+     * and auto join if possible. Once it has found the join location it
+     * will set the join path on the table object.
+     *
+     * It will return a boolean indicating its success.
+     * @param {ParsedTable} table
+     * @param {ResultRow[]} rows
+     * @returns {boolean}
+     */
     function findJoin (table, rows) {
         if (table.join) {
             // If we have an explicit join, check it first.
@@ -1188,28 +1212,38 @@ async function Query (query, options = {}) {
             // First check of explicit join check is in data object.
             // This may already have been set for us by a beforeJoin callback.
             for (const row of rows) {
-                const data = row['data'][table.join];
+                const data = getRowData(row, table);
 
                 if (typeof data !== "undefined" && data !== null) {
-                    return table.join;
+                    return true;
                 }
             }
 
-            // We didn't have the data set for us, so let's search ourselves
-
-            // Iterate over rows until we find one that works
-            for (const row of rows) {
-                const val = resolveValue(row, table.join);
-
-                if (typeof val !== "undefined") {
-                    // If we found `val` that means `table.join` is correct
-                    return table.join;
-                }
+            // If we get to this point no data has been set for us on the rows
+            // But if we have a predicate which was set in beforeJoin()
+            // we will do a primary table join.
+            // For that we need to unset `table.join` so that the higher up
+            // functions know the data doesn't exist on the rows yet
+            if (table.predicate) {
+                return false;
             }
+        }
 
-            throw new Error("Invalid ON clause: " + table.join);
+        //     // We didn't have the data set for us, so let's search ourselves
 
-        } else {
+        //     // Iterate over rows until we find one that works
+        //     for (const row of rows) {
+        //         const val = resolveValue(row, table.join);
+
+        //         if (typeof val !== "undefined") {
+        //             // If we found `val` that means `table.join` is correct
+        //             return true;
+        //         }
+        //     }
+
+        //     throw new Error("Invalid ------join?----- clause: " + table.join);
+
+        // } else {
             // AUTO JOIN! (natural join, comma join, implicit join?)
             // We will find the path automatically
             const t = table.name.toLowerCase();
@@ -1218,7 +1252,8 @@ async function Query (query, options = {}) {
                 const path = findPath(r, t);
 
                 if (typeof path !== "undefined"){
-                    return path.length === 0 ? t : `${path}.${t}`;
+                    table.join = path.length === 0 ? t : `${path}.${t}`;
+                    return true;
                 }
             }
 
@@ -1237,15 +1272,15 @@ async function Query (query, options = {}) {
                     const array = resolvePath(data, ts);
 
                     if (Array.isArray(array)) {
-                        return join.length === 0 ? ts : `${join}.${ts}`;
+                        table.join = join.length === 0 ? ts : `${join}.${ts}`;
+                        return true;
                     }
 
                     throw new Error("Unable to join, found a plural but not an array: " + ts);
                 }
             }
-        }
 
-        // return undefined
+        return false;
     }
 
     /**
@@ -1266,11 +1301,11 @@ async function Query (query, options = {}) {
         for (let row of rows) {
             // Check to make sure we have data object saved,
             // if not fill in the data object of each row now
-            if (typeof row['data'][table.join] === "undefined") {
-                row['data'][table.join] = resolveValue(row, table.join);
+            if (typeof getRowData(row, table) === "undefined") {
+                setRowData(row, table, resolveValue(row, table.join));
             }
 
-            const data = row['data'][table.join];
+            const data = getRowData(row, table);
 
             if (Array.isArray(data)) {
                 // We've been joined on an array! Wahooo!!
@@ -1377,4 +1412,24 @@ function collateEqual (a, b) {
     }
 
     return a === b;
+}
+
+function setJoin (table, targetTable) {
+    table.join = `${targetTable.join}.${table.name}`;
+}
+
+/**
+ * @param {ParsedTable} table
+ * @param {string} predicate
+ */
+function setJoinPredicate (table, predicate) {
+    table.predicate = parseString(predicate);
+}
+
+function getRowData (row, table) {
+    return row['data'][table.join];
+}
+
+function setRowData (row, table, data) {
+    row['data'][table.join] = data;
 }

@@ -10,10 +10,10 @@ describe("Aggregate Functions", () => {
   });
 
   test("COUNT DISTINCT", () => {
-    return demoQuery("FROM Test, Test_2 SELECT COUNT(DISTINCT n)").then(r => {
+    return demoQuery("FROM Test SELECT COUNT(DISTINCT n2)").then(r => {
       // Don't forget header row
       expect(r.length - 1).toBe(1);
-      expect(r[1][0]).toBe(10);
+      expect(r[1][0]).toBe(5);
     });
   });
 

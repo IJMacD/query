@@ -42,61 +42,61 @@ async function primaryTable (table) {
         {
             const whereID = this.findWhere("id");
             if (whereID) {
-                const post = await getJSON(`${API_ROOT}posts/${whereID}`);
+                const post = await getPlaceholderJSON(`posts/${whereID}`);
                 return [ post ];
             }
 
-            return getJSON(`${API_ROOT}posts`);
+            return getPlaceholderJSON(`posts`);
         }
         case "Comments":
         {
             const whereID = this.findWhere("id");
             if (whereID) {
-                const comment = await getJSON(`${API_ROOT}comments/${whereID}`);
+                const comment = await getPlaceholderJSON(`comments/${whereID}`);
                 return [ comment ];
             }
 
-            return getJSON(`${API_ROOT}comments`);
+            return getPlaceholderJSON(`comments`);
         }
         case "Albums":
         {
             const whereID = this.findWhere("id");
             if (whereID) {
-                const album = await getJSON(`${API_ROOT}albums/${whereID}`);
+                const album = await getPlaceholderJSON(`albums/${whereID}`);
                 return [ album ];
             }
 
-            return getJSON(`${API_ROOT}albums`);
+            return getPlaceholderJSON(`albums`);
         }
         case "Photos":
         {
             const whereID = this.findWhere("id");
             if (whereID) {
-                const photo = await getJSON(`${API_ROOT}photos/${whereID}`);
+                const photo = await getPlaceholderJSON(`photos/${whereID}`);
                 return [ photo ];
             }
 
-            return getJSON(`${API_ROOT}photos`);
+            return getPlaceholderJSON(`photos`);
         }
         case "Todos":
         {
             const whereID = this.findWhere("id");
             if (whereID) {
-                const todo = await getJSON(`${API_ROOT}todos/${whereID}`);
+                const todo = await getPlaceholderJSON(`todos/${whereID}`);
                 return [ todo ];
             }
 
-            return getJSON(`${API_ROOT}todos`);
+            return getPlaceholderJSON(`todos`);
         }
         case "Users":
         {
             const whereID = this.findWhere("id");
             if (whereID) {
-                const user = await getJSON(`${API_ROOT}users/${whereID}`);
+                const user = await getPlaceholderJSON(`users/${whereID}`);
                 return [ user ];
             }
 
-            return getJSON(`${API_ROOT}users`);
+            return getPlaceholderJSON(`users`);
         }
         default:
             throw new Error("Table not recognised: `" + table.name + "`");
@@ -126,59 +126,85 @@ async function beforeJoin (table, rows) {
         case 'Users':
         {
             const postsTable = this.findTable("Posts");
-            /** @type {any[]} */
-            const users = await getJSON(`${API_ROOT}users`);
             if (postsTable) {
-                table.join = "Posts.Users";
-                // table.predicate = Parser.parseString(`${table.join}.id = ${postsTable.join}.userId`);
-                rows.forEach(row => {
-                    row['data'][table.join] = users.find(u => u.id === row['data'][postsTable.join].userId);
-                });
+                // This is an example of setting a predicate and letting the library
+                // do a cross join which will then be filtered using this predicate.
+                this.setJoinPredicate(table, `${table.join}.id = ${postsTable.join}.userId`);
+                // TODO: We're assuming the joined table's join won't change
             }
             break;
         }
         case 'Comments':
         {
             const postsTable = this.findTable("Posts");
-            /** @type {any[]} */
-            const comments = await getJSON(`${API_ROOT}comments`);
             if (postsTable) {
-                table.join = "Posts.Comments";
-                rows.forEach(row => {
-                    row['data'][table.join] = comments.filter(c => c.postId === row['data'][postsTable.join].id);
-                });
+                this.setJoin(table, postsTable);
+
+                /** @type {any[]} */
+                const comments = await getPlaceholderJSON(`comments`);
+
+                for (const row of rows) {
+                    const post = this.getRowData(row, postsTable);
+                    this.setRowData(row, table, comments.filter(c => c.postId === post.id));
+                }
             }
             break;
         }
         case 'Posts':
         {
-            /** @type {any[]} */
-            const posts = await getJSON(`${API_ROOT}posts`);
 
             const usersTable = this.findTable("Users");
             if (usersTable) {
-                table.join = "Users.Posts";
-                rows.forEach(row => {
-                    row['data'][table.join] = posts.filter(p => p.userId === row['data'][usersTable.join].id);
-                });
+                this.setJoin(table, usersTable);
+
+                /** @type {any[]} */
+                const posts = await getPlaceholderJSON(`posts`);
+
+                for (const row of rows) {
+                    const user = this.getRowData(row, usersTable);
+                    this.setRowData(row, table, posts.filter(p => p.userId === user.id));
+                }
                 break;
             }
 
             const commentsTable = this.findTable("Comments");
             if (commentsTable) {
-                table.join = "Comments.Posts";
-                rows.forEach(row => {
-                    row['data'][table.join] = posts.find(p => p.id === row['data'][commentsTable.join].postId);
-                });
+                this.setJoin(table, commentsTable);
+
+                /** @type {any[]} */
+                const posts = await getPlaceholderJSON(`posts`);
+
+                for (const row of rows) {
+                    const comment = this.getRowData(row, commentsTable);
+                    this.setRowData(row, table, posts.find(p => p.id === comment.postId));
+                }
                 break;
             }
 
             break;
         }
+        case 'Albums':
+        {
+            const usersTable = this.findTable("Users");
+            if (usersTable) {
+                this.setJoin(table, usersTable);
+
+                /** @type {any[]} */
+                const albums = await getPlaceholderJSON(`albums`);
+
+                for (const row of rows) {
+                    const user = this.getRowData(row, usersTable);
+                    this.setRowData(row, table, albums.filter(a => a.userId === user.id));
+                }
+            }
+            break;
+        }
     }
 }
 
-async function getJSON (url) {
-  const r = await fetch(url);
-  return await r.json();
+async function getPlaceholderJSON (path) {
+    const url = `${API_ROOT}${path}`;
+    // console.log(url);
+    const r = await fetch(url);
+    return await r.json();
 }

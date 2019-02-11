@@ -710,6 +710,7 @@ async function Query (query, options = {}) {
             const val = resolveValue(row, String(node.id));
 
             if (typeof val === "undefined") {
+                // We must throw a SymbolError so that e.g. filterRows() can catch it
                 throw new SymbolError("Unable to resolve symbol: " + node.id);
             }
 
@@ -732,11 +733,11 @@ async function Query (query, options = {}) {
         } else if (node.type === NODE_TYPES.OPERATOR) {
             const op = OPERATORS[node.id];
 
-            if (op) {
-                return op(...node.children.map(c => evaluateExpression(row, c)));
+            if (!op) {
+                throw new Error(`Unsupported operator '${node.id}'`);
             }
 
-            throw new Error(`Unsupported operator '${node.id}'`);
+            return op(...node.children.map(c => evaluateExpression(row, c)));
         } else if (node.type === NODE_TYPES.CLAUSE
             && (node.id === "WHERE" || node.id === "ON")
         ) {
@@ -1023,7 +1024,13 @@ async function Query (query, options = {}) {
                     let filteredRows = rows;
 
                     if (node.filter) {
-                        filteredRows = filteredRows.filter(row => evaluateExpression(row, node.filter));
+                        filteredRows = filteredRows.filter(row => {
+                            try {
+                                return evaluateExpression(row, node.filter);
+                            } catch (e) {
+                                return false;
+                            }
+                        });
                     }
 
                     row[i] = fn(aggregateValues(filteredRows, node.children[0], node.distinct));
@@ -1050,7 +1057,13 @@ async function Query (query, options = {}) {
             return rows.map(r => true);
         }
 
-        let values = rows.map(row => evaluateExpression(row, expr));
+        let values = rows.map(row => {
+            try {
+                return evaluateExpression(row, expr);
+            } catch (e) {
+                return null;
+            }
+        });
 
         // All aggregate functions ignore null except COUNT(*)
         // We'll use our convenient 'IS NOT NULL' function to do the

@@ -218,6 +218,7 @@ async function Query (query, options = {}) {
             n = `${t.alias || t.name}_${i++}`;
         }
         t.alias = n;
+        t.join = n;
         tableAlias[n] = t;
     }
 

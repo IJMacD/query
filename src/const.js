@@ -19,6 +19,7 @@ const VALUE_FUNCTIONS = {
     'DATETIME': d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
     'DURATION': m => moment.duration(m, "milliseconds").format(),
     'JSON_STRINGIFY': v => JSON.stringify(v),
+    'DATEADD': (part, v, date) => moment(date).add(v, part).toDate(),
 
     EXTRACT (part, v) {
         const m = moment(v);

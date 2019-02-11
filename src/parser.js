@@ -77,14 +77,14 @@ function parse (tokenList, source="") {
     function expect (type, value=undefined) {
         const current = tokenList[i];
 
-        const expected = `token[${type}${typeof value !== "undefined" ? ` '${value}'`: ""}]`;
+        const expected = () => `token[${type}${typeof value !== "undefined" ? ` '${value}'`: ""}]`;
 
         if (!current) {
-            throw new Error(`ParseError: Expected ${expected} but ran out of tokens.`);
+            throw new Error(`ParseError: Expected ${expected()} but ran out of tokens.`);
         }
 
         if ((type !== current.type) && (typeof value != "undefined" && value !== current.value)) {
-            throw new Error(`ParseError: Expected ${expected} got token[${current.type} '${current.value}']`);
+            throw new Error(`ParseError: Expected ${expected()} got token[${current.type} '${current.value}']`);
         }
 
         return tokenList[i++];
@@ -119,33 +119,28 @@ function parse (tokenList, source="") {
                     out.distinct = true;
                 }
 
+                // TODO: Why are we avoiding brackets here?
                 while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
-                    appendChild(out.children, descend());
+
+                    // Consume each item in the list following the keyword
+                    const child = appendChild(out, descend());
 
                     if (peek(TOKEN_TYPES.KEYWORD, "AS")) {
-
                         next_token = expect(TOKEN_TYPES.NAME);
 
-                        const child = out.children[out.children.length - 1];
                         child.alias = next_token.value;
                         child.source += ` AS ${next_token.value}`;
                     }
 
                     if (peek(TOKEN_TYPES.KEYWORD, "ON")) {
-
-                        const child = out.children[out.children.length - 1];
                         child.predicate = descendExpression();
                         child.source += ` ON ${child.predicate.source}`;
 
                     } else if (peek(TOKEN_TYPES.KEYWORD, "USING")) {
-
-                        const child = out.children[out.children.length - 1];
                         child.predicate = descend();
                         child.source += ` USING ${child.predicate.source}`;
 
                     } else if (peek(TOKEN_TYPES.KEYWORD, "INNER")) {
-
-                        const child = out.children[out.children.length - 1];
                         child.inner = true;
                     }
 
@@ -160,6 +155,8 @@ function parse (tokenList, source="") {
                 next();
 
                 if (peek(TOKEN_TYPES.BRACKET, "(")) {
+                    // Open bracket signifies a function call
+
                     out.type = NODE_TYPES.FUNCTION_CALL;
                     out.id = t.value;
                     out.children = [];
@@ -169,36 +166,32 @@ function parse (tokenList, source="") {
                     }
 
                     while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
-                        appendChild(out.children, descend());
 
-                        next_token = current();
-                        if (!next_token) {
-                            throw new Error("Unexpected end");
-                        }
+                        // Loop through adding each paramater
+                        appendChild(out, descend());
 
-                        if (peek(TOKEN_TYPES.COMMA)) {
-                        } else if (peek(TOKEN_TYPES.KEYWORD)) {
-                            next_token = current();
+                        // Consume a comma if needed
+                        peek(TOKEN_TYPES.COMMA);
 
-                            // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
-                            if (next_token.type === TOKEN_TYPES.NAME ||
-                                next_token.type === TOKEN_TYPES.STRING ||
-                                next_token.type === TOKEN_TYPES.NUMBER ||
-                                next_token.type === TOKEN_TYPES.OPERATOR
-                            ) {
-                                appendChild(out.children, descend());
-                            } else {
-                                throw new Error(`ParseError: Unexpected token type ${next_token.type}`);
-                            }
-                        }
+                        // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
+                        // They can be treated like a comma.
+                        peek(TOKEN_TYPES.KEYWORD, "FROM");
+                        peek(TOKEN_TYPES.KEYWORD, "AS");
                     }
 
+                    // More special treatment
+                    //
+                    // These functions always use keywords as one of their parameters.
+                    // To save adding them all to the tokenizer we manually tweak them here
                     if (out.id === "EXTRACT") {
                         const extractPart = out.children[0];
                         if (extractPart) extractPart.type = NODE_TYPES.KEYWORD;
                     } else if (out.id === "CAST") {
                         const castType = out.children[1];
                         if (castType) castType.type = NODE_TYPES.KEYWORD;
+                    } else if (out.id === "DATEADD") {
+                        const datePart = out.children[0];
+                        if (datePart) datePart.type = NODE_TYPES.KEYWORD;
                     }
 
                     expect(TOKEN_TYPES.BRACKET, ")");
@@ -288,15 +281,20 @@ function parse (tokenList, source="") {
 
         let node = descend();
 
+        // We use a dummy node so that appendChild() has a place to put back
+        // the topmost node of an expression tree after each loop.
+        // When we're finished looping we can extract the child
+        const dummyNode = { type: NODE_TYPES.UNKNOWN, id: null, children: [ node ] };
+
         while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
-            i--; // Back-up so that descend() can consume operator
-            const arr = [node];
-            appendChild(arr, descend());
-            // Haha I've just invented the double pointer in javascript
-            node = arr[0];
+            // Back-up so that descend() can consume the operator
+            i--;
+
+            appendChild(dummyNode, descend());
         }
 
-        return node;
+        // Haha I've just invented the double pointer in javascript
+        return dummyNode.children[0];
 
     }
 
@@ -307,27 +305,54 @@ function parse (tokenList, source="") {
  * Normally adds the node to the end of the child array.
  * However, in the case of an operator it will pop the previous
  * node and add it as a child of this operator.
- * @param {Node[]} array
+ * @param {Node} parent
  * @param {Node} node
+ * @returns {Node} It just returns it's second parameter
  */
-function appendChild (array, node) {
+function appendChild (parent, node) {
+    const children = parent.children;
+
+    // Operators get special treatment to deal with precedence
     if (node.type === NODE_TYPES.OPERATOR &&
         node.id !== "NOT") // unary prefix operator
     {
-        const prev = array[array.length-1];
+        const prev = lastChild(parent);
 
         if (prev && prev.type === NODE_TYPES.OPERATOR &&
+            // Apply operator precedence
             getPrecedence(prev) < getPrecedence(node)
         ) {
-            // apply operator precedence
-            appendChild(prev.children, node);
-            return;
+            // Current and Prev nodes are both operators but the previous
+            // one outranks the current node so we'll add the current node
+            // as a child of the previous one.
+            appendChild(prev, node);
+
+            // And we're done.
+            return node;
         }
 
-        node.children[0] = array.pop();
+        // The previous node wasn't an operator or is an operator but
+        // has lower precedence than the current one.
+        //
+        // Therefore we'll remove the previous node and add it as the
+        // child of the current node.
+        node.children[0] = children.pop();
         node.source = `${node.children[0].source} ${node.source}`;
     }
-    array.push(node);
+
+    // Finally add the new node to the parent.
+    children.push(node);
+
+    return node;
+}
+
+/**
+ *
+ * @param {Node} node
+ * @returns {Node}
+ */
+function lastChild (node) {
+    return node.children && node.children.length > 0 && node.children[node.children.length - 1];
 }
 
 /**

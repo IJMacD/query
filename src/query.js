@@ -777,13 +777,35 @@ async function Query (query, options = {}) {
     }
 
     /**
+     * Creates a row evaluator (suitable for use in .map() or .filter())
+     * which turns SymbolErrors into nulls
+     * @param {Node} node
+     * @returns {(row: ResultRow) => any}
+     */
+    function getRowEvaluator(node) {
+        return row => {
+            try {
+                return evaluateExpression(row, node);
+            }
+            catch (e) {
+                if (e instanceof SymbolError) {
+                    return null;
+                }
+                else {
+                    throw e;
+                }
+            }
+        };
+    }
+
+    /**
      * Function to filter rows based on arbitrary expression
      * @param {ResultRow[]} rows
      * @param {Node} predicate
      * @return {ResultRow[]}
      */
     function filterRowsByPredicate (rows, predicate) {
-        return rows.filter(r => evaluateExpression(r, predicate));
+        return rows.filter(getRowEvaluator(predicate));
     }
 
     /**
@@ -1024,13 +1046,7 @@ async function Query (query, options = {}) {
                     let filteredRows = rows;
 
                     if (node.filter) {
-                        filteredRows = filteredRows.filter(row => {
-                            try {
-                                return evaluateExpression(row, node.filter);
-                            } catch (e) {
-                                return false;
-                            }
-                        });
+                        filteredRows = filteredRows.filter(getRowEvaluator(node.filter));
                     }
 
                     row[i] = fn(aggregateValues(filteredRows, node.children[0], node.distinct));
@@ -1057,13 +1073,7 @@ async function Query (query, options = {}) {
             return rows.map(r => true);
         }
 
-        let values = rows.map(row => {
-            try {
-                return evaluateExpression(row, expr);
-            } catch (e) {
-                return null;
-            }
-        });
+        let values = rows.map(getRowEvaluator(expr));
 
         // All aggregate functions ignore null except COUNT(*)
         // We'll use our convenient 'IS NOT NULL' function to do the

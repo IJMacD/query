@@ -68,7 +68,8 @@ function sendQuery () {
             const duration = (Date.now() - start) / 1000;
             output.innerHTML = renderTable({ rows: data, duration });
             saveHistory(input.value);
-        }, e => {
+        })
+        .catch(e => {
             output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;
         })
         .then(() => {
@@ -81,6 +82,10 @@ function sendQuery () {
  */
 function renderTable({ rows, duration }) {
     const headerRow = rows.shift();
+
+    if (!headerRow) {
+        return `<p style="font-weight: bold;">Empty Result Set</p><p>${duration} seconds</p>`;
+    }
 
     return `<table>
             <thead>

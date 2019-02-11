@@ -75,11 +75,27 @@ module.exports = Query;
 /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
 
 /**
+ * @type {{ [name: string]: string }}
+ */
+const views = {};
+
+/**
  *
  * @param {string} query
  * @param {{ callbacks?: QueryCallbacks, userFunctions?: { [name: string]: (...args: any[]) => any }}} [options]
  */
 async function Query (query, options = {}) {
+
+    const viewMatch = /^CREATE VIEW ([a-zA-Z0-9_]+) AS\s+/.exec(query);
+    if (viewMatch)
+    {
+        const name = viewMatch[1];
+        const view = matchInBrackets(query) || query.substring(viewMatch[0].length);
+
+        views[name] = view;
+
+        return [];
+    }
 
     const { callbacks, userFunctions = {} } = options;
 
@@ -91,15 +107,15 @@ async function Query (query, options = {}) {
      ***************************/
     const CTEs = {};
 
-    const match = /^WITH ([a-z0-9_]+) AS\s+/.exec(query);
-    if (match)
+    const withMatch = /^WITH ([a-zA-Z0-9_]+) AS\s+/.exec(query);
+    if (withMatch)
     {
-        const name = match[1];
+        const name = withMatch[1];
         const cte = matchInBrackets(query);
 
         CTEs[name] = queryResultToObjectArray(await Query(cte, options));
 
-        const endIdx = match[0].length + 2 + cte.length;
+        const endIdx = withMatch[0].length + 2 + cte.length;
         query = query.substr(endIdx);
     }
 
@@ -240,6 +256,9 @@ async function Query (query, options = {}) {
 
         if (table.name in CTEs) {
             results = CTEs[table.name];
+        }
+        else if (table.name in views) {
+            results = queryResultToObjectArray(await Query(views[table.name], options));
         }
         else if (table.name in TABLE_VALUED_FUNCTIONS) {
             results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));

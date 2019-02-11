@@ -37,8 +37,8 @@ function primaryTable (table) {
             { c: 'F', o: { n: -6 } },
             { c: 'G', o: { n: -7 } },
             { c: 'H', o: { n: -8 } },
-            { c: 'I', o: { n: -9 } },
-            { c: 'J', o: { n: -10 } },
+            { c: 'I', o: null },
+            { c: 'J' },
         ];
     } else if (table.name === "Test_4") {
         return [

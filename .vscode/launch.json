@@ -11,6 +11,9 @@
             "program": "${workspaceFolder}/src/server.js",
             "args": [
                 "--debug"
+            ],
+            "skipFiles": [
+                "<node_internals>/**/*.js"
             ]
         },
         {
@@ -20,18 +23,36 @@
             "program": "${workspaceFolder}/src/server.js",
             "args": [
                 "--demo"
+            ],
+            "skipFiles": [
+                "<node_internals>/**/*.js"
             ]
         },
         {
             "type": "node",
             "request": "launch",
-            "name": "cli",
+            "name": "CLI Demo",
             "program": "${workspaceFolder}\\bin\\cli.js",
             "args": [
                 "--demo",
                 "FROM Test AS a, Test AS b ON a.n + 1 = b.n"
                 // "--placeholder",
                 // "FROM Posts GROUP BY userId SELECT userId, COUNT(*)"
+            ],
+            "skipFiles": [
+                "<node_internals>/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "CLI query",
+            "program": "${workspaceFolder}\\bin\\cli.js",
+            "args": [
+                "FROM Lesson, Tutor, Attendee, Student WHERE start > '2019-02-12' GROUP BY Tutor SELECT name, LISTAGG(Student.englishName)",
+            ],
+            "skipFiles": [
+                "<node_internals>/**/*.js"
             ]
         }
     ]

@@ -17,6 +17,7 @@ async function QueryExecutor (query, { debug } = {}) {
             primaryTable,
             afterJoin,
             beforeJoin,
+            getTables: () => [ "Posts", "Comments", "Albums", "Photos", "Todos", "Users" ],
         },
         userFunctions: {
         }

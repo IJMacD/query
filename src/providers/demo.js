@@ -59,5 +59,8 @@ function primaryTable (table) {
 }
 
 module.exports = function (query) {
-  return Query(query, { callbacks: { primaryTable }});
+    return Query(query, { callbacks: {
+        primaryTable,
+        getTables: () => [ "Test", "Test_2", "Test_3", "Test_4" ],
+    }});
 }

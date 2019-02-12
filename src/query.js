@@ -47,6 +47,8 @@ module.exports = Query;
  * @prop {(ParsedFrom) => Promise<any[]>|any[]} primaryTable
  * @prop {(ParsedFrom, results: any[]) => Promise} [beforeJoin]
  * @prop {(ParsedFrom, results: any[]) => Promise} [afterJoin]
+ * @prop {() => string[]} [getTables]
+ * @prop {(tableName: string) => Promise<{ name: string, type: string }[]>} [getColumns]
  */
 
 /**
@@ -254,27 +256,7 @@ async function Query (query, options = {}) {
         /** @type {Array} */
         let results;
 
-        if (table.name in CTEs) {
-            results = CTEs[table.name];
-        }
-        else if (table.name in views) {
-            results = queryResultToObjectArray(await Query(views[table.name], options));
-        }
-        else if (table.name in TABLE_VALUED_FUNCTIONS) {
-            results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));
-        }
-        else {
-            if (typeof callbacks.primaryTable === "undefined") {
-                throw new Error("PrimaryTable callback not defined");
-            }
-
-            results = await callbacks.primaryTable.call(self, table) || [];
-
-            if (!Array.isArray(results)) {
-                console.log(results);
-                throw Error("Provider Error: Expected array but got " + typeof results);
-            }
-        }
+        results = await getPrimaryResults(table);
 
         const totalTime = Date.now() - start;
 
@@ -341,18 +323,7 @@ async function Query (query, options = {}) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
 
-                let results;
-
-                if (table.name in TABLE_VALUED_FUNCTIONS) {
-                    results = TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));
-                }
-                else {
-                    if (typeof callbacks.primaryTable === "undefined") {
-                        throw new Error(`All attempts at joining failed: ${table.name}`);
-                    }
-
-                    results = await callbacks.primaryTable.call(self, table) || [];
-                }
+                const results = getPrimaryResults(table);
 
                 table.join = table.alias || table.name;
                 table.explain += " cross-join";
@@ -680,7 +651,7 @@ async function Query (query, options = {}) {
 
     return output_buffer;
 
-    /***************************************************************************
+    /* **************************************************************************
      * #########################################################################
      * #                                                                       #
      * # END OF PROCESSING                                                     #
@@ -688,7 +659,93 @@ async function Query (query, options = {}) {
      * # Everything below is a helper function                                 #
      * #                                                                       #
      * #########################################################################
-     **************************************************************************/
+     * *************************************************************************/
+
+    /**
+     * @param {ParsedTable} table
+     * @returns {Promise<any[]>}
+     */
+    async function getPrimaryResults(table) {
+        if (table.name in CTEs) {
+            return CTEs[table.name];
+        }
+
+        if (table.name in views) {
+            return queryResultToObjectArray(await Query(views[table.name], options));
+        }
+
+        const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
+        if (infoMatch) {
+            switch (infoMatch[1]) {
+                case "tables": {
+                    const results = [];
+
+                    let table_type = "BASE TABLE";
+
+                    if (typeof callbacks.getTables === "function") {
+                        results.push(...callbacks.getTables().map(table_name => ({ table_name, table_type })));
+                    }
+
+                    table_type = "VIEW";
+                    for (const table_name in views) {
+                        results.push({ table_name, table_type });
+                    }
+
+                    return results;
+                }
+                case "columns": {
+                    const results = [];
+
+                    if (typeof callbacks.getTables === "function" &&
+                        typeof callbacks.getColumns === "function"
+                    ) {
+                        const tables = callbacks.getTables();
+                        for (const table_name of tables) {
+                            const cols = await callbacks.getColumns(table_name);
+                            results.push(...cols.map(({ name, type }, i) => ({
+                                table_name,
+                                column_name: name,
+                                ordinal_position: i + 1,
+                                data_type: type,
+                            })));
+                        }
+                    }
+
+                    for (const table_name in views) {
+                        const rows = await Query(views[table_name], options);
+                        const headers = rows[0];
+                        for (let i = 0; i < headers.length; i++) {
+                            results.push({
+                                table_name,
+                                column_name: headers[i],
+                                ordinal_position: i + 1,
+                                data_type: rows.length > 1 ? typeof rows[1][i] : null,
+                            });
+                        }
+                    }
+
+                    return results;
+                }
+                case "views": {
+                    const results = [];
+                    for (const table_name in views) {
+                        results.push({ table_name, view_definition: views[table_name] });
+                    }
+                    return results;
+                }
+            }
+        }
+
+        if (table.name in TABLE_VALUED_FUNCTIONS) {
+            return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));
+        }
+
+        if (typeof callbacks.primaryTable === "undefined") {
+            throw new Error("PrimaryTable callback not defined");
+        }
+
+        return await callbacks.primaryTable.call(self, table) || [];
+    }
 
     /**
      * Execute an expresion from AST nodes

@@ -733,6 +733,34 @@ async function Query (query, options = {}) {
                     }
                     return results;
                 }
+                case "routines": {
+                    const results = [];
+
+                    function formatRoutine(routine_name, fn) {
+                        const definition = String(fn);
+                        const nativeMatch = /function ([a-zA-Z]+)\(\) { \[native code\] }/.exec(definition);
+
+                        return {
+                            routine_name,
+                            routine_type: "FUNCTION",
+                            data_type: null,
+                            routine_body: "EXTERNAL",
+                            routine_definition: nativeMatch ? null : definition,
+                            external_name: nativeMatch ? nativeMatch[1] : routine_name,
+                            external_language: nativeMatch ? "c" : "js",
+                        };
+                    }
+
+                    for (const name in VALUE_FUNCTIONS) {
+                        results.push(formatRoutine(name, VALUE_FUNCTIONS[name]));
+                    }
+
+                    for (const name in AGGREGATE_FUNCTIONS) {
+                        results.push(formatRoutine(name, AGGREGATE_FUNCTIONS[name]));
+                    }
+
+                    return results;
+                }
             }
         }
 
@@ -745,6 +773,7 @@ async function Query (query, options = {}) {
         }
 
         return await callbacks.primaryTable.call(self, table) || [];
+
     }
 
     /**

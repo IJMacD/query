@@ -1,5 +1,6 @@
 const moment = require('moment');
 const momentDurationFormatSetup = require('moment-duration-format');
+// @ts-ignore
 momentDurationFormatSetup(moment);
 
 const { isNullDate } = require('./util');
@@ -17,8 +18,9 @@ const VALUE_FUNCTIONS = {
     'DATE': d => moment(d).format("YYYY-MM-DD"),
     'TIME': d => moment(d).format("HH:mm:ss"),
     'DATETIME': d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
+    // @ts-ignore
     'DURATION': m => moment.duration(m, "milliseconds").format(),
-    'JSON_STRINGIFY': v => JSON.stringify(v),
+    'JSON_STRINGIFY': JSON.stringify,
     'DATEADD': (part, v, date) => moment(date).add(v, part).toDate(),
 
     EXTRACT (part, v) {

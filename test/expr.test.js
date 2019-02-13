@@ -331,65 +331,53 @@ describe("Operator Precedence", () => {
     });
 
     test("> AND LIKE", () => {
-        return demoQuery("FROM Test, Test_2 WHERE n > 4 AND c LIKE 'b'").then(r => {
-            expect(r.length - 1).toBe(5);
-            expect(r[1][0]).toBe(5);
-            expect(r[1][1]).toBe(2);
-            expect(r[1][3]).toBe('b');
+        return demoQuery("FROM Test_2 WHERE d > '2018-08-28' AND c LIKE 'h'").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe('h');
         });
     });
 
     test("> AND NOT LIKE", () => {
-        return demoQuery("FROM Test, Test_2 WHERE n > 4 AND c NOT LIKE 'b'").then(r => {
-            expect(r.length - 1).toBe(45);
-            expect(r[1][0]).toBe(5);
-            expect(r[1][1]).toBe(2);
-            expect(r[1][3]).toBe('a');
+        return demoQuery("FROM Test_2 WHERE d > '2018-08-28' AND c NOT LIKE 'h'").then(r => {
+            expect(r.length - 1).toBe(3);
+            expect(r[1][0]).toBe('g');
+            expect(r[2][0]).toBe('i');
+            expect(r[3][0]).toBe('j');
         });
     });
 
     test("= AND NOT LIKE", () => {
-        return demoQuery("FROM Test, Test_2 WHERE n = 6 AND c NOT LIKE 'b'").then(r => {
-            expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe(6);
-            expect(r[1][1]).toBe(3);
-            expect(r[1][3]).toBe('a');
+        return demoQuery("FROM Test_2 WHERE c = 'f' AND c NOT LIKE 'e'").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe('f');
         });
     });
 
     test("NOT LIKE AND =", () => {
-        return demoQuery("FROM Test, Test_2 WHERE c NOT LIKE 'b' AND n = 5").then(r => {
-            expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe(5);
-            expect(r[1][1]).toBe(2);
-            expect(r[1][3]).toBe('a');
+        return demoQuery("FROM Test_2 WHERE c NOT LIKE 'f' AND c = 'e'").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[1][0]).toBe('e');
         });
     });
 
     test("NOT LIKE AND <", () => {
-        return demoQuery("FROM Test, Test_2 WHERE c NOT LIKE 'b' AND n < 5").then(r => {
-            expect(r.length - 1).toBe(45);
-            expect(r[1][0]).toBe(0);
-            expect(r[1][1]).toBe(0);
-            expect(r[1][3]).toBe('a');
+        return demoQuery("FROM Test_2 WHERE c NOT LIKE 'b' AND d < '2018-08-28'").then(r => {
+            expect(r.length - 1).toBe(3);
+            expect(r[1][0]).toBe('a');
         });
     });
 
     test("+ > AND NOT LIKE", () => {
-        return demoQuery("FROM Test, Test_2 WHERE 2 + 2 > n2 AND c NOT LIKE 'b'").then(r => {
-            expect(r.length - 1).toBe(72);
-            expect(r[1][0]).toBe(0);
-            expect(r[1][1]).toBe(0);
-            expect(r[1][3]).toBe('a');
+        return demoQuery("FROM Test_2 WHERE 3 + 3 > 5 AND c NOT LIKE 'a'").then(r => {
+            expect(r.length - 1).toBe(9);
+            expect(r[1][0]).toBe('b');
         });
     });
 
     test(" * > - AND NOT LIKE", () => {
-        return demoQuery("FROM Test, Test_2 WHERE 3 * 2 > n - 1 AND c NOT LIKE 'a'").then(r => {
-            expect(r.length - 1).toBe(63);
-            expect(r[1][0]).toBe(0);
-            expect(r[1][1]).toBe(0);
-            expect(r[1][3]).toBe('b');
+        return demoQuery("FROM Test_2 WHERE 2 * 4 > 7 AND c NOT LIKE 'a'").then(r => {
+            expect(r.length - 1).toBe(9);
+            expect(r[1][0]).toBe('b');
         });
     });
 
@@ -415,11 +403,9 @@ describe("Operator Precedence", () => {
     });
 
     test("|| NOT LIKE || AND ", () => {
-        return demoQuery("FROM Test, Test_2 WHERE c || 'z' NOT LIKE 'a' || '%' AND n = 4").then(r => {
+        return demoQuery("FROM Test_2 WHERE c || 'z' NOT LIKE 'e' || '%' AND 1 = 1").then(r => {
             expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe(4);
-            expect(r[1][1]).toBe(2);
-            expect(r[1][3]).toBe('b');
+            expect(r[1][0]).toBe('a');
         });
     });
 })

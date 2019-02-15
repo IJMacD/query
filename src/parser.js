@@ -1,31 +1,37 @@
 const { tokenize, TOKEN_TYPES } = require('./tokenizer');
 
- /**
-  * @typedef Token
-  * @prop {number} type
-  * @prop {string} [value]
-  * @prop {number} start
-  */
+/**
+ * @typedef Token
+ * @prop {number} type
+ * @prop {string} [value]
+ * @prop {number} start
+ */
 
-  /**
-   * @typedef {Token[] & { index: number, current: Token, next: Token }} TokenList
-   */
+/**
+ * @typedef {Token[] & { index: number, current: Token, next: Token }} TokenList
+ */
 
- /**
-  * @typedef Node
-  * @prop {number} type
-  * @prop {string|number} id
-  * @prop {string} [alias]
-  * @prop {boolean} [inner]
-  * @prop {Node} [predicate]
-  * @prop {Node[]} [children]
-  * @prop {string} [source]
-  * @prop {Node} [over]
-  * @prop {Node} [order]
-  * @prop {Node} [filter]
-  * @prop {boolean} [desc]
-  * @prop {boolean} [distinct]
-  */
+/**
+ * @typedef WindowSpec
+ * @prop {Node} [partition]
+ * @prop {Node} [order]
+ * @prop {"rows"|"range"|"group"} [frameUnit]
+ */
+
+/**
+ * @typedef Node
+ * @prop {number} type
+ * @prop {string|number} id
+ * @prop {string} [alias]
+ * @prop {boolean} [inner]
+ * @prop {Node} [predicate]
+ * @prop {Node[]} [children]
+ * @prop {string} [source]
+ * @prop {WindowSpec} [window]
+ * @prop {Node} [filter]
+ * @prop {boolean} [desc]
+ * @prop {boolean} [distinct]
+ */
 
 const NODE_TYPES = {
     UNKNOWN: 0,
@@ -209,16 +215,16 @@ function parse (tokenList, source="") {
 
                     if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
 
-                        out.over = { type: NODE_TYPES.NUMBER, id: 1 };
+                        out.window = { partition: { type: NODE_TYPES.NUMBER, id: 1 }};
 
                         expect(TOKEN_TYPES.BRACKET, "(");
 
                         if (peek(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
-                            out.over = descendExpression();
+                            out.window.partition = descendExpression();
                         }
 
                         if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
-                            out.order = descendExpression();
+                            out.window.order = descendExpression();
                         }
 
                         expect(TOKEN_TYPES.BRACKET, ")");

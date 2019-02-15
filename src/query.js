@@ -3,6 +3,7 @@ const {
     AGGREGATE_FUNCTIONS,
     OPERATORS,
     TABLE_VALUED_FUNCTIONS,
+    WINDOW_FUNCTIONS
 } = require('./const');
 
 const {
@@ -516,15 +517,30 @@ async function Query (query, options = {}) {
 
             try {
                 // First check if we're evaluating a window function
-                if (node.over && node.id in AGGREGATE_FUNCTIONS) {
-                    const partitionVal = evaluateExpression(row, node.over);
-                    const group = rows.filter(r => collateEqual(evaluateExpression(r, node.over), partitionVal));
-                    if (node.order) {
-                        group.sort((ra, rb) => evaluateExpression(ra, node.order) - evaluateExpression(rb, node.order));
+                if (node.window) {
+                    const partitionVal = evaluateExpression(row, node.window.partition);
+                    const group = rows.filter(r => collateEqual(evaluateExpression(r, node.window.partition), partitionVal));
+
+                    if (node.window.order) {
+                        group.sort((ra, rb) => evaluateExpression(ra, node.window.order) - evaluateExpression(rb, node.window.order));
                     }
 
-                    const fn = AGGREGATE_FUNCTIONS[node.id];
-                    row[i] = fn(aggregateValues(group, node.children[0], node.distinct));
+                    if (node.id in WINDOW_FUNCTIONS) {
+                        if (!node.window.order) {
+                            throw Error("ORDER BY clause required in OVER clause for window functions");
+                        }
+
+                        const fn = WINDOW_FUNCTIONS[node.id];
+                        const index = group.indexOf(row);
+                        row[i] = fn(aggregateValues(group, node.window.order, node.distinct), index, ...node.children.map(p => evaluateExpression(row, p)));
+                    }
+                    else if (node.id in AGGREGATE_FUNCTIONS) {
+                        const fn = AGGREGATE_FUNCTIONS[node.id];
+                        row[i] = fn(aggregateValues(group, node.children[0], node.distinct));
+                    }
+                    else {
+                        throw Error(`${node.id} is not a window function`);
+                    }
                 } else {
                     row[i] = evaluateExpression(row, node);
                 }
@@ -549,7 +565,7 @@ async function Query (query, options = {}) {
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    if (colNodes.some(node => node && node.id in AGGREGATE_FUNCTIONS && !node.over)) {
+    if (colNodes.some(node => node && node.id in AGGREGATE_FUNCTIONS && !node.window)) {
         if (rows.length === 0) {
             // Special case for COUNT(*)
             const index = colNodes.findIndex(n => n.id === "COUNT");

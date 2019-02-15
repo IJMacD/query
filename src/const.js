@@ -93,7 +93,7 @@ const OPERATORS = {
 };
 
 const TABLE_VALUED_FUNCTIONS = {
-    RANGE: (start, end=undefined, step=1) => {
+    RANGE (start, end=undefined, step=1) {
         if (typeof end === "undefined") {
             end = start;
             start = 0;
@@ -108,6 +108,45 @@ const TABLE_VALUED_FUNCTIONS = {
     },
 };
 
+/**
+ * @type {{ [name: string]: (values: number[], index: number, ...other: any) => number }}
+ */
+const WINDOW_FUNCTIONS = {
+    ROW_NUMBER (values, index) {
+        return index + 1;
+    },
+
+    RANK (values, index) {
+        let prevVal = values[index];
+        while (values[--index] === prevVal) {}
+        return index + 2;
+    },
+
+    DENSE_RANK (values, index) {
+        let rank = 0;
+        let prevVal = values[index];
+        while (--index >= 0) {
+            if (values[index] !== prevVal) rank++;
+            prevVal = values[index];
+        }
+        return rank + 1;
+    },
+
+    PERCENT_RANK (values, index) {
+        if (values.length === 1) return 0;
+        return (WINDOW_FUNCTIONS.RANK(values, index) - 1) / (values.length - 1);
+    },
+
+    CUME_DIST (values, index) {
+        return WINDOW_FUNCTIONS.ROW_NUMBER(values, index) / values.length;
+    },
+
+    NTILE (values, index, n) {
+        const bucketSize = values.length / n;
+        return Math.floor(index / bucketSize) + 1;
+    }
+}
+
 module.exports = {
     CLAUSES,
     CONDITION_REGEX,
@@ -116,4 +155,5 @@ module.exports = {
     AGGREGATE_FUNCTIONS,
     OPERATORS,
     TABLE_VALUED_FUNCTIONS,
+    WINDOW_FUNCTIONS,
 };

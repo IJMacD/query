@@ -323,7 +323,7 @@ async function Query (query, options = {}) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
 
-                const results = getPrimaryResults(table);
+                const results = await getPrimaryResults(table);
 
                 table.join = table.alias || table.name;
                 table.explain += " cross-join";

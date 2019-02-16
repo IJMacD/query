@@ -486,4 +486,17 @@ describe("Window Functions", () => {
             expect(r[5][3]).toBe(45);
         });
     });
+
+    test("Ordering Using Alias", () => {
+        return demoQuery("FROM Test SELECT n AS m, n2 AS m2, n3 AS m3, LAST_VALUE(m2) OVER (PARTITION BY m3 ORDER BY m)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][3]).toBe(1);
+            expect(r[2][3]).toBe(1);
+            expect(r[3][3]).toBe(1);
+            expect(r[4][3]).toBe(2);
+            expect(r[5][3]).toBe(2);
+            expect(r[6][3]).toBe(2);
+        });
+    });
 });

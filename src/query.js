@@ -33,6 +33,8 @@ const { parseString, NODE_TYPES } = require('./parser');
 
 class SymbolError extends Error { }
 
+const PendingValue = Symbol("Pending Value");
+
 /**
  * @typedef {import('./parser').Node} Node
  */
@@ -483,8 +485,6 @@ async function Query (query, options = {}) {
             if (node.alias && typeof colAlias[node.alias] !== "undefined") {
                 throw new Error("Alias already in use: " + node.alias);
             }
-
-            colAlias[node.alias || node.source] = colNodes.length - 1;
         }
 
         colHeaders.forEach((col, i) => {
@@ -503,6 +503,12 @@ async function Query (query, options = {}) {
     for(const row of rows) {
         // @ts-ignore
         for(const [i, node] of colNodes.entries()) {
+
+            // Check to see if column's already been filled in
+            if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {
+                continue;
+            }
+
             if (node === null) {
                 // This occurs when there were no rows to extract poperties from as columns
                 //  e.g. Tutor.*
@@ -549,6 +555,8 @@ async function Query (query, options = {}) {
                         throw Error(`${node.id} is not a window function`);
                     }
                 } else {
+                    // Use PendingValue flag to avoid infinite recursion
+                    row[i] = PendingValue;
                     row[i] = evaluateExpression(row, node);
                 }
             } catch (e) {
@@ -1066,7 +1074,15 @@ async function Query (query, options = {}) {
         if (typeof colAlias[col] !== "undefined") {
             const i = colAlias[col];
 
-            if (typeof row[i] !== "undefined") {
+            // We've struck upon an alias but the value hasn't been
+            // evaluated yet.
+            // Let's see if we can be helpful and fill it in now.
+            if (typeof row[i] === "undefined") {
+                row[i] = PendingValue;
+                row[i] = evaluateExpression(row, colNodes[i]);
+            }
+
+            if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {
                 return row[i];
             }
         }

@@ -323,3 +323,173 @@ describe("Table Valued Functions", function() {
     });
   });
 });
+
+describe("Window Functions", () => {
+  test("ROW_NUMBER", () => {
+    return demoQuery("FROM Test SELECT *,ROW_NUMBER() OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(1);
+      expect(r[2][3]).toBe(2);
+      expect(r[3][3]).toBe(3);
+      expect(r[4][3]).toBe(1);
+      expect(r[5][3]).toBe(2);
+      expect(r[6][3]).toBe(3);
+    });
+  });
+
+  test("RANK", () => {
+    return demoQuery("FROM Test SELECT *,RANK() OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(1);
+      expect(r[2][3]).toBe(1);
+      expect(r[3][3]).toBe(3);
+      expect(r[4][3]).toBe(1);
+      expect(r[5][3]).toBe(2);
+      expect(r[6][3]).toBe(2);
+    });
+  });
+
+  test("DENSE_RANK", () => {
+    return demoQuery("FROM Test SELECT *,DENSE_RANK() OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(1);
+      expect(r[2][3]).toBe(1);
+      expect(r[3][3]).toBe(2);
+      expect(r[4][3]).toBe(1);
+      expect(r[5][3]).toBe(2);
+      expect(r[6][3]).toBe(2);
+    });
+  });
+
+  test("PERCENT_RANK", () => {
+    return demoQuery("FROM Test SELECT *,PERCENT_RANK() OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(0);
+      expect(r[2][3]).toBe(0);
+      expect(r[3][3]).toBe(1);
+      expect(r[4][3]).toBe(0);
+      expect(r[5][3]).toBe(0.5);
+      expect(r[6][3]).toBe(0.5);
+    });
+  });
+
+  test("CUME_DIST", () => {
+    return demoQuery("FROM Test SELECT *,CUME_DIST() OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBeCloseTo(0.666666);
+      expect(r[2][3]).toBeCloseTo(0.666666);
+      expect(r[3][3]).toBeCloseTo(1);
+      expect(r[4][3]).toBeCloseTo(0.333333);
+      expect(r[5][3]).toBeCloseTo(1);
+      expect(r[6][3]).toBeCloseTo(1);
+    });
+  });
+
+  test("NTILE(2)", () => {
+    return demoQuery("FROM Test SELECT *,NTILE(2) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(1);
+      expect(r[2][3]).toBe(1);
+      expect(r[3][3]).toBe(2);
+      expect(r[4][3]).toBe(1);
+      expect(r[5][3]).toBe(1);
+      expect(r[6][3]).toBe(2);
+    });
+  });
+
+  test("NTILE(3)", () => {
+    return demoQuery("FROM Test SELECT *,NTILE(3) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(1);
+      expect(r[2][3]).toBe(2);
+      expect(r[3][3]).toBe(3);
+      expect(r[4][3]).toBe(1);
+      expect(r[5][3]).toBe(2);
+      expect(r[6][3]).toBe(3);
+    });
+  });
+
+  test("LAG", () => {
+    return demoQuery("FROM Test SELECT *,LAG(n) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBeNull()
+      expect(r[2][3]).toBe(0);
+      expect(r[3][3]).toBe(1);
+      expect(r[4][3]).toBeNull()
+      expect(r[5][3]).toBe(3);
+      expect(r[6][3]).toBe(4);
+    });
+  });
+
+  test("LAG(2)", () => {
+    return demoQuery("FROM Test SELECT *,LAG(n, 2) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBeNull();
+      expect(r[2][3]).toBeNull();
+      expect(r[3][3]).toBe(0);
+      expect(r[4][3]).toBeNull();
+      expect(r[5][3]).toBeNull();
+      expect(r[6][3]).toBe(3);
+    });
+  });
+
+  test("LEAD", () => {
+    return demoQuery("FROM Test SELECT *,LEAD(n) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(1)
+      expect(r[2][3]).toBe(2);
+      expect(r[3][3]).toBeNull()
+      expect(r[4][3]).toBe(4)
+      expect(r[5][3]).toBe(5);
+      expect(r[6][3]).toBeNull();
+    });
+  });
+
+  test("LEAD(2)", () => {
+    return demoQuery("FROM Test SELECT *,LEAD(n, 2) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(2);
+      expect(r[2][3]).toBeNull()
+      expect(r[3][3]).toBeNull();
+      expect(r[4][3]).toBe(5);
+      expect(r[5][3]).toBeNull();
+      expect(r[6][3]).toBeNull();
+    });
+  });
+
+  test("FIRST_VALUE", () => {
+    return demoQuery("FROM Test SELECT *,FIRST_VALUE(n) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(0);
+      expect(r[2][3]).toBe(0)
+      expect(r[3][3]).toBe(0);
+      expect(r[4][3]).toBe(3);
+      expect(r[5][3]).toBe(3);
+      expect(r[6][3]).toBe(3);
+    });
+  });
+
+  test("LAST_VALUE", () => {
+    return demoQuery("FROM Test SELECT *,LAST_VALUE(n) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(2);
+      expect(r[2][3]).toBe(2)
+      expect(r[3][3]).toBe(2);
+      expect(r[4][3]).toBe(5);
+      expect(r[5][3]).toBe(5);
+      expect(r[6][3]).toBe(5);
+    });
+  });
+
+  test("NTH_VALUE", () => {
+    return demoQuery("FROM Test SELECT *,NTH_VALUE(n, 2) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][3]).toBe(1);
+      expect(r[2][3]).toBe(1)
+      expect(r[3][3]).toBe(1);
+      expect(r[4][3]).toBe(4);
+      expect(r[5][3]).toBe(4);
+      expect(r[6][3]).toBe(4);
+    });
+  });
+})

@@ -519,7 +519,7 @@ async function Query (query, options = {}) {
                 // First check if we're evaluating a window function
                 if (node.window) {
                     const partitionVal = evaluateExpression(row, node.window.partition);
-                    const group = rows.filter(r => collateEqual(evaluateExpression(r, node.window.partition), partitionVal));
+                    const group = rows.filter(r => OPERATORS['='](evaluateExpression(r, node.window.partition), partitionVal));
 
                     if (node.window.order) {
                         group.sort((ra, rb) => evaluateExpression(ra, node.window.order) - evaluateExpression(rb, node.window.order));
@@ -532,7 +532,8 @@ async function Query (query, options = {}) {
 
                         const fn = WINDOW_FUNCTIONS[node.id];
                         const index = group.indexOf(row);
-                        row[i] = fn(aggregateValues(group, node.window.order, node.distinct), index, ...node.children.map(p => evaluateExpression(row, p)));
+                        const orderVals = aggregateValues(group, node.window.order, node.distinct);
+                        row[i] = fn(index, orderVals, group, evaluateExpression, ...node.children);
                     }
                     else if (node.id in AGGREGATE_FUNCTIONS) {
                         const fn = AGGREGATE_FUNCTIONS[node.id];
@@ -1571,23 +1572,6 @@ function zip (keys, values) {
         out[keys[i]] = values[i];
     }
     return out;
-}
-
-/**
- * Compares two values to see if they are equal by collation rules
- * @param {any} a
- * @param {any} b
- * @returns {boolean}
- */
-function collateEqual (a, b) {
-    if (typeof a !== typeof b) return false;
-
-    if (typeof a === "object") {
-        // Assume it is like a date and try to compare numerically
-        return +a === +b;
-    }
-
-    return a === b;
 }
 
 function setJoin (table, targetTable) {

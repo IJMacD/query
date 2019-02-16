@@ -73,9 +73,20 @@ const OPERATORS = {
     '-': (a,b) => +a - +b,
     '*': (a,b) => +a * +b,
     '/': (a,b) => +a / +b,
-    '||': (a,b) => `${a}${b}`, // concatenate
-    '=': (a,b) => a == b,
-    '!=': (a,b) => a != b,
+    /** Concatenate */
+    '||': (a,b) => `${a}${b}`,
+    /** Compares two values to see if they are equal by collation rules */
+    '=' (a,b) {
+        if (typeof a !== typeof b) return false;
+
+        if (typeof a === "object") {
+            // Assume it is like a date and try to compare numerically
+            return +a === +b;
+        }
+
+        return a === b;
+    },
+    '!=': (a,b) => !OPERATORS['='](a, b),
     '<': (a,b) => a < b,
     '>': (a,b) => a > b,
     '<=': (a,b) => a <= b,
@@ -108,21 +119,25 @@ const TABLE_VALUED_FUNCTIONS = {
     },
 };
 
+/** @typedef {import('./query').ResultRow} ResultRow */
+/** @typedef {import('./parser').Node} Node */
+/** @typedef {(index: number, values: number[], rows?: ResultRow[], executor?: (row: ResultRow, node: Node) => any, ...other: any) => any} WindowFunction */
+
 /**
- * @type {{ [name: string]: (values: number[], index: number, ...other: any) => number }}
+ * @type {{ [name: string]: WindowFunction }}
  */
 const WINDOW_FUNCTIONS = {
-    ROW_NUMBER (values, index) {
+    ROW_NUMBER (index) {
         return index + 1;
     },
 
-    RANK (values, index) {
+    RANK (index, values) {
         let prevVal = values[index];
         while (values[--index] === prevVal) {}
         return index + 2;
     },
 
-    DENSE_RANK (values, index) {
+    DENSE_RANK (index, values) {
         let rank = 0;
         let prevVal = values[index];
         while (--index >= 0) {
@@ -132,19 +147,57 @@ const WINDOW_FUNCTIONS = {
         return rank + 1;
     },
 
-    PERCENT_RANK (values, index) {
+    PERCENT_RANK (index, values) {
         if (values.length === 1) return 0;
-        return (WINDOW_FUNCTIONS.RANK(values, index) - 1) / (values.length - 1);
+        return (WINDOW_FUNCTIONS.RANK(index, values) - 1) / (values.length - 1);
     },
 
-    CUME_DIST (values, index) {
-        return WINDOW_FUNCTIONS.ROW_NUMBER(values, index) / values.length;
+    CUME_DIST (index, values) {
+        const n = values[index];
+        const cum = values.filter(v => v <= n).length;
+        return cum / values.length;
     },
 
-    NTILE (values, index, n) {
+    NTILE (index, values, rows, evaluator, nExpr) {
+        const n = evaluator(rows[index], nExpr);
         const bucketSize = values.length / n;
         return Math.floor(index / bucketSize) + 1;
+    },
+
+    LAG (index, values, rows, evaluator, expr, offsetExpr = 1) {
+        const offset = (typeof offsetExpr === "number") ? offsetExpr : Number(evaluator(rows[index], offsetExpr));
+        return rowValue(index - offset, rows, evaluator, expr);
+    },
+
+    LEAD (index, values, rows, evaluator, expr, offsetExpr = 1) {
+        const offset = (typeof offsetExpr === "number") ? offsetExpr : Number(evaluator(rows[index], offsetExpr));
+        return rowValue(index + offset, rows, evaluator, expr);
+    },
+
+    FIRST_VALUE (index, values, rows, evaluator, expr) {
+        return evaluator(rows[0], expr);
+    },
+
+    LAST_VALUE (index, values, rows, evaluator, expr) {
+        return evaluator(rows[rows.length - 1], expr);
+    },
+
+    NTH_VALUE (index, values, rows, evaluator, expr, nExpr) {
+        const n = (typeof nExpr === "number") ? nExpr : Number(evaluator(rows[index], nExpr));
+        return rowValue(n - 1 /* 1 based indexing */, rows, evaluator, expr);
     }
+}
+
+/**
+ *
+ * @param {number} index
+ * @param {ResultRow[]} rows
+ * @param {(row: ResultRow, expr: Node) => any} evaluator
+ * @param {Node} expr
+ */
+function rowValue (index, rows, evaluator, expr) {
+    if (index < 0 || index >= rows.length) return null;
+    return evaluator(rows[index], expr);
 }
 
 module.exports = {

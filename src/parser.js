@@ -15,7 +15,7 @@ const { tokenize, TOKEN_TYPES } = require('./tokenizer');
  * @typedef WindowSpec
  * @prop {Node} [partition]
  * @prop {Node} [order]
- * @prop {"rows"|"range"|"group"} [frameUnit]
+ * @prop {"rows"|"range"|"groups"} [frameUnit]
  */
 
 /**
@@ -215,7 +215,7 @@ function parse (tokenList, source="") {
 
                     if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
 
-                        out.window = { partition: { type: NODE_TYPES.NUMBER, id: 1 }};
+                        out.window = { };
 
                         expect(TOKEN_TYPES.BRACKET, "(");
 

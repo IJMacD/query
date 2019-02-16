@@ -518,8 +518,14 @@ async function Query (query, options = {}) {
             try {
                 // First check if we're evaluating a window function
                 if (node.window) {
-                    const partitionVal = evaluateExpression(row, node.window.partition);
-                    const group = rows.filter(r => OPERATORS['='](evaluateExpression(r, node.window.partition), partitionVal));
+                    let group;
+
+                    if (node.window.partition) {
+                        const partitionVal = evaluateExpression(row, node.window.partition);
+                        group = rows.filter(r => OPERATORS['='](evaluateExpression(r, node.window.partition), partitionVal));
+                    } else {
+                        group = [ ...rows ];
+                    }
 
                     if (node.window.order) {
                         group.sort((ra, rb) => evaluateExpression(ra, node.window.order) - evaluateExpression(rb, node.window.order));

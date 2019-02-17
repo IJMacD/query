@@ -185,11 +185,20 @@ const WINDOW_FUNCTIONS = {
     NTH_VALUE (index, values, rows, evaluator, expr, nExpr) {
         const n = (typeof nExpr === "number") ? nExpr : Number(evaluator(rows[index], nExpr));
         return rowValue(n - 1 /* 1 based indexing */, rows, evaluator, expr);
+    },
+
+    CUME_SUM (index, values) {
+        return AGGREGATE_FUNCTIONS.SUM(values.slice(0, index + 1));
+    },
+
+    CUME_FRAC (index, values) {
+        const val = WINDOW_FUNCTIONS.CUME_SUM(index, values);
+        return val / AGGREGATE_FUNCTIONS.SUM(values);
     }
 }
 
 /**
- *
+ * Adds index bounds check before evaluating
  * @param {number} index
  * @param {ResultRow[]} rows
  * @param {(row: ResultRow, expr: Node) => any} evaluator

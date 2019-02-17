@@ -816,6 +816,10 @@ async function Query (query, options = {}) {
                     results.push(formatRoutine(name, TABLE_VALUED_FUNCTIONS[name], "table"));
                 }
 
+                for (const name in WINDOW_FUNCTIONS) {
+                    results.push(formatRoutine(name, WINDOW_FUNCTIONS[name]));
+                }
+
                 return results;
             }
             case "routine_columns": {

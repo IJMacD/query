@@ -95,7 +95,7 @@ async function Query (query, options = {}) {
     if (viewMatch)
     {
         const name = viewMatch[1];
-        const view = matchInBrackets(query) || query.substring(viewMatch[0].length);
+        const view = query.substring(viewMatch[0].length);
 
         views[name] = view;
 
@@ -167,6 +167,34 @@ async function Query (query, options = {}) {
             }
 
         }
+        return out;
+    }
+
+    /****************
+     * VALUES Clause
+     ****************/
+    if (/^VALUES/.test(query)) {
+        let index = "VALUES".length;
+        const out = [];
+
+        while (index < query.length) {
+            const subString = query.substr(index);
+            const match = matchInBrackets(subString);
+
+            if (!match) break;
+
+            out.push(match.split(","));
+
+            const start = subString.indexOf(match);
+            index += start + match.length + 2;
+        }
+
+        if (out.length) {
+            const width = out[0].length;
+            const headers = Array(width).fill(0).map((_, i) => `Col ${i + 1}`);
+            out.unshift(headers);
+        }
+
         return out;
     }
 
@@ -549,11 +577,16 @@ async function Query (query, options = {}) {
                     }
                     else if (node.id in AGGREGATE_FUNCTIONS) {
                         if (node.children.length === 0) {
-                            throw new Error(`Function ${node.id} requires one paramater.`);
+                            throw new Error(`Function ${node.id} requires at least one paramater.`);
                         }
 
+                        /**
+                         * Duplicated functionality
+                         * @see computeAggregates
+                         */
                         const fn = AGGREGATE_FUNCTIONS[node.id];
-                        row[i] = fn(aggregateValues(group, node.children[0], node.distinct));
+                        const args = node.children.map(n => aggregateValues(group, n, node.distinct));
+                        row[i] = fn(...args);
                     }
                     else {
                         throw Error(`${node.id} is not a window function`);
@@ -1223,9 +1256,13 @@ async function Query (query, options = {}) {
 
         // Fill in aggregate values
         colNodes.forEach((node, i) => {
-            if (node.type === NODE_TYPES.FUNCTION_CALL) {
+            if (node.type === NODE_TYPES.FUNCTION_CALL && !node.window) {
                 if (node.id in AGGREGATE_FUNCTIONS) {
                     const fn = AGGREGATE_FUNCTIONS[node.id];
+
+                    if (node.children.length === 0) {
+                        throw new Error(`Function ${node.id} requires at least one paramater.`);
+                    }
 
                     let filteredRows = rows;
 
@@ -1233,7 +1270,9 @@ async function Query (query, options = {}) {
                         filteredRows = filteredRows.filter(getRowEvaluator(node.filter));
                     }
 
-                    row[i] = fn(aggregateValues(filteredRows, node.children[0], node.distinct));
+                    /** Duplicated from above  */
+                    const args = node.children.map(n => aggregateValues(filteredRows, n, node.distinct));
+                    row[i] = fn(...args);
                 } else {
                     throw new Error("Function not found: " + node.id);
                 }

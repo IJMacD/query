@@ -112,13 +112,14 @@ async function Query (query, options = {}) {
      ***************************/
     const CTEs = {};
 
-    const withMatch = /^WITH ([a-zA-Z0-9_]+) AS\s+/.exec(query);
+    const withMatch = /^WITH ([a-zA-Z0-9_]+)\s*(?:\(([^)]+)\))? AS\s+/.exec(query);
     if (withMatch)
     {
         const name = withMatch[1];
-        const cte = matchInBrackets(query);
+        const headers = withMatch[2] && withMatch[2].split(",").map(v => v.trim());
+        const cte = matchInBrackets(query.substr(withMatch[0].length));
 
-        CTEs[name] = queryResultToObjectArray(await Query(cte, options));
+        CTEs[name] = queryResultToObjectArray(await Query(cte, options), headers);
 
         const endIdx = withMatch[0].length + 2 + cte.length;
         query = query.substr(endIdx);
@@ -1623,10 +1624,10 @@ function runQueries (queries, options) {
  * @param {any[][]} result
  * @returns {any[]}
  */
-function queryResultToObjectArray (result) {
-    const headers = result.shift();
+function queryResultToObjectArray (result, newHeaders = null) {
+    const originalHeaders = result.shift();
 
-    return result.map(r => zip(headers, r));
+    return result.map(r => zip(newHeaders || originalHeaders, r));
 }
 
 /**

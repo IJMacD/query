@@ -548,6 +548,10 @@ async function Query (query, options = {}) {
                         row[i] = fn(index, orderVals, group, evaluateExpression, ...node.children);
                     }
                     else if (node.id in AGGREGATE_FUNCTIONS) {
+                        if (node.children.length === 0) {
+                            throw new Error(`Function ${node.id} requires one paramater.`);
+                        }
+
                         const fn = AGGREGATE_FUNCTIONS[node.id];
                         row[i] = fn(aggregateValues(group, node.children[0], node.distinct));
                     }

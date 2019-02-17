@@ -59,14 +59,36 @@ const VALUE_FUNCTIONS = {
 };
 
 const AGGREGATE_FUNCTIONS = {
-    'COUNT': a => a.filter(x => x !== false).length, // Include 0, "", NULL; Exclude false
-    'SUM': v => v.reduce((total,val) => total + (+val), 0), // Be sure to coerce into number
-    'AVG': v => AGGREGATE_FUNCTIONS.SUM(v) / v.length,
-    'MIN': v => Math.min(...v),
-    'MAX': v => Math.max(...v),
-    'LISTAGG': v => v.join(),
-    'JSON_ARRAYAGG': VALUE_FUNCTIONS.JSON_STRINGIFY,
+    COUNT: a => a.filter(x => x !== false).length, // Include 0, "", NULL; Exclude false
+    SUM: a => a.reduce((total,val) => total + (+val), 0), // Be sure to coerce into number
+    AVG: a => AGGREGATE_FUNCTIONS.SUM(a) / a.length,
+    MIN: a => Math.min(...a),
+    MAX: a => Math.max(...a),
+    LISTAGG: a => a.join(),
+    JSON_ARRAYAGG: VALUE_FUNCTIONS.JSON_STRINGIFY,
+    STDDEV_POP: a => Math.sqrt(AGGREGATE_FUNCTIONS.VAR_POP(a)),
+    STDDEV_SAMP: a => Math.sqrt(AGGREGATE_FUNCTIONS.VAR_SAMP(a)),
+    VAR_POP: a => VAR_SUM(a) / a.length,
+    VAR_SAMP: a => (a.length === 1) ? 0 : VAR_SUM(a) / (a.length - 1),
+    COVAR_POP (a, b) {
+        const meanA = AGGREGATE_FUNCTIONS.AVG(a);
+        const meanB = AGGREGATE_FUNCTIONS.AVG(b);
+        const avgOfProducts = AGGREGATE_FUNCTIONS.AVG(a.map((_, i) => a[i] * b[i]));
+        return avgOfProducts - meanA * meanB;
+    },
+    COVAR_SAMP (a, b) {
+        if (a.length === 1) return 0;
+        const meanA = AGGREGATE_FUNCTIONS.AVG(a);
+        const meanB = AGGREGATE_FUNCTIONS.AVG(b);
+        const sumOfProducts = AGGREGATE_FUNCTIONS.SUM(a.map((_, i) => a[i] * b[i]));
+        return (sumOfProducts / (a.length - 1)) - meanA * meanB;
+    },
 };
+
+function VAR_SUM (a) {
+    const mean = AGGREGATE_FUNCTIONS.AVG(a);
+    return AGGREGATE_FUNCTIONS.SUM(a.map(v => Math.pow(v - mean, 2)));
+}
 
 const OPERATORS = {
     '+': (a,b) => +a + +b,

@@ -217,6 +217,23 @@ const WINDOW_FUNCTIONS = {
     CUME_FRAC (index, values) {
         const val = WINDOW_FUNCTIONS.CUME_SUM(index, values);
         return val / AGGREGATE_FUNCTIONS.SUM(values);
+    },
+
+    PERCENTILE_DISC (index, values, rows, evaluator, nExpr) {
+        const n = (typeof nExpr === "number") ? nExpr : Number(evaluator(rows[index], nExpr));
+        const i = values.findIndex((v,i) => WINDOW_FUNCTIONS.CUME_DIST(i, values) > n);
+        return values[i];
+    },
+
+    PERCENTILE_CONT (index, values, rows, evaluator, nExpr) {
+        const n = (typeof nExpr === "number") ? nExpr : Number(evaluator(rows[index], nExpr));
+        const i = values.findIndex((v,i) => WINDOW_FUNCTIONS.CUME_DIST(i, values) > n);
+        const valA = values[i - 1];
+        const distA = WINDOW_FUNCTIONS.CUME_DIST(i - 1, values);
+        const valB = values[i];
+        const distB = WINDOW_FUNCTIONS.CUME_DIST(i, values);
+        const t = 1 - (distB - n) / (distB - distA);
+        return valA + t * (valB - valA);
     }
 }
 

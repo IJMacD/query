@@ -85,6 +85,9 @@ const AGGREGATE_FUNCTIONS = {
     },
 };
 
+/* Alias */
+AGGREGATE_FUNCTIONS.STDDEV = AGGREGATE_FUNCTIONS.STDDEV_SAMP;
+
 function VAR_SUM (a) {
     const mean = AGGREGATE_FUNCTIONS.AVG(a);
     return AGGREGATE_FUNCTIONS.SUM(a.map(v => Math.pow(v - mean, 2)));
@@ -234,6 +237,11 @@ const WINDOW_FUNCTIONS = {
         const distB = WINDOW_FUNCTIONS.CUME_DIST(i, values);
         const t = 1 - (distB - n) / (distB - distA);
         return valA + t * (valB - valA);
+    },
+
+    FREQ (index, values) {
+        const n = values[index];
+        return values.filter(v => v === n).length / values.length;
     }
 }
 

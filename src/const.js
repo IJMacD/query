@@ -210,7 +210,8 @@ const WINDOW_FUNCTIONS = {
     },
 
     CUME_SUM (index, values) {
-        return AGGREGATE_FUNCTIONS.SUM(values.slice(0, index + 1));
+        const n = values[index];
+        return AGGREGATE_FUNCTIONS.SUM(values.filter(v => v <= n));
     },
 
     CUME_FRAC (index, values) {

@@ -1427,11 +1427,15 @@ async function Query (query, options = {}) {
             }
 
             if (operand1.type === NODE_TYPES.SYMBOL &&
-                operand1.id === symbol &&
-                (operand2.type === NODE_TYPES.NUMBER ||
-                operand2.type === NODE_TYPES.STRING))
+                operand1.id === symbol)
             {
-                return operand2.id;
+                // We've found the right node
+                try {
+                    // Now try to evaluate it as a constant expression
+                    return evaluateExpression(null, operand2);
+                } catch (e) {
+                    return; // undefined
+                }
             }
         }
         else if (node.id === "AND") {

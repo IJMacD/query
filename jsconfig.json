@@ -5,6 +5,7 @@
       "dom"
     ],
     "checkJs": true,
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "resolveJsonModule": true
   }
 }

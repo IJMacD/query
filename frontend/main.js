@@ -68,6 +68,15 @@ function sendQuery () {
             const duration = (Date.now() - start) / 1000;
             output.innerHTML = renderTable({ rows: data, duration });
             saveHistory(input.value);
+
+            const btn = document.createElement("button");
+            btn.style.margin = "8px";
+            btn.innerHTML = "Graph";
+            btn.addEventListener("click", () => {
+                output.removeChild(btn);
+                output.appendChild(renderGraph(data));
+            });
+            output.appendChild(btn);
         })
         .catch(e => {
             output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;
@@ -134,6 +143,47 @@ function formatCell ({ cell }) {
     cell = cell.replace(/[^@,\s]+@[^@,\s]+\.[^@,\s]+/g, email => `<a href="mailto:${email}">${email}</a>`);
 
     return cell;
+}
+
+/**
+ *
+ * @param {any[][]} data
+ */
+function renderGraph (data) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = 300;
+    canvas.height = 300;
+
+    const headers = data.shift();
+
+    const X = data.map(r => r[0]);
+    const Y = data.map(r => r[1]);
+
+    const minX = Math.min(...X);
+    const maxX = Math.max(...X);
+    const minY = Math.min(...Y);
+    const maxY = Math.max(...Y);
+
+    const xScale = canvas.width / (maxX - minX);
+    const yScale = canvas.height / (maxY - minY);
+
+    const h = canvas.height;
+
+    ctx.strokeStyle = "#999";
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+    ctx.beginPath();
+    ctx.moveTo((X[0] - minX) * xScale, h - (Y[0] - minY) * yScale);
+
+    for (let i = 1; i < data.length; i++) {
+        ctx.lineTo((X[i] - minX) * xScale, h - (Y[i] - minY) * yScale);
+    }
+
+    ctx.strokeStyle = "red";
+    ctx.stroke();
+
+    return canvas;
 }
 
 function getSuggestions () {

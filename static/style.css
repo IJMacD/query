@@ -27,8 +27,11 @@ button  {
     font-size: 1.1em;
     background-image: linear-gradient(to bottom, #FFF, #CCC);
     border: 1px solid #999;
-    border-top-right-radius: 5px;
-    border-bottom-right-radius: 5px;
+    border-radius: 5px;
+}
+.query {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
 }
 #query-suggest {
     position: absolute;
@@ -97,6 +100,9 @@ img::after {
     content: "null";
     color: #CCC;
     font-style: italic;
+}
+canvas {
+    margin: 16px;
 }
 @media (max-width: 480px) {
     form,

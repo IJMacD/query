@@ -31,6 +31,8 @@ const {
 
 const { parseString, NODE_TYPES } = require('./parser');
 
+const persist = require('./persist');
+
 class SymbolError extends Error { }
 
 const PendingValue = Symbol("Pending Value");
@@ -79,10 +81,12 @@ module.exports = Query;
 
 /** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
 
+const VIEW_KEY = "views";
+
 /**
  * @type {{ [name: string]: string }}
  */
-const views = {};
+const views = persist.getItem(VIEW_KEY) || {};
 
 /**
  *
@@ -98,6 +102,8 @@ async function Query (query, options = {}) {
         const view = query.substring(viewMatch[0].length);
 
         views[name] = view;
+
+        persist.setItem(VIEW_KEY, views);
 
         return [];
     }
@@ -184,7 +190,8 @@ async function Query (query, options = {}) {
 
             if (!match) break;
 
-            out.push(match.split(","));
+            // Parse comma list as JSON array for quoting and number forms
+            out.push(JSON.parse(`[${match.replace(/'/g, '"')}]`));
 
             const start = subString.indexOf(match);
             index += start + match.length + 2;

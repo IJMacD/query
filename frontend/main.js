@@ -5,6 +5,8 @@ const queryForm = document.getElementById("query-form");
 const querySuggest = document.getElementById("query-suggest");
 
 const QUERY_HISTORY = "query_history";
+const HISTORY_SHOW_COUNT = 20;
+const HISTORY_SAVE_COUNT = 100;
 let queryHistory = loadHistory();
 
 /**
@@ -187,7 +189,7 @@ function renderGraph (data) {
 }
 
 function getSuggestions () {
-    return queryHistory.filter(q => q && q != input.value && q.startsWith(input.value));
+    return queryHistory.filter(q => q && q != input.value && q.startsWith(input.value)).slice(0, HISTORY_SHOW_COUNT);
 }
 
 function showSuggestions () {
@@ -201,7 +203,7 @@ function hideSuggestions () {
 function saveHistory (value) {
     queryHistory = queryHistory.filter(q => q !== value);
     queryHistory.unshift(input.value);
-    queryHistory.length = 20;
+    queryHistory.length = HISTORY_SAVE_COUNT;
     localStorage.setItem(QUERY_HISTORY, JSON.stringify(queryHistory));
 }
 

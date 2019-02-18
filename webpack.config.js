@@ -26,6 +26,11 @@ module.exports = [{
       // Ignore all locale files of moment.js
       new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
       new Dotenv(),
+      new webpack.DefinePlugin({
+            'process.env': {
+                APP_ENV: JSON.stringify("browser"),
+            },
+      }),
     ],
 },{
     entry: "./frontend/main.js",

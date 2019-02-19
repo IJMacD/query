@@ -19,7 +19,8 @@ module.exports = {
 };
 
 /**
- * @typedef {import('./parser').Node} Node
+ * @typedef {import('../types').Node} Node
+ * @typedef {import('../types').ParsedTable} ParsedTable
  */
 
 /**
@@ -94,19 +95,6 @@ function parseWhere (where) {
 
   return ast;
 }
-
-/**
- * @typedef ParsedTable
- * @prop {string} name
- * @prop {string} [join]
- * @prop {Node} [predicate]
- * @prop {string} [alias]
- * @prop {Node[]} [params]
- * @prop {boolean} [inner]
- * @prop {string} [explain]
- * @prop {number} [rowCount]
- * @prop {any} [analyse]
- */
 
 /**
  *

@@ -33,53 +33,19 @@ const { parseString, NODE_TYPES } = require('./parser');
 
 const persist = require('./persist');
 
+/**
+ * @typedef {import('../types').Node} Node
+ * @typedef {import('../types').ParsedTable} ParsedTable
+ * @typedef {import('../types').ResultRow} ResultRow
+ * @typedef {import('../types').QueryCallbacks} QueryCallbacks
+ * @typedef {import('../types').QueryContext} QueryContext
+ */
+
 class SymbolError extends Error { }
 
 const PendingValue = Symbol("Pending Value");
 
-/**
- * @typedef {import('./parser').Node} Node
- */
-
 module.exports = Query;
-
-/**
-* @typedef {import('./parse').ParsedTable} ParsedTable
-*/
-
-/**
- * @typedef QueryCallbacks
- * @prop {(ParsedFrom) => Promise<any[]>|any[]} primaryTable
- * @prop {(ParsedFrom, results: any[]) => Promise} [beforeJoin]
- * @prop {(ParsedFrom, results: any[]) => Promise} [afterJoin]
- * @prop {() => string[]} [getTables]
- * @prop {(tableName: string) => Promise<{ name: string, type: string }[]>} [getColumns]
- */
-
-/**
- * @typedef QueryContext
- * @property {Node[]} cols
- * @property {ParsedTable[]} parsedTables
- * @property {Node} parsedWhere
- * @property {Node} parsedHaving
- * @property {string} orderBy
- * @property {string} groupBy
- *
- * @property {(path: string) => string|number|boolean|Date} resolveConstant
- * @property {(data: any, path: string) => any} resolvePath
- * @property {(row: ResultRow, col: string) => any} resolveValue
- *
- * @property {(name: string) => ParsedTable} findTable
- * @property {(symbol: string, operator?: string|string[]) => string|number} findWhere
- *
- * @property {(table: ParsedTable, targetTable: ParsedTable) => void} setJoin
- * @property {(table: ParsedTable, predicate: string) => void} setJoinPredicate
- *
- * @property {(row: ResultRow, table: ParsedTable) => any} getRowData
- * @property {(row: ResultRow, table: ParsedTable, data: any) => void} setRowData
- */
-
-/** @typedef {any[] & { data?: { [join: string]: any }, ROWID?: string }} ResultRow */
 
 const VIEW_KEY = "views";
 

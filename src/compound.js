@@ -1,7 +1,9 @@
+/** @typedef {import('../types').ResultRow} ResultRow */
+
 /**
- * @param {any[][]} resultsL
- * @param {any[][]} resultsR
- * @returns {any[][]}
+ * @param {ResultRow[][]} resultsL
+ * @param {ResultRow[][]} resultsR
+ * @returns {ResultRow[][]}
  */
 function intersectResults (resultsL, resultsR) {
   const headerRow = resultsL[0];
@@ -21,9 +23,9 @@ function intersectResults (resultsL, resultsR) {
 }
 
 /**
- * @param {any[][]} resultsL
- * @param {any[][]} resultsR
- * @returns {any[][]}
+ * @param {ResultRow[][]} resultsL
+ * @param {ResultRow[][]} resultsR
+ * @returns {ResultRow[][]}
  */
 function exceptResults (resultsL, resultsR) {
   const headerRow = resultsL[0];
@@ -43,9 +45,9 @@ function exceptResults (resultsL, resultsR) {
 }
 
 /**
- * @param {any[][]} resultsL
- * @param {any[][]} resultsR
- * @returns {any[][]}
+ * @param {ResultRow[][]} resultsL
+ * @param {ResultRow[][]} resultsR
+ * @returns {ResultRow[][]}
  */
 function unionResults (resultsL, resultsR) {
   const headerRow = resultsL[0];
@@ -63,17 +65,17 @@ function unionResults (resultsL, resultsR) {
 }
 
 /**
- * @param {any[][]} resultsL
- * @param {any[][]} resultsR
- * @returns {any[][]}
+ * @param {ResultRow[][]} resultsL
+ * @param {ResultRow[][]} resultsR
+ * @returns {ResultRow[][]}
  */
 function unionAllResults (resultsL, resultsR) {
   return [ ...resultsL, ...resultsR.slice(1) ];
 }
 
 /**
- * @param {any[][]} results
- * @returns {any[][]}
+ * @param {ResultRow[][]} results
+ * @returns {ResultRow[][]}
  */
 function distinctResults (results) {
   return Array.from(distinctMap(results).values());
@@ -84,8 +86,8 @@ function distinctResults (results) {
  * column! This really only works if the data has an ID or similar in
  * the first column of restults.
  * The implementation keeps the first row it finds for each first-column-value.
- * @param {any[][]} results
- * @returns {Map<any, any[]> }}
+ * @param {ResultRow[][]} results
+ * @returns {Map<ResultRow, ResultRow[]> }}
  */
 function distinctMap (results) {
   const outMap = new Map();

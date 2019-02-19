@@ -15,7 +15,7 @@ const query = rest.filter(a => a[0] !== "-").join(" ");
 /**
  * @type {(query: string, options) => Promise<any[][]>}
  */
-const QueryExecutor = opts.includes("--demo") ? demoQuery : placeholderQuery;
+let QueryExecutor = global['QueryExecutor'] || (opts.includes("--demo") ? demoQuery : placeholderQuery);
 
 const debug = opts.includes("--debug");
 

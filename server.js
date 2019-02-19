@@ -14,10 +14,12 @@ const [ node, script, ...rest ] = process.argv;
 
 const args = rest.filter(a => a[0] === "-");
 
-const demoMode = args.includes("--demo");
-const placeholderMode = args.includes("--placeholder");
-
 const debugMode = args.includes("--debug");
+
+/**
+ * @type {(query: string, options) => Promise<any[][]>}
+ */
+let QueryExecutor = global['QueryExecutor'] || (args.includes("--demo") ? demoQuery : placeholderQuery);
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -25,8 +27,8 @@ app.use(express.static("static"));
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
-app.get('/query.js', (req, res) => res.sendFile(path.join(__dirname, "../frontend/query-server.js")));
-app.get('/main.js', (req, res) => res.sendFile(path.join(__dirname, "../frontend/main.js")));
+app.get('/query.js', (req, res) => res.sendFile(path.join(__dirname, "./frontend/server-query.js")));
+app.get('/main.js', (req, res) => res.sendFile(path.join(__dirname, "./frontend/main.js")));
 
 app.post('/query', (req, res) => {
     const query = req.body['query'];
@@ -74,9 +76,7 @@ function handleQuery (req, res, query, type, name) {
         res.setHeader("Access-Control-Allow-Credentials", "true");
     }
 
-    const q = demoMode ? demoQuery : placeholderQuery;
-
-    q(query).then(result => {
+    QueryExecutor(query, {debug: debugMode }).then(result => {
         const mime = type || determineMimeType(req.header("accept"));
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];

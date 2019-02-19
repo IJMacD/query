@@ -68,17 +68,20 @@ function sendQuery () {
     query(input.value)
         .then(data => {
             const duration = (Date.now() - start) / 1000;
-            output.innerHTML = renderTable({ rows: data, duration });
+            output.innerHTML = renderTable({ rows: data.slice(), duration });
             saveHistory(input.value);
 
-            const btn = document.createElement("button");
-            btn.style.margin = "8px";
-            btn.innerHTML = "Graph";
-            btn.addEventListener("click", () => {
-                output.removeChild(btn);
-                output.appendChild(renderGraph(data));
-            });
-            output.appendChild(btn);
+            const footer = output.querySelector("tfoot td");
+            if (footer) {
+                const btn = document.createElement("button");
+                btn.className = "link";
+                btn.innerHTML = "Graph";
+                btn.addEventListener("click", () => {
+                footer.removeChild(btn);
+                    output.appendChild(renderGraph(data.slice()));
+                });
+                footer.appendChild(btn);
+            }
         })
         .catch(e => {
             output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;

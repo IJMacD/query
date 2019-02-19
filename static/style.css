@@ -33,6 +33,14 @@ button  {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
 }
+.link {
+    background: none;
+    border: none;
+    color: darkblue;
+    text-decoration: underline;
+    font-size: 1em;
+    font-style: italic;
+}
 #query-suggest {
     position: absolute;
     top: 40px;

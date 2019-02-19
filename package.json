@@ -1,12 +1,12 @@
 {
   "name": "ijmacd-query",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SQL for JSON objects/APIs",
   "repository": {
     "type": "git",
     "url": "https://github.com/ijmacd/query"
   },
-  "main": "query.js",
+  "main": "./src/query.js",
   "bin": {
     "query": "bin/cli.js"
   },

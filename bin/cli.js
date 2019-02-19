@@ -3,7 +3,6 @@ const path = require('path');
 require('fetch-everywhere');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const ilQuery = require('../src/providers/query');
 const demoQuery = require('../src/providers/demo');
 const placeholderQuery = require('../src/providers/placeholder');
 const Formatter = require('../src/formatter');
@@ -16,8 +15,7 @@ const query = rest.filter(a => a[0] !== "-").join(" ");
 /**
  * @type {(query: string, options) => Promise<any[][]>}
  */
-const QueryExecutor = opts.includes("--demo") ? demoQuery :
-    (opts.includes("--placeholder") ? placeholderQuery : ilQuery);
+const QueryExecutor = opts.includes("--demo") ? demoQuery : placeholderQuery;
 
 const debug = opts.includes("--debug");
 

@@ -6,10 +6,9 @@ const path = require('path');
 
 const port = 3000;
 
-const ilQuery = require('./providers/query');
-const demoQuery = require('./providers/demo');
-const placeholderQuery = require('./providers/placeholder');
-const Formatter = require('./formatter');
+const demoQuery = require('./src/providers/demo');
+const placeholderQuery = require('./src/providers/placeholder');
+const Formatter = require('./src/formatter');
 
 const [ node, script, ...rest ] = process.argv;
 
@@ -75,9 +74,9 @@ function handleQuery (req, res, query, type, name) {
         res.setHeader("Access-Control-Allow-Credentials", "true");
     }
 
-    const q = demoMode ? demoQuery : placeholderMode ? placeholderQuery : ilQuery;
+    const q = demoMode ? demoQuery : placeholderQuery;
 
-    q(query, debugMode).then(result => {
+    q(query).then(result => {
         const mime = type || determineMimeType(req.header("accept"));
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];

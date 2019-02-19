@@ -14,6 +14,7 @@ export declare interface Node {
   source?: string;
   window?: WindowSpec;
   filter?: Node;
+  order?: Node;
   desc?: boolean;
   distinct?: boolean;
 }

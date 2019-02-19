@@ -183,6 +183,24 @@ function parse (tokenList, source="") {
                         expect(TOKEN_TYPES.BRACKET, ")");
                     }
 
+                    if (peek(TOKEN_TYPES.KEYWORD, "WITHIN GROUP")) {
+
+                        expect(TOKEN_TYPES.BRACKET, "(");
+
+                        expect(TOKEN_TYPES.KEYWORD, "ORDER BY");
+
+                        out.order = descendExpression();
+
+                        if (peek(TOKEN_TYPES.KEYWORD, "DESC")) {
+                            out.order.desc = true;
+                        } else {
+                            // We can just skip over ASC
+                            peek(TOKEN_TYPES.KEYWORD, "ASC");
+                        }
+
+                        expect(TOKEN_TYPES.BRACKET, ")");
+                    }
+
                     if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
 
                         out.window = { };
@@ -195,6 +213,13 @@ function parse (tokenList, source="") {
 
                         if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
                             out.window.order = descendExpression();
+
+                            if (peek(TOKEN_TYPES.KEYWORD, "DESC")) {
+                                out.window.order.desc = true;
+                            } else {
+                                // We can just skip over ASC
+                                peek(TOKEN_TYPES.KEYWORD, "ASC");
+                            }
                         }
 
                         expect(TOKEN_TYPES.BRACKET, ")");

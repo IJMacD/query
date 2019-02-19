@@ -536,7 +536,7 @@ async function Query (query, options = {}) {
                     }
 
                     if (node.window.order) {
-                        group.sort((ra, rb) => evaluateExpression(ra, node.window.order) - evaluateExpression(rb, node.window.order));
+                        group.sort(rowSorter(node.window.order));
                     }
 
                     if (node.id in WINDOW_FUNCTIONS) {
@@ -650,16 +650,11 @@ async function Query (query, options = {}) {
                 const valA = getOrderingValue(a, orderNode, depth);
                 const valB = getOrderingValue(b, orderNode, depth);
 
-                let sort = (Number.isFinite(valA) && Number.isFinite(valB)) ?
-                    (valA - valB) :
-                    String(valA).localeCompare(valB);
+                const sort = comparator(valA, valB, orderNode.desc);
 
                 if (sort !== 0) {
-                    sort *= orderNode.desc ? -1 : 1;
-
                     return sort;
                 }
-
             }
 
             return 0;
@@ -960,6 +955,15 @@ async function Query (query, options = {}) {
     }
 
     /**
+     * Generate a comparator for the purpose of sorting
+     * @param {Node} order
+     * @returns {(a: ResultRow, b: ResultRow) => number}
+     */
+    function rowSorter(order) {
+        return (ra, rb) => comparator(evaluateExpression(ra, order), evaluateExpression(rb, order), order.desc);
+    }
+
+    /**
      * Creates a row evaluator (suitable for use in .map() or .filter())
      * which turns SymbolErrors into nulls
      * @param {Node} node
@@ -1242,6 +1246,10 @@ async function Query (query, options = {}) {
 
                     if (node.filter) {
                         filteredRows = filteredRows.filter(getRowEvaluator(node.filter));
+                    }
+
+                    if (node.order) {
+                        filteredRows.sort(rowSorter(node.order));
                     }
 
                     /** Duplicated from above  */
@@ -1639,4 +1647,18 @@ function getRowData (row, table) {
 
 function setRowData (row, table, data) {
     row['data'][table.join] = data;
+}
+
+/**
+ * Compares two values of the same type
+ * @param {any} a
+ * @param {any} b
+ * @param {boolean} desc
+ */
+function comparator (a, b, desc) {
+    let sort = (Number.isFinite(a) && Number.isFinite(b)) ?
+        (a - b) :
+        String(a).localeCompare(b);
+
+    return sort * (desc ? -1 : 1);
 }

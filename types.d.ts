@@ -12,7 +12,7 @@ export declare interface Node {
   predicate?: Node;
   children?: Node[];
   source?: string;
-  window?: WindowSpec;
+  window?: string|WindowSpec;
   filter?: Node;
   order?: Node;
   desc?: boolean;
@@ -20,9 +20,9 @@ export declare interface Node {
 }
 
 export declare interface WindowSpec {
-  partition: Node;
-  order: Node;
-  frameUnit: "rows"|"range"|"groups";
+  partition?: Node;
+  order?: Node;
+  frameUnit?: "rows"|"range"|"groups";
 }
 
 export declare class ResultRow extends Array {

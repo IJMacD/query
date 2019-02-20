@@ -16,11 +16,13 @@ module.exports = {
   parseGroupBy,
   parseArgumentList,
   parseOrderBy,
+  parseWindow,
 };
 
 /**
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ParsedTable} ParsedTable
+ * @typedef {import('../types').WindowSpec} WindowSpec
  */
 
 /**
@@ -211,4 +213,28 @@ function parseOrderBy (orderBy) {
 
         return ast;
     });
+}
+
+/**
+ * @param {string} window
+ * @returns {{ [name: string]: WindowSpec }}
+ */
+function parseWindow (window) {
+  if (!window) {
+    return {};
+  }
+
+  const src = "WINDOW " + window;
+  const tokens = tokenizer.tokenize(src);
+  const ast = parser.parse(tokens, src);
+
+  /** @type {{ [name: string]: WindowSpec }} */
+  const out = {};
+
+  for (const child of ast.children) {
+    if (typeof child.window === "object")
+      out[child.id] = child.window;
+  }
+
+  return out;
 }

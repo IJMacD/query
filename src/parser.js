@@ -2,6 +2,7 @@ const { tokenize, TOKEN_TYPES } = require('./tokenizer');
 
 /** @typedef {import('../types').Token} Token */
 /** @typedef {import('../types').Node} Node */
+/** @typedef {import('../types').WindowSpec} WindowSpec */
 
 const NODE_TYPES = {
     UNKNOWN: 0,
@@ -33,6 +34,12 @@ module.exports = {
 function parse (tokenList, source="") {
     let i = 0;
 
+    /**
+     * Peek ahead but don't consume the next token
+     * @param {number} type
+     * @param {string} value
+     * @returns {boolean}
+     */
     function peek (type, value=undefined) {
         const current = tokenList[i];
 
@@ -44,12 +51,35 @@ function parse (tokenList, source="") {
             return false;
         }
 
-        // If we're returning true: move to next node automatically
-        next();
-
         return true;
     }
 
+    /**
+     * Check if the next token matches the provided type
+     * and consume if so.
+     * @param {number} type
+     * @param {string} value
+     * @returns {boolean}
+     */
+    function suspect (type, value=undefined) {
+        if (peek(type, value)) {
+
+            // If we're returning true, move to next token automatically
+            next();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Consume and return a specific type. If the next token
+     * is not exactly as expected this frunction throws.
+     * @param {number} type
+     * @param {string} value
+     * @returns {Token}
+     */
     function expect (type, value=undefined) {
         const current = tokenList[i];
 
@@ -91,7 +121,28 @@ function parse (tokenList, source="") {
                 out.id = t.value;
                 out.children = [];
 
-                if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
+                if (t.value === "WINDOW") {
+                    while (i < tokenList.length) {
+                        const id = expect(TOKEN_TYPES.NAME).value;
+
+                        /** @type {Node} */
+                        const child = { type: NODE_TYPES.SYMBOL, id };
+
+                        expect(TOKEN_TYPES.KEYWORD, "AS");
+                        expect(TOKEN_TYPES.BRACKET, "(");
+
+                        child.window = descendWindow();
+
+                        expect(TOKEN_TYPES.BRACKET, ")");
+
+                        out.children.push(child);
+
+                        suspect(TOKEN_TYPES.COMMA);
+                    }
+                    return out;
+                }
+
+                if (suspect(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
                     out.distinct = true;
                 }
 
@@ -101,26 +152,26 @@ function parse (tokenList, source="") {
                     // Consume each item in the list following the keyword
                     const child = appendChild(out, descend());
 
-                    if (peek(TOKEN_TYPES.KEYWORD, "AS")) {
+                    if (suspect(TOKEN_TYPES.KEYWORD, "AS")) {
                         next_token = expect(TOKEN_TYPES.NAME);
 
                         child.alias = next_token.value;
                         child.source += ` AS ${next_token.value}`;
                     }
 
-                    if (peek(TOKEN_TYPES.KEYWORD, "ON")) {
+                    if (suspect(TOKEN_TYPES.KEYWORD, "ON")) {
                         child.predicate = descendExpression();
                         child.source += ` ON ${child.predicate.source}`;
 
-                    } else if (peek(TOKEN_TYPES.KEYWORD, "USING")) {
+                    } else if (suspect(TOKEN_TYPES.KEYWORD, "USING")) {
                         child.predicate = descend();
                         child.source += ` USING ${child.predicate.source}`;
 
-                    } else if (peek(TOKEN_TYPES.KEYWORD, "INNER")) {
+                    } else if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {
                         child.inner = true;
                     }
 
-                    peek(TOKEN_TYPES.COMMA);
+                    suspect(TOKEN_TYPES.COMMA);
                 }
 
                 next_token = current();
@@ -130,14 +181,14 @@ function parse (tokenList, source="") {
             case TOKEN_TYPES.NAME:
                 next();
 
-                if (peek(TOKEN_TYPES.BRACKET, "(")) {
+                if (suspect(TOKEN_TYPES.BRACKET, "(")) {
                     // Open bracket signifies a function call
 
                     out.type = NODE_TYPES.FUNCTION_CALL;
                     out.id = t.value;
                     out.children = [];
 
-                    if (peek(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
+                    if (suspect(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
                         out.distinct = true;
                     }
 
@@ -147,12 +198,12 @@ function parse (tokenList, source="") {
                         appendChild(out, descend());
 
                         // Consume a comma if needed
-                        peek(TOKEN_TYPES.COMMA);
+                        suspect(TOKEN_TYPES.COMMA);
 
                         // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
                         // They can be treated like a comma.
-                        peek(TOKEN_TYPES.KEYWORD, "FROM");
-                        peek(TOKEN_TYPES.KEYWORD, "AS");
+                        suspect(TOKEN_TYPES.KEYWORD, "FROM");
+                        suspect(TOKEN_TYPES.KEYWORD, "AS");
                     }
 
                     // More special treatment
@@ -172,7 +223,7 @@ function parse (tokenList, source="") {
 
                     expect(TOKEN_TYPES.BRACKET, ")");
 
-                    if (peek(TOKEN_TYPES.KEYWORD, "FILTER")) {
+                    if (suspect(TOKEN_TYPES.KEYWORD, "FILTER")) {
 
                         expect(TOKEN_TYPES.BRACKET, "(");
 
@@ -183,43 +234,26 @@ function parse (tokenList, source="") {
                         expect(TOKEN_TYPES.BRACKET, ")");
                     }
 
-                    if (peek(TOKEN_TYPES.KEYWORD, "WITHIN GROUP")) {
+                    if (suspect(TOKEN_TYPES.KEYWORD, "WITHIN GROUP")) {
 
                         expect(TOKEN_TYPES.BRACKET, "(");
 
                         expect(TOKEN_TYPES.KEYWORD, "ORDER BY");
 
-                        out.order = descendExpression();
-
-                        if (peek(TOKEN_TYPES.KEYWORD, "DESC")) {
-                            out.order.desc = true;
-                        } else {
-                            // We can just skip over ASC
-                            peek(TOKEN_TYPES.KEYWORD, "ASC");
-                        }
+                        out.order = descendOrder();
 
                         expect(TOKEN_TYPES.BRACKET, ")");
                     }
 
-                    if (peek(TOKEN_TYPES.KEYWORD, "OVER")) {
-
-                        out.window = { };
+                    if (suspect(TOKEN_TYPES.KEYWORD, "OVER")) {
 
                         expect(TOKEN_TYPES.BRACKET, "(");
 
-                        if (peek(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
-                            out.window.partition = descendExpression();
+                        if (peek(TOKEN_TYPES.NAME)) {
+                            out.window = next().value;
                         }
-
-                        if (peek(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
-                            out.window.order = descendExpression();
-
-                            if (peek(TOKEN_TYPES.KEYWORD, "DESC")) {
-                                out.window.order.desc = true;
-                            } else {
-                                // We can just skip over ASC
-                                peek(TOKEN_TYPES.KEYWORD, "ASC");
-                            }
+                        else {
+                            out.window = descendWindow();
                         }
 
                         expect(TOKEN_TYPES.BRACKET, ")");
@@ -288,15 +322,46 @@ function parse (tokenList, source="") {
         const dummyNode = { type: NODE_TYPES.UNKNOWN, id: null, children: [ node ] };
 
         while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
-            // Back-up so that descend() can consume the operator
-            i--;
-
             appendChild(dummyNode, descend());
         }
 
         // Haha I've just invented the double pointer in javascript
         return dummyNode.children[0];
 
+    }
+
+    /**
+     * @returns {Node}
+     */
+    function descendOrder () {
+        const out = descendExpression();
+
+        if (suspect(TOKEN_TYPES.KEYWORD, "DESC")) {
+            out.desc = true;
+        } else {
+            // We can just skip over ASC
+            suspect(TOKEN_TYPES.KEYWORD, "ASC");
+        }
+
+        return out;
+    }
+
+    /**
+     * @returns {WindowSpec}
+     */
+    function descendWindow() {
+        /** @type {WindowSpec} */
+        const window = {};
+
+        if (suspect(TOKEN_TYPES.KEYWORD, "PARTITION BY")) {
+            window.partition = descendExpression();
+        }
+
+        if (suspect(TOKEN_TYPES.KEYWORD, "ORDER BY")) {
+            window.order = descendOrder();
+        }
+
+        return window;
     }
 
     return descendExpression();

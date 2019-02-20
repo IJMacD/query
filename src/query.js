@@ -13,6 +13,7 @@ const {
     parseWhere,
     parseGroupBy,
     parseOrderBy,
+    parseWindow,
 } = require('./parse');
 
 const {
@@ -36,6 +37,7 @@ const persist = require('./persist');
 /**
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ParsedTable} ParsedTable
+ * @typedef {import('../types').WindowSpec} WindowSpec
  * @typedef {import('../types').ResultRow} ResultRow
  * @typedef {import('../types').QueryCallbacks} QueryCallbacks
  * @typedef {import('../types').QueryContext} QueryContext
@@ -203,6 +205,9 @@ async function Query (query, options = {}) {
     const orderBy = parsedQuery['order by'];
     const groupBy = parsedQuery['group by'];
     const analyse = parsedQuery.explain === "ANALYSE" || parsedQuery.explain === "ANALYZE";
+
+    /** @type {{ [name: string]: WindowSpec }} */
+    const windows = parseWindow(parsedQuery.window);
 
     /** @type {QueryContext} */
     const self = {
@@ -527,26 +532,27 @@ async function Query (query, options = {}) {
                 // First check if we're evaluating a window function
                 if (node.window) {
                     let group;
+                    const window = typeof node.window === "string" ? windows[node.window] : node.window;
 
-                    if (node.window.partition) {
-                        const partitionVal = evaluateExpression(row, node.window.partition);
-                        group = rows.filter(r => OPERATORS['='](evaluateExpression(r, node.window.partition), partitionVal));
+                    if (window.partition) {
+                        const partitionVal = evaluateExpression(row, window.partition);
+                        group = rows.filter(r => OPERATORS['='](evaluateExpression(r, window.partition), partitionVal));
                     } else {
                         group = [ ...rows ];
                     }
 
-                    if (node.window.order) {
-                        group.sort(rowSorter(node.window.order));
+                    if (window.order) {
+                        group.sort(rowSorter(window.order));
                     }
 
                     if (node.id in WINDOW_FUNCTIONS) {
-                        if (!node.window.order) {
+                        if (!window.order) {
                             throw Error("ORDER BY clause required in OVER clause for window functions");
                         }
 
                         const fn = WINDOW_FUNCTIONS[node.id];
                         const index = group.indexOf(row);
-                        const orderVals = aggregateValues(group, node.window.order, node.distinct);
+                        const orderVals = aggregateValues(group, window.order, node.distinct);
                         row[i] = fn(index, orderVals, group, evaluateExpression, ...node.children);
                     }
                     else if (node.id in AGGREGATE_FUNCTIONS) {

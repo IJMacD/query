@@ -1234,6 +1234,12 @@ async function Query (query, options = {}) {
 
         // Fill in aggregate values
         colNodes.forEach((node, i) => {
+            // Ignore non-aggregate values
+            // i.e. the ones already filled in
+            if (typeof row[i] !== "undefined") {
+                return;
+            }
+
             if (node.type === NODE_TYPES.FUNCTION_CALL && !node.window) {
                 if (node.id in AGGREGATE_FUNCTIONS) {
                     const fn = AGGREGATE_FUNCTIONS[node.id];

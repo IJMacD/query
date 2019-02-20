@@ -71,16 +71,20 @@ function sendQuery () {
             output.innerHTML = renderTable({ rows: data.slice(), duration });
             saveHistory(input.value);
 
-            const footer = output.querySelector("tfoot td");
-            if (footer) {
-                const btn = document.createElement("button");
-                btn.className = "link";
-                btn.innerHTML = "Graph";
-                btn.addEventListener("click", () => {
-                footer.removeChild(btn);
-                    output.appendChild(renderGraph(data.slice()));
-                });
-                footer.appendChild(btn);
+            if (data.length >= 3 && data[0].length >= 2 &&
+                typeof data[1][0] === "number" && typeof data[1][1] === "number")
+            {
+                const footer = output.querySelector("tfoot td");
+                if (footer) {
+                    const btn = document.createElement("button");
+                    btn.className = "link";
+                    btn.innerHTML = "Graph";
+                    btn.addEventListener("click", () => {
+                    footer.removeChild(btn);
+                        output.appendChild(renderGraph(data.slice()));
+                    });
+                    footer.appendChild(btn);
+                }
             }
         })
         .catch(e => {

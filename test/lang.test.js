@@ -691,6 +691,31 @@ describe("Window Functions", () => {
             expect(r[6][1]).toBe(39);
         });
     });
+
+    test("in expressions (operator)", () => {
+        return demoQuery("FROM Test SELECT n / SUM(n) OVER()").then(data => {
+            expect(data.length - 1).toBe(10);
+
+            expect(data[1][0]).toBe(0);
+            expect(data[2][0]).toBeCloseTo(1/45);
+            expect(data[3][0]).toBeCloseTo(2/45);
+            expect(data[4][0]).toBeCloseTo(3/45);
+            expect(data[5][0]).toBeCloseTo(4/45);
+        });
+    });
+
+    test("in expressions (function call and operator)", () => {
+        return demoQuery("FROM Test SELECT CHAR(n + SUM(n) OVER())").then(data => {
+            expect(data.length - 1).toBe(10);
+
+            expect(data[1][0]).toBe("-");
+            expect(data[2][0]).toBe(".");
+            expect(data[3][0]).toBe("/");
+            expect(data[4][0]).toBe("0");
+            expect(data[5][0]).toBe("1");
+            expect(data[6][0]).toBe("2");
+        })
+    });
 });
 
 describe("WINDOW clause", () => {

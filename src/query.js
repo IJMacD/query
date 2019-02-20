@@ -529,71 +529,9 @@ async function Query (query, options = {}) {
             }
 
             try {
-                // First check if we're evaluating a window function
-                if (node.window) {
-                    let group;
-                    const window = typeof node.window === "string" ? windows[node.window] : node.window;
-
-                    if (window.partition) {
-                        const partitionVal = evaluateExpression(row, window.partition);
-                        group = rows.filter(r => OPERATORS['='](evaluateExpression(r, window.partition), partitionVal));
-                    } else {
-                        group = [ ...rows ];
-                    }
-
-                    const index = group.indexOf(row);
-
-                    if (window.order) {
-                        group.sort(rowSorter(window.order));
-
-                        if (window.frameUnit === "rows") {
-                            const start = Math.max(index - window.preceding, 0);
-                            group = group.slice(start, index + window.following + 1);
-
-                        } else if (window.frameUnit === "range") {
-                            const currentVal = evaluateExpression(row, window.order);
-                            const min = currentVal - window.preceding;
-                            const max = currentVal + window.following;
-
-                            group = group.filter(r => {
-                                const v = evaluateExpression(r, window.order);
-                                return min <= v && v <= max;
-                            });
-                        }
-                    } else if (window.frameUnit) {
-                        throw Error("Frames can only be specified with an ORDER BY clause");
-                    }
-
-                    if (node.id in WINDOW_FUNCTIONS) {
-                        if (!window.order) {
-                            throw Error("Window functions require ORDER BY in OVER clause");
-                        }
-
-                        const fn = WINDOW_FUNCTIONS[node.id];
-                        const orderVals = aggregateValues(group, window.order, node.distinct);
-                        row[i] = fn(index, orderVals, group, evaluateExpression, ...node.children);
-                    }
-                    else if (node.id in AGGREGATE_FUNCTIONS) {
-                        if (node.children.length === 0) {
-                            throw new Error(`Function ${node.id} requires at least one paramater.`);
-                        }
-
-                        /**
-                         * Duplicated functionality
-                         * @see computeAggregates
-                         */
-                        const fn = AGGREGATE_FUNCTIONS[node.id];
-                        const args = node.children.map(n => aggregateValues(group, n, node.distinct));
-                        row[i] = fn(...args);
-                    }
-                    else {
-                        throw Error(`${node.id} is not a window function`);
-                    }
-                } else {
-                    // Use PendingValue flag to avoid infinite recursion
-                    row[i] = PendingValue;
-                    row[i] = evaluateExpression(row, node);
-                }
+                // Use PendingValue flag to avoid infinite recursion
+                row[i] = PendingValue;
+                row[i] = evaluateExpression(row, node, rows);
             } catch (e) {
                 if (e instanceof SymbolError) {
                     row[i] = null;
@@ -876,10 +814,73 @@ async function Query (query, options = {}) {
      * Execute an expresion from AST nodes
      * @param {ResultRow} row
      * @param {Node} node
+     * @param {ResultRow[]} [rows]
      */
-    function evaluateExpression(row, node) {
+    function evaluateExpression(row, node, rows=null) {
         if (node.type === NODE_TYPES.FUNCTION_CALL) {
             const fnName = node.id;
+
+            // First check if we're evaluating a window function
+            if (node.window) {
+                let group;
+                const window = typeof node.window === "string" ? windows[node.window] : node.window;
+
+                if (window.partition) {
+                    const partitionVal = evaluateExpression(row, window.partition, rows);
+                    group = rows.filter(r => OPERATORS['='](evaluateExpression(r, window.partition, rows), partitionVal));
+                } else {
+                    group = [ ...rows ];
+                }
+
+                const index = group.indexOf(row);
+
+                if (window.order) {
+                    group.sort(rowSorter(window.order));
+
+                    if (window.frameUnit === "rows") {
+                        const start = Math.max(index - window.preceding, 0);
+                        group = group.slice(start, index + window.following + 1);
+
+                    } else if (window.frameUnit === "range") {
+                        const currentVal = evaluateExpression(row, window.order, rows);
+                        const min = currentVal - window.preceding;
+                        const max = currentVal + window.following;
+
+                        group = group.filter(r => {
+                            const v = evaluateExpression(r, window.order, rows);
+                            return min <= v && v <= max;
+                        });
+                    }
+                } else if (window.frameUnit) {
+                    throw Error("Frames can only be specified with an ORDER BY clause");
+                }
+
+                if (node.id in WINDOW_FUNCTIONS) {
+                    if (!window.order) {
+                        throw Error("Window functions require ORDER BY in OVER clause");
+                    }
+
+                    const fn = WINDOW_FUNCTIONS[node.id];
+                    const orderVals = aggregateValues(group, window.order, node.distinct);
+                    return fn(index, orderVals, group, evaluateExpression, ...node.children);
+                }
+
+                if (node.id in AGGREGATE_FUNCTIONS) {
+                    if (node.children.length === 0) {
+                        throw new Error(`Function ${node.id} requires at least one paramater.`);
+                    }
+
+                    /**
+                     * Duplicated functionality
+                     * @see computeAggregates
+                     */
+                    const fn = AGGREGATE_FUNCTIONS[node.id];
+                    const args = node.children.map(n => aggregateValues(group, n, node.distinct));
+                    return fn(...args);
+                }
+
+                throw Error(`${node.id} is not a window function`);
+            }
 
             if (fnName in AGGREGATE_FUNCTIONS) {
                 // Don't evaluate aggregate functions until after grouping
@@ -890,26 +891,22 @@ async function Query (query, options = {}) {
                 return;
             }
 
-            if (fnName in userFunctions) {
-                const args = node.children.map(c => evaluateExpression(row, c));
-                try {
-                    return userFunctions[fnName](...args);
-                } catch (e) {
-                    return null;
-                }
+            const fn = userFunctions[fnName] || VALUE_FUNCTIONS[fnName];
+
+            if (!fn) {
+                throw new Error(`Tried to call a non-existant function (${fnName})`);
             }
 
-            if (fnName in VALUE_FUNCTIONS) {
-                try {
-                    return VALUE_FUNCTIONS[fnName](...node.children.map(c => evaluateExpression(row, c)));
-                } catch (e) {
-                    return null;
-                }
+            const args = node.children.map(c => evaluateExpression(row, c, rows));
+
+            try {
+                return fn(...args);
+            } catch (e) {
+                return null;
             }
 
-            throw new Error(`Tried to call a non-existant function (${fnName})`);
         } else if (node.type === NODE_TYPES.SYMBOL) {
-            const val = resolveValue(row, String(node.id));
+            const val = resolveValue(row, String(node.id), rows);
 
             if (typeof val === "undefined") {
                 // We must throw a SymbolError so that e.g. filterRows() can catch it
@@ -939,12 +936,12 @@ async function Query (query, options = {}) {
                 throw new Error(`Unsupported operator '${node.id}'`);
             }
 
-            return op(...node.children.map(c => evaluateExpression(row, c)));
+            return op(...node.children.map(c => evaluateExpression(row, c, rows)));
         } else if (node.type === NODE_TYPES.CLAUSE
             && (node.id === "WHERE" || node.id === "ON")
         ) {
             if (node.children.length > 0) {
-                return Boolean(evaluateExpression(row, node.children[0]));
+                return Boolean(evaluateExpression(row, node.children[0], rows));
             } else {
                 throw new Error(`Empty predicate clause: ${node.id}`);
             }
@@ -962,7 +959,7 @@ async function Query (query, options = {}) {
         if (parsedWhere) {
             return rows.filter(r => {
                 try {
-                    return evaluateExpression(r, parsedWhere);
+                    return evaluateExpression(r, parsedWhere, rows);
                 } catch (e) {
                     if (e instanceof SymbolError) {
                         // If we got a symbol error it means we don't have enough
@@ -981,22 +978,24 @@ async function Query (query, options = {}) {
     /**
      * Generate a comparator for the purpose of sorting
      * @param {Node} order
+     * @param {ResultRow[]} [rows]
      * @returns {(a: ResultRow, b: ResultRow) => number}
      */
-    function rowSorter(order) {
-        return (ra, rb) => comparator(evaluateExpression(ra, order), evaluateExpression(rb, order), order.desc);
+    function rowSorter(order, rows=null) {
+        return (ra, rb) => comparator(evaluateExpression(ra, order, rows), evaluateExpression(rb, order, rows), order.desc);
     }
 
     /**
      * Creates a row evaluator (suitable for use in .map() or .filter())
      * which turns SymbolErrors into nulls
      * @param {Node} node
+     * @param {ResultRow[]} rows
      * @returns {(row: ResultRow) => any}
      */
-    function getRowEvaluator(node) {
+    function getRowEvaluator(node, rows=null) {
         return row => {
             try {
-                return evaluateExpression(row, node);
+                return evaluateExpression(row, node, rows);
             }
             catch (e) {
                 if (e instanceof SymbolError) {
@@ -1016,7 +1015,7 @@ async function Query (query, options = {}) {
      * @return {ResultRow[]}
      */
     function filterRowsByPredicate (rows, predicate) {
-        return rows.filter(getRowEvaluator(predicate));
+        return rows.filter(getRowEvaluator(predicate, rows));
     }
 
     /**
@@ -1098,8 +1097,9 @@ async function Query (query, options = {}) {
      * Resolve a col into a concrete value (constant or from object)
      * @param {ResultRow} row
      * @param {string} col
+     * @param {ResultRow[]} [rows]
      */
-    function resolveValue (row, col) {
+    function resolveValue (row, col, rows=null) {
         // Check for constant values first
         const constant = resolveConstant(col);
 
@@ -1122,7 +1122,7 @@ async function Query (query, options = {}) {
             // Let's see if we can be helpful and fill it in now.
             if (typeof row[i] === "undefined") {
                 row[i] = PendingValue;
-                row[i] = evaluateExpression(row, colNodes[i]);
+                row[i] = evaluateExpression(row, colNodes[i], rows);
             }
 
             if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {
@@ -1325,9 +1325,10 @@ async function Query (query, options = {}) {
     /**
      * @param {any[]} row
      * @param {Node} parsedOrder
+     * @param {ResultRow[]} [rows]
      * @param {number} depth
      */
-    function getOrderingValue (row, parsedOrder, depth) {
+    function getOrderingValue (row, parsedOrder, depth, rows=null) {
         let va = row['orderBy'][depth];
 
         // The first time this row is visited (at this depth) we'll
@@ -1343,7 +1344,7 @@ async function Query (query, options = {}) {
                 v = row[colAlias[parsedOrder.id]];
             }
             else {
-                v = evaluateExpression(row, parsedOrder);
+                v = evaluateExpression(row, parsedOrder, rows);
             }
 
             if (typeof v === "undefined") {
@@ -1371,7 +1372,7 @@ async function Query (query, options = {}) {
         const groupByMap = {};
 
         for(const row of rows) {
-            const key = JSON.stringify(parsedGroupBy.map(g => evaluateExpression(row, g)));
+            const key = JSON.stringify(parsedGroupBy.map(g => evaluateExpression(row, g, rows)));
 
             if (!groupByMap[key]) {
                 groupByMap[key] = [];

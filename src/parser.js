@@ -361,9 +361,12 @@ function parse (tokenList, source="") {
             window.order = descendOrder();
         }
 
-        if (peek(TOKEN_TYPES.KEYWORD, "ROWS") ||
-            peek(TOKEN_TYPES.KEYWORD, "RANGE") ||
-            peek(TOKEN_TYPES.KEYWORD, "GROUPS")
+        // These probably should be keywords rather than names.
+        // However when they're added to the tokenizer it clashes with
+        // the RANGE() table valued function.
+        if (peek(TOKEN_TYPES.NAME, "ROWS") ||
+            peek(TOKEN_TYPES.NAME, "RANGE") ||
+            peek(TOKEN_TYPES.NAME, "GROUPS")
         ) {
             // @ts-ignore
             window.frameUnit = next().value.toLowerCase();

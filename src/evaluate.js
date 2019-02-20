@@ -7,9 +7,7 @@ const {
     AGGREGATE_FUNCTIONS,
 } = require('./const');
 
-const {
-    isValidDate,
-} = require('./util');
+const { isValidDate } = require('./util');
 
 class SymbolError extends Error { }
 
@@ -94,7 +92,7 @@ function getEvaluator ({ resolveValue = () => {}, userFunctions = {}, windows = 
                     }
 
                     const fn = WINDOW_FUNCTIONS[node.id];
-                    const orderVals = aggregateValues(evaluator, group, window.order, node.distinct);
+                    const orderVals = group.map(getRowEvaluator(evaluator, window.order, rows));
                     return fn(index, orderVals, group, evaluator, ...node.children);
                 }
 
@@ -104,18 +102,25 @@ function getEvaluator ({ resolveValue = () => {}, userFunctions = {}, windows = 
                     }
 
                     const fn = AGGREGATE_FUNCTIONS[node.id];
-                    // Aggregate values could have '*' as the node
+
+                    // Aggregate values could have '*' as a child (paramater) node
                     // so they get run through a special function first
-                    const args = node.children.map(n => aggregateValues(evaluator, group, n, node.distinct));
-                    return fn(...args);
+                    return fn(aggregateValues(evaluator, group, node.children[0], node.distinct));
                 }
 
                 throw Error(`${node.id} is not a window function`);
             }
 
             if (fnName in AGGREGATE_FUNCTIONS) {
-                // Don't evaluate aggregate functions until after grouping
                 if (row['group']) {
+                    // Aggregate functions are evaluated after grouping.
+                    //
+                    // Normally the main query will fill in the aggregates
+                    // in a separate step rather than here.
+                    //
+                    // There is a special case meaning we end up here instead
+                    // though, namely a brand new aggregate function named
+                    // in a HAVING clase. It gets evaluated here.
                     const fn = AGGREGATE_FUNCTIONS[fnName];
                     return fn(aggregateValues(evaluator, row['group'], node.children[0]));
                 }
@@ -210,34 +215,6 @@ function evaluateConstantExpression(node) {
 }
 
 /**
- * Map rows to values following the rules for aggregate functions.
- * @param {ResultRow[]} rows
- * @param {Node} expr
- * @param {boolean} distinct
- * @returns {any[]}
- */
-function aggregateValues (evaluator, rows, expr, distinct = false) {
-    // COUNT(*) includes all rows, NULLS and all
-    // we don't need to evaluate anything and can just bail early
-    if (expr.id === "*") {
-        return rows.map(r => true);
-    }
-
-    let values = rows.map(getRowEvaluator(evaluator, expr, rows));
-
-    // All aggregate functions ignore null except COUNT(*)
-    // We'll use our convenient 'IS NOT NULL' function to do the
-    // filtering for us.
-    values = values.filter(OPERATORS['IS NOT NULL']);
-
-    if (distinct) {
-        values = Array.from(new Set(values));
-    }
-
-    return values;
-}
-
-/**
  * Generate a comparator for the purpose of sorting
  * @param {Node} order
  * @param {ResultRow[]} [rows]
@@ -258,4 +235,32 @@ function comparator (a, b, desc) {
         String(a).localeCompare(b);
 
     return sort * (desc ? -1 : 1);
+}
+
+/**
+ * Map rows to values following the rules for aggregate functions.
+ * @param {ResultRow[]} rows
+ * @param {Node} expr
+ * @param {boolean} distinct
+ * @returns {any[]}
+ */
+function aggregateValues (evaluator, rows, expr, distinct = false) {
+  // COUNT(*) includes all rows, NULLS and all
+  // we don't need to evaluate anything and can just bail early
+  if (expr.id === "*") {
+      return rows.map(r => true);
+  }
+
+  let values = rows.map(getRowEvaluator(evaluator, expr, rows));
+
+  // All aggregate functions ignore null except COUNT(*)
+  // We'll use our convenient 'IS NOT NULL' function to do the
+  // filtering for us.
+  values = values.filter(OPERATORS['IS NOT NULL']);
+
+  if (distinct) {
+      values = Array.from(new Set(values));
+  }
+
+  return values;
 }

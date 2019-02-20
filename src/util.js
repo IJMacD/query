@@ -6,6 +6,7 @@ module.exports = {
   deepClone,
   matchAll,
   matchInBrackets,
+  queryResultToObjectArray,
 };
 
 /**
@@ -123,4 +124,29 @@ function matchInBrackets (input) {
   }
 
   throw Error("Unmatched bracket");
+}
+
+/**
+*
+* @param {any[][]} result
+* @returns {any[]}
+*/
+function queryResultToObjectArray (result, newHeaders = null) {
+  const originalHeaders = result.shift();
+
+  return result.map(r => zip(newHeaders || originalHeaders, r));
+}
+
+/**
+*
+* @param {string[]} keys
+* @param {any[]} values
+* @returns {{ [key: string]: any }}
+*/
+function zip (keys, values) {
+  const out = {};
+  for (let i = 0; i < keys.length; i++) {
+      out[keys[i]] = values[i];
+  }
+  return out;
 }

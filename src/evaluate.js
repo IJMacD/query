@@ -1,5 +1,6 @@
+const { NODE_TYPES } = require('./parser');
+
 const {
-    NODE_TYPES,
     OPERATORS,
     VALUE_FUNCTIONS,
     WINDOW_FUNCTIONS,
@@ -10,6 +11,18 @@ const {
     isValidDate,
 } = require('./util');
 
+class SymbolError extends Error { }
+
+module.exports = {
+    getEvaluator,
+    getRowEvaluator,
+    evaluateConstantExpression,
+    aggregateValues,
+    rowSorter,
+    comparator,
+    SymbolError,
+};
+
 /**
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ParsedTable} ParsedTable
@@ -19,9 +32,14 @@ const {
  * @typedef {import('../types').QueryContext} QueryContext
  */
 
-export class SymbolError extends Error { }
-
-export function getEvaluator ({ resolveValue, userFunctions, windows }) {
+/**
+ *
+ * @param {object} context
+ * @param {any} [context.resolveValue]
+ * @param {any} [context.userFunctions]
+ * @param {any} [context.windows]
+ */
+function getEvaluator ({ resolveValue = () => {}, userFunctions = {}, windows = {} } = {}) {
 
     return evaluator;
 
@@ -171,7 +189,7 @@ export function getEvaluator ({ resolveValue, userFunctions, windows }) {
  * @param {ResultRow[]} rows
  * @returns {(row: ResultRow) => any}
  */
-export function getRowEvaluator(evaluator, node, rows=null) {
+function getRowEvaluator(evaluator, node, rows=null) {
     return row => {
         try {
             return evaluator(row, node, rows);
@@ -187,6 +205,10 @@ export function getRowEvaluator(evaluator, node, rows=null) {
     };
 }
 
+function evaluateConstantExpression(node) {
+    return getEvaluator()(null, node);
+}
+
 /**
  * Map rows to values following the rules for aggregate functions.
  * @param {ResultRow[]} rows
@@ -194,14 +216,14 @@ export function getRowEvaluator(evaluator, node, rows=null) {
  * @param {boolean} distinct
  * @returns {any[]}
  */
-export function aggregateValues (evaluator, rows, expr, distinct = false) {
+function aggregateValues (evaluator, rows, expr, distinct = false) {
     // COUNT(*) includes all rows, NULLS and all
     // we don't need to evaluate anything and can just bail early
     if (expr.id === "*") {
         return rows.map(r => true);
     }
 
-    let values = rows.map(getRowEvaluator(evaluator, expr));
+    let values = rows.map(getRowEvaluator(evaluator, expr, rows));
 
     // All aggregate functions ignore null except COUNT(*)
     // We'll use our convenient 'IS NOT NULL' function to do the
@@ -221,7 +243,7 @@ export function aggregateValues (evaluator, rows, expr, distinct = false) {
  * @param {ResultRow[]} [rows]
  * @returns {(a: ResultRow, b: ResultRow) => number}
  */
-export function rowSorter(evaluator, order, rows=null) {
+function rowSorter(evaluator, order, rows=null) {
     return (ra, rb) => comparator(evaluator(ra, order, rows), evaluator(rb, order, rows), order.desc);
 }
 /**
@@ -230,7 +252,7 @@ export function rowSorter(evaluator, order, rows=null) {
  * @param {any} b
  * @param {boolean} desc
  */
-export function comparator (a, b, desc) {
+function comparator (a, b, desc) {
     let sort = (Number.isFinite(a) && Number.isFinite(b)) ?
         (a - b) :
         String(a).localeCompare(b);

@@ -188,6 +188,8 @@ function parseArgumentList (list) {
  * @returns {Node[]}
  */
 function parseGroupBy (groupBy) {
+  if (!groupBy) return null;
+
   return groupBy.split(",").map(s => {
     const tokens = tokenizer.tokenize(s);
     const ast = parser.parse(tokens, s);
@@ -201,6 +203,8 @@ function parseGroupBy (groupBy) {
  * @returns {Node[]}
  */
 function parseOrderBy (orderBy) {
+    if (!orderBy) return null;
+
     const re = /ASC|DESC/g;
     return orderBy.split(",").map(s => {
         const ascDesc = re.exec(s);

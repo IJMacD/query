@@ -37,8 +37,14 @@ export declare interface QueryContext {
   parsedTables: ParsedTable[];
   parsedWhere: Node;
   parsedHaving: Node;
-  orderBy: string;
-  groupBy: string;
+  orderBy: Node[];
+  groupBy: Node[];
+  windows: { [name: string]: WindwSpec };
+
+  CTEs: { [name: string]: any[] };
+  views: { [name: string]: string };
+  userFunctions: { [name: string]: () => any }
+  options: any;
 
   resolveConstant: (path: string) => string|number|boolean|Date;
   resolvePath: (data: any, path: string) => any;

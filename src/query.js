@@ -32,6 +32,15 @@ const {
 
 const { parseString, NODE_TYPES } = require('./parser');
 
+const {
+    getEvaluator,
+    getRowEvaluator,
+    aggregateValues,
+    rowSorter,
+    comparator,
+    SymbolError,
+} = require('./evaluate');
+
 const persist = require('./persist');
 
 /**
@@ -42,8 +51,6 @@ const persist = require('./persist');
  * @typedef {import('../types').QueryCallbacks} QueryCallbacks
  * @typedef {import('../types').QueryContext} QueryContext
  */
-
-class SymbolError extends Error { }
 
 const PendingValue = Symbol("Pending Value");
 
@@ -231,6 +238,8 @@ async function Query (query, options = {}) {
         getRowData,
         setRowData,
     };
+
+    const evaluate = getEvaluator({ resolveValue, userFunctions, windows });
 
     /** @type {Node[]} */
     const colNodes = [];
@@ -531,7 +540,7 @@ async function Query (query, options = {}) {
             try {
                 // Use PendingValue flag to avoid infinite recursion
                 row[i] = PendingValue;
-                row[i] = evaluateExpression(row, node, rows);
+                row[i] = evaluate(row, node, rows);
             } catch (e) {
                 if (e instanceof SymbolError) {
                     row[i] = null;
@@ -679,7 +688,7 @@ async function Query (query, options = {}) {
         }
 
         if (table.name in TABLE_VALUED_FUNCTIONS) {
-            return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateExpression([], c)));
+            return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluate(null, c)));
         }
 
         if (typeof callbacks.primaryTable === "undefined") {
@@ -811,146 +820,6 @@ async function Query (query, options = {}) {
     }
 
     /**
-     * Execute an expresion from AST nodes
-     * @param {ResultRow} row
-     * @param {Node} node
-     * @param {ResultRow[]} [rows]
-     */
-    function evaluateExpression(row, node, rows=null) {
-        if (node.type === NODE_TYPES.FUNCTION_CALL) {
-            const fnName = node.id;
-
-            // First check if we're evaluating a window function
-            if (node.window) {
-                let group;
-                const window = typeof node.window === "string" ? windows[node.window] : node.window;
-
-                if (window.partition) {
-                    const partitionVal = evaluateExpression(row, window.partition, rows);
-                    group = rows.filter(r => OPERATORS['='](evaluateExpression(r, window.partition, rows), partitionVal));
-                } else {
-                    group = [ ...rows ];
-                }
-
-                const index = group.indexOf(row);
-
-                if (window.order) {
-                    group.sort(rowSorter(window.order));
-
-                    if (window.frameUnit === "rows") {
-                        const start = Math.max(index - window.preceding, 0);
-                        group = group.slice(start, index + window.following + 1);
-
-                    } else if (window.frameUnit === "range") {
-                        const currentVal = evaluateExpression(row, window.order, rows);
-                        const min = currentVal - window.preceding;
-                        const max = currentVal + window.following;
-
-                        group = group.filter(r => {
-                            const v = evaluateExpression(r, window.order, rows);
-                            return min <= v && v <= max;
-                        });
-                    }
-                } else if (window.frameUnit) {
-                    throw Error("Frames can only be specified with an ORDER BY clause");
-                }
-
-                if (node.id in WINDOW_FUNCTIONS) {
-                    if (!window.order) {
-                        throw Error("Window functions require ORDER BY in OVER clause");
-                    }
-
-                    const fn = WINDOW_FUNCTIONS[node.id];
-                    const orderVals = aggregateValues(group, window.order, node.distinct);
-                    return fn(index, orderVals, group, evaluateExpression, ...node.children);
-                }
-
-                if (node.id in AGGREGATE_FUNCTIONS) {
-                    if (node.children.length === 0) {
-                        throw new Error(`Function ${node.id} requires at least one paramater.`);
-                    }
-
-                    /**
-                     * Duplicated functionality
-                     * @see computeAggregates
-                     */
-                    const fn = AGGREGATE_FUNCTIONS[node.id];
-                    const args = node.children.map(n => aggregateValues(group, n, node.distinct));
-                    return fn(...args);
-                }
-
-                throw Error(`${node.id} is not a window function`);
-            }
-
-            if (fnName in AGGREGATE_FUNCTIONS) {
-                // Don't evaluate aggregate functions until after grouping
-                if (row['group']) {
-                    const fn = AGGREGATE_FUNCTIONS[fnName];
-                    return fn(aggregateValues(row['group'], node.children[0]));
-                }
-                return;
-            }
-
-            const fn = userFunctions[fnName] || VALUE_FUNCTIONS[fnName];
-
-            if (!fn) {
-                throw new Error(`Tried to call a non-existant function (${fnName})`);
-            }
-
-            const args = node.children.map(c => evaluateExpression(row, c, rows));
-
-            try {
-                return fn(...args);
-            } catch (e) {
-                return null;
-            }
-
-        } else if (node.type === NODE_TYPES.SYMBOL) {
-            const val = resolveValue(row, String(node.id), rows);
-
-            if (typeof val === "undefined") {
-                // We must throw a SymbolError so that e.g. filterRows() can catch it
-                throw new SymbolError("Unable to resolve symbol: " + node.id);
-            }
-
-            return val;
-        } else if (node.type === NODE_TYPES.STRING) {
-            // We need to check for date here and convert if necessary
-            if (/^\d{4}-\d{2}-\d{2}/.test(String(node.id))) {
-                const d = new Date(node.id);
-                if (isValidDate(d)) {
-                    return d;
-                }
-            }
-
-            return String(node.id);
-        } else if (node.type === NODE_TYPES.NUMBER) {
-            return +node.id;
-        } else if (node.type === NODE_TYPES.KEYWORD) {
-            // Pass keywords like YEAR, SECOND, INT, FLOAT as strings
-            return String(node.id);
-        } else if (node.type === NODE_TYPES.OPERATOR) {
-            const op = OPERATORS[node.id];
-
-            if (!op) {
-                throw new Error(`Unsupported operator '${node.id}'`);
-            }
-
-            return op(...node.children.map(c => evaluateExpression(row, c, rows)));
-        } else if (node.type === NODE_TYPES.CLAUSE
-            && (node.id === "WHERE" || node.id === "ON")
-        ) {
-            if (node.children.length > 0) {
-                return Boolean(evaluateExpression(row, node.children[0], rows));
-            } else {
-                throw new Error(`Empty predicate clause: ${node.id}`);
-            }
-        } else {
-            throw new Error(`Can't execute node type ${node.type}: ${node.id}`);
-        }
-    }
-
-    /**
      * Function to filter rows based on WHERE clause
      * @param {ResultRow[]} rows
      * @return {ResultRow[]}
@@ -959,7 +828,7 @@ async function Query (query, options = {}) {
         if (parsedWhere) {
             return rows.filter(r => {
                 try {
-                    return evaluateExpression(r, parsedWhere, rows);
+                    return evaluate(r, parsedWhere, rows);
                 } catch (e) {
                     if (e instanceof SymbolError) {
                         // If we got a symbol error it means we don't have enough
@@ -976,46 +845,13 @@ async function Query (query, options = {}) {
     }
 
     /**
-     * Generate a comparator for the purpose of sorting
-     * @param {Node} order
-     * @param {ResultRow[]} [rows]
-     * @returns {(a: ResultRow, b: ResultRow) => number}
-     */
-    function rowSorter(order, rows=null) {
-        return (ra, rb) => comparator(evaluateExpression(ra, order, rows), evaluateExpression(rb, order, rows), order.desc);
-    }
-
-    /**
-     * Creates a row evaluator (suitable for use in .map() or .filter())
-     * which turns SymbolErrors into nulls
-     * @param {Node} node
-     * @param {ResultRow[]} rows
-     * @returns {(row: ResultRow) => any}
-     */
-    function getRowEvaluator(node, rows=null) {
-        return row => {
-            try {
-                return evaluateExpression(row, node, rows);
-            }
-            catch (e) {
-                if (e instanceof SymbolError) {
-                    return null;
-                }
-                else {
-                    throw e;
-                }
-            }
-        };
-    }
-
-    /**
      * Function to filter rows based on arbitrary expression
      * @param {ResultRow[]} rows
      * @param {Node} predicate
      * @return {ResultRow[]}
      */
     function filterRowsByPredicate (rows, predicate) {
-        return rows.filter(getRowEvaluator(predicate, rows));
+        return rows.filter(getRowEvaluator(evaluate, predicate, rows));
     }
 
     /**
@@ -1122,7 +958,7 @@ async function Query (query, options = {}) {
             // Let's see if we can be helpful and fill it in now.
             if (typeof row[i] === "undefined") {
                 row[i] = PendingValue;
-                row[i] = evaluateExpression(row, colNodes[i], rows);
+                row[i] = evaluate(row, colNodes[i], rows);
             }
 
             if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {
@@ -1275,15 +1111,15 @@ async function Query (query, options = {}) {
                     let filteredRows = rows;
 
                     if (node.filter) {
-                        filteredRows = filteredRows.filter(getRowEvaluator(node.filter));
+                        filteredRows = filteredRows.filter(getRowEvaluator(evaluate, node.filter));
                     }
 
                     if (node.order) {
-                        filteredRows.sort(rowSorter(node.order));
+                        filteredRows.sort(rowSorter(evaluate, node.order));
                     }
 
-                    /** Duplicated from above  */
-                    const args = node.children.map(n => aggregateValues(filteredRows, n, node.distinct));
+                    // Aggregate values get special treatment for things like '*' and DISTINCT
+                    const args = node.children.map(n => aggregateValues(evaluate, filteredRows, n, node.distinct));
                     row[i] = fn(...args);
                 } else {
                     throw new Error("Function not found: " + node.id);
@@ -1292,34 +1128,6 @@ async function Query (query, options = {}) {
         });
 
         return row;
-    }
-
-    /**
-     *
-     * @param {any[][]} rows
-     * @param {Node} expr
-     * @param {boolean} distinct
-     * @returns {any[]}
-     */
-    function aggregateValues (rows, expr, distinct = false) {
-        // COUNT(*) includes all rows, NULLS and all
-        // we don't need to evaluate anything and can just bail early
-        if (expr.id === "*") {
-            return rows.map(r => true);
-        }
-
-        let values = rows.map(getRowEvaluator(expr));
-
-        // All aggregate functions ignore null except COUNT(*)
-        // We'll use our convenient 'IS NOT NULL' function to do the
-        // filtering for us.
-        values = values.filter(OPERATORS['IS NOT NULL']);
-
-        if (distinct) {
-            values = Array.from(new Set(values));
-        }
-
-        return values;
     }
 
     /**
@@ -1344,7 +1152,7 @@ async function Query (query, options = {}) {
                 v = row[colAlias[parsedOrder.id]];
             }
             else {
-                v = evaluateExpression(row, parsedOrder, rows);
+                v = evaluate(row, parsedOrder, rows);
             }
 
             if (typeof v === "undefined") {
@@ -1372,7 +1180,7 @@ async function Query (query, options = {}) {
         const groupByMap = {};
 
         for(const row of rows) {
-            const key = JSON.stringify(parsedGroupBy.map(g => evaluateExpression(row, g, rows)));
+            const key = JSON.stringify(parsedGroupBy.map(g => evaluate(row, g, rows)));
 
             if (!groupByMap[key]) {
                 groupByMap[key] = [];
@@ -1437,7 +1245,7 @@ async function Query (query, options = {}) {
                 // We've found the right node
                 try {
                     // Now try to evaluate it as a constant expression
-                    return evaluateExpression(null, operand2);
+                    return evaluate(null, operand2);
                 } catch (e) {
                     return; // undefined
                 }
@@ -1678,18 +1486,4 @@ function getRowData (row, table) {
 
 function setRowData (row, table, data) {
     row['data'][table.join] = data;
-}
-
-/**
- * Compares two values of the same type
- * @param {any} a
- * @param {any} b
- * @param {boolean} desc
- */
-function comparator (a, b, desc) {
-    let sort = (Number.isFinite(a) && Number.isFinite(b)) ?
-        (a - b) :
-        String(a).localeCompare(b);
-
-    return sort * (desc ? -1 : 1);
 }

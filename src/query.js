@@ -151,17 +151,26 @@ async function simpleQuery (query, options) {
     /** @type {{ [name: string]: any[] }} */
     const CTEs = {};
 
-    const withMatch = /^WITH ([a-zA-Z0-9_]+)\s*(?:\(([^)]+)\))? AS\s+/.exec(query);
+    const withMatch = /^WITH /.exec(query);
     if (withMatch)
     {
-        const name = withMatch[1];
-        const headers = withMatch[2] && withMatch[2].split(",").map(v => v.trim());
-        const cte = matchInBrackets(query.substr(withMatch[0].length));
+        query = query.substr(withMatch[0].length);
+        const cteRegex = /^\s*([a-zA-Z0-9_]+)\s*(?:\(([^)]+)\))? AS\s+/;
+        let cteMatch;
+        while (cteMatch = cteRegex.exec(query)) {
+            const name = cteMatch[1];
+            const headers = cteMatch[2] && cteMatch[2].split(",").map(v => v.trim());
+            const cte = matchInBrackets(query.substr(cteMatch[0].length));
 
-        CTEs[name] = queryResultToObjectArray(await Query(cte, options), headers);
+            CTEs[name] = queryResultToObjectArray(await Query(cte, options), headers);
 
-        const endIdx = withMatch[0].length + 2 + cte.length;
-        query = query.substr(endIdx);
+            const endIdx = cteMatch[0].length + 2 + cte.length;
+            query = query.substr(endIdx);
+
+            if (query[0] === ",") {
+                query = query.substr(1);
+            }
+        }
     }
 
     const parsedQuery = Parse.parseQuery(query);

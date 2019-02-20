@@ -445,13 +445,39 @@ describe("TRANSPOSE", () => {
     });
 });
 
-test("Common Table Expression", () => {
-    return demoQuery("WITH foo AS (FROM Test WHERE n > 4) FROM foo ORDER BY n DESC").then (r => {
-        expect(r.length - 1).toBe(5);
-        expect(r[0]).toHaveLength(3);
-        expect(r[1][0]).toBe(9);
-        expect(r[1][1]).toBe(4);
-        expect(r[1][2]).toBe(3);
+describe("Common Table Expression", () => {
+    test("Single", () => {
+        return demoQuery("WITH foo AS (FROM Test WHERE n > 4) FROM foo ORDER BY n DESC").then (r => {
+            expect(r.length - 1).toBe(5);
+            expect(r[0]).toHaveLength(3);
+            expect(r[1][0]).toBe(9);
+            expect(r[1][1]).toBe(4);
+            expect(r[1][2]).toBe(3);
+        });
+    });
+
+    test("Column Rename", () => {
+        return demoQuery("WITH foo (p, q, r) AS (FROM Test WHERE n > 4) FROM foo").then (r => {
+            expect(r.length - 1).toBe(5);
+            expect(r[0][0]).toBe('p');
+            expect(r[0][1]).toBe('q');
+            expect(r[0][2]).toBe('r');
+            expect(r[1][0]).toBe(5);
+            expect(r[1][1]).toBe(2);
+            expect(r[1][2]).toBe(1);
+        });
+    });
+
+    test("Multiple", () => {
+        return demoQuery("WITH foo AS (FROM Test WHERE n > 4), bar AS (FROM Test WHERE n < 6) FROM foo, bar ORDER BY n DESC").then (r => {
+            expect(r.length - 1).toBe(30);
+            expect(r[1][0]).toBe(9);
+            expect(r[1][1]).toBe(4);
+            expect(r[1][2]).toBe(3);
+            expect(r[1][3]).toBe(5);
+            expect(r[1][4]).toBe(2);
+            expect(r[1][5]).toBe(1);
+        });
     });
 });
 

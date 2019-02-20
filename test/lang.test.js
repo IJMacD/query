@@ -7,33 +7,118 @@ test("FROM/SELECT required", () => {
     });
 });
 
-test("FROM returns data", () => {
-    return demoQuery("FROM Test").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(10);
-    });
-});
-
-test("SELECT selects columns", () => {
-    return demoQuery("FROM Test SELECT n").then(r => {
-        expect(r[1][0]).toBe(0);
-    });
-});
-
-describe("Column Alias", () => {
-    test("Simple Alias", () => {
-        return demoQuery("SELECT 'hello' AS greeting").then(r => {
-            expect(r[0][0]).toBe("greeting");
-            expect(r[1][0]).toBe("hello");
+describe("FROM", () => {
+    test("FROM returns data", () => {
+        return demoQuery("FROM Test").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(10);
         });
     });
 
-    test("Alias Reference", () => {
-        return demoQuery("SELECT 9 AS num, num + num AS num2").then(r => {
-            expect(r[0][0]).toBe("num");
-            expect(r[1][0]).toBe(9);
-            expect(r[0][1]).toBe("num2");
-            expect(r[1][1]).toBe(18);
+    test("Table Alias SELECT", () => {
+        return demoQuery("FROM Test AS a SELECT a.n").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(10);
+            expect(r[1][0]).toBe(0);
+            expect(r[2][0]).toBe(1);
+        });
+    });
+
+    test("Multiple Table Alias SELECT", () => {
+        return demoQuery("FROM Test AS a, Test AS b SELECT a.n, b.n").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(100);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[2][0]).toBe(0);
+            expect(r[2][1]).toBe(1);
+        });
+    });
+
+    test("Qualified Table SELECT", () => {
+        return demoQuery("FROM Test AS a, Test AS b SELECT Test.n, b.n").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(100);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[2][0]).toBe(0);
+            expect(r[2][1]).toBe(1);
+        });
+    });
+
+    test("Auto-alias Table SELECT", () => {
+        return demoQuery("FROM Test, Test SELECT Test.n, Test_1.n").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(100);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[2][0]).toBe(0);
+            expect(r[2][1]).toBe(1);
+        });
+    });
+
+    describe("Table Valued Functions", () => {
+        test("in FROM", () => {
+            return demoQuery("FROM RANGE(1)").then(r => {
+                // Remember header row
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).not.toBeNull();
+            });
+        });
+
+        test("with multiple paramaters in FROM", () => {
+            return demoQuery("FROM RANGE(1,2)").then(r => {
+                // Remember header row
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).not.toBeNull();
+            });
+        });
+
+        test("with expressions in FROM", () => {
+            return demoQuery("FROM RANGE(1,3*2)").then(r => {
+                // Remember header row
+                expect(r.length - 1).toBe(5);
+                expect(r[1][0]).not.toBeNull();
+            });
+        });
+    });
+});
+
+describe("SELECT", () => {
+    test("SELECT selects columns", () => {
+        return demoQuery("FROM Test SELECT n").then(r => {
+            expect(r[1][0]).toBe(0);
+        });
+    });
+
+    describe("Column Alias", () => {
+        test("Simple Alias", () => {
+            return demoQuery("SELECT 'hello' AS greeting").then(r => {
+                expect(r[0][0]).toBe("greeting");
+                expect(r[1][0]).toBe("hello");
+            });
+        });
+
+        test("Alias Reference", () => {
+            return demoQuery("SELECT 9 AS num, num + num AS num2").then(r => {
+                expect(r[0][0]).toBe("num");
+                expect(r[1][0]).toBe(9);
+                expect(r[0][1]).toBe("num2");
+                expect(r[1][1]).toBe(18);
+            });
+        });
+    });
+
+    test("SELECT Table.*", () => {
+        return demoQuery("FROM Test SELECT Test.*").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(10);
+            expect(r[0][0]).toBe("n");
+            expect(r[0][1]).toBe("n2");
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe(0);
         });
     });
 });
@@ -45,18 +130,27 @@ test("Simple WHERE", () => {
     });
 });
 
-test("Zero LIMIT", () => {
-    return demoQuery("SELECT 'boo' LIMIT 0").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(0);
+describe("LIMIT", () => {
+    test("Zero LIMIT", () => {
+        return demoQuery("SELECT 'boo' LIMIT 0").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(0);
+        });
     });
-});
 
-test("Simple LIMIT", () => {
-    return demoQuery("FROM Test LIMIT 5").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(5);
+    test("Simple LIMIT", () => {
+        return demoQuery("FROM Test LIMIT 5").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(5);
+        });
     });
+
+    // test("Expression LIMIT", () => {
+    //     return demoQuery("FROM Test LIMIT 3 + 3").then(r => {
+    //         // Remember header row
+    //         expect(r.length - 1).toBe(6);
+    //     });
+    // });
 });
 
 describe("ORDER BY", () => {
@@ -279,6 +373,28 @@ describe("Aggregate Queries", () => {
             expect(r[1][1]).toBe(25);
         });
     });
+
+    test("Mixed Aggregate and Non-aggregate functions", () => {
+        return demoQuery("FROM Test GROUP BY n2 SELECT SUM(n), CHAR(66 + n2)").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(5);
+
+            expect(r[1][0]).toBe(1);
+            expect(r[1][1]).toBe('B');
+
+            expect(r[2][0]).toBe(5);
+            expect(r[2][1]).toBe('C');
+
+            expect(r[3][0]).toBe(9);
+            expect(r[3][1]).toBe('D');
+
+            expect(r[4][0]).toBe(13);
+            expect(r[4][1]).toBe('E');
+
+            expect(r[5][0]).toBe(17);
+            expect(r[5][1]).toBe('F');
+        });
+    });
 });
 
 describe("HAVING", () => {
@@ -293,118 +409,39 @@ describe("HAVING", () => {
             expect(r.length - 1).toBe(5);
         });
     });
-})
-
-test("Table Alias SELECT", () => {
-    return demoQuery("FROM Test AS a SELECT a.n").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(10);
-        expect(r[1][0]).toBe(0);
-        expect(r[2][0]).toBe(1);
-    });
 });
 
-test("Multiple Table Alias SELECT", () => {
-    return demoQuery("FROM Test AS a, Test AS b SELECT a.n, b.n").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(100);
-        expect(r[1][0]).toBe(0);
-        expect(r[1][1]).toBe(0);
-        expect(r[2][0]).toBe(0);
-        expect(r[2][1]).toBe(1);
-    });
-});
+describe("TRANSPOSE", () => {
+    test("Simple Transpose", () => {
+        return demoQuery("TRANSPOSE FROM Test").then(r => {
+            // INCLUDE header row here
+            expect(r.length).toBe(3);
+            expect(r[0][0]).toBe("n");
+            expect(r[1][0]).toBe("n2");
+            expect(r[2][0]).toBe("n3");
 
-test("Qualified Table SELECT", () => {
-    return demoQuery("FROM Test AS a, Test AS b SELECT Test.n, b.n").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(100);
-        expect(r[1][0]).toBe(0);
-        expect(r[1][1]).toBe(0);
-        expect(r[2][0]).toBe(0);
-        expect(r[2][1]).toBe(1);
-    });
-});
+            expect(r[0][1]).toBe(0);
+            expect(r[0][2]).toBe(1);
+            expect(r[0][3]).toBe(2);
 
-test("Auto-alias Table SELECT", () => {
-    return demoQuery("FROM Test, Test SELECT Test.n, Test_1.n").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(100);
-        expect(r[1][0]).toBe(0);
-        expect(r[1][1]).toBe(0);
-        expect(r[2][0]).toBe(0);
-        expect(r[2][1]).toBe(1);
+            expect(r[1][3]).toBe(1);
+        })
     });
-});
 
-test("SELECT Table.*", () => {
-    return demoQuery("FROM Test SELECT Test.*").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(10);
-        expect(r[0][0]).toBe("n");
-        expect(r[0][1]).toBe("n2");
-        expect(r[1][0]).toBe(0);
-        expect(r[1][1]).toBe(0);
-        expect(r[2][0]).toBe(1);
-        expect(r[2][1]).toBe(0);
-    });
-});
+    test("Double Transpose", () => {
+        return demoQuery("TRANSPOSE TRANSPOSE FROM Test").then(r => {
+            // Now disclude header row here
+            expect(r.length - 1).toBe(10);
+            expect(r[0][0]).toBe("n");
+            expect(r[0][1]).toBe("n2");
+            expect(r[0][2]).toBe("n3");
 
-describe("Table Valued Functions", () => {
-    test("in FROM", () => {
-        return demoQuery("FROM RANGE(1)").then(r => {
-            // Remember header row
-            expect(r.length - 1).toBe(1);
-            expect(r[1][0]).not.toBeNull();
+            expect(r[1][0]).toBe(0);
+            expect(r[2][0]).toBe(1);
+            expect(r[3][0]).toBe(2);
+
+            expect(r[3][1]).toBe(1);
         });
-    });
-
-    test("with multiple paramaters in FROM", () => {
-        return demoQuery("FROM RANGE(1,2)").then(r => {
-            // Remember header row
-            expect(r.length - 1).toBe(1);
-            expect(r[1][0]).not.toBeNull();
-        });
-    });
-
-    test("with expressions in FROM", () => {
-        return demoQuery("FROM RANGE(1,3*2)").then(r => {
-            // Remember header row
-            expect(r.length - 1).toBe(5);
-            expect(r[1][0]).not.toBeNull();
-        });
-    });
-});
-
-test("Transpose", () => {
-    return demoQuery("TRANSPOSE FROM Test").then(r => {
-        // INCLUDE header row here
-        expect(r.length).toBe(3);
-        expect(r[0][0]).toBe("n");
-        expect(r[1][0]).toBe("n2");
-        expect(r[2][0]).toBe("n3");
-
-        expect(r[0][1]).toBe(0);
-        expect(r[0][2]).toBe(1);
-        expect(r[0][3]).toBe(2);
-
-        expect(r[1][3]).toBe(1);
-    })
-});
-
-test("Double Transpose", () => {
-    return demoQuery("TRANSPOSE TRANSPOSE FROM Test").then(r => {
-        // Now disclude header row here
-        expect(r.length - 1).toBe(10);
-        expect(r[0][0]).toBe("n");
-        expect(r[0][1]).toBe("n2");
-        expect(r[0][2]).toBe("n3");
-
-        expect(r[1][0]).toBe(0);
-        expect(r[2][0]).toBe(1);
-        expect(r[3][0]).toBe(2);
-
-        expect(r[3][1]).toBe(1);
     });
 });
 
@@ -497,6 +534,74 @@ describe("Window Functions", () => {
             expect(r[4][3]).toBe(2);
             expect(r[5][3]).toBe(2);
             expect(r[6][3]).toBe(2);
+        });
+    });
+});
+
+describe("WINDOW clause", () => {
+    test("Simple named window", () => {
+        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER(win) WINDOW win AS (ORDER BY n)").then(data => {
+            expect(data.length - 1).toBe(10);
+
+            expect(data[1][0]).toBe(0);
+            expect(data[1][1]).toBe(0.1);
+
+            expect(data[2][0]).toBe(1);
+            expect(data[2][1]).toBe(0.2);
+
+            expect(data[3][0]).toBe(2);
+            expect(data[3][1]).toBe(0.3);
+
+            expect(data[4][0]).toBe(3);
+            expect(data[4][1]).toBe(0.4);
+        });
+    });
+
+    test("Named window multiple references", () => {
+        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER(win), CUME_SUM() OVER(win) WINDOW win AS (ORDER BY n)").then(data => {
+            expect(data.length - 1).toBe(10);
+
+            expect(data[1][0]).toBe(0);
+            expect(data[1][1]).toBe(0.1);
+            expect(data[1][2]).toBe(0);
+
+            expect(data[2][0]).toBe(1);
+            expect(data[2][1]).toBe(0.2);
+            expect(data[2][2]).toBe(1);
+
+            expect(data[3][0]).toBe(2);
+            expect(data[3][1]).toBe(0.3);
+            expect(data[3][2]).toBe(3);
+
+            expect(data[4][0]).toBe(3);
+            expect(data[4][1]).toBe(0.4);
+            expect(data[4][2]).toBe(6);
+        });
+    });
+
+    test("Multiple named windows", () => {
+        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER(win), RANK() OVER(win2) WINDOW win AS (ORDER BY n), win2 AS (PARTITION BY n3 ORDER BY n2)").then(data => {
+            expect(data.length - 1).toBe(10);
+
+            expect(data[1][0]).toBe(0);
+            expect(data[1][1]).toBe(0.1);
+            expect(data[1][2]).toBe(1);
+
+            expect(data[2][0]).toBe(1);
+            expect(data[2][1]).toBe(0.2);
+            expect(data[2][2]).toBe(1);
+
+            expect(data[3][0]).toBe(2);
+            expect(data[3][1]).toBe(0.3);
+            expect(data[3][2]).toBe(3);
+
+            expect(data[4][0]).toBe(3);
+            expect(data[4][1]).toBe(0.4);
+            expect(data[4][2]).toBe(1);
+
+            expect(data[5][0]).toBe(4);
+            expect(data[5][1]).toBe(0.5);
+            expect(data[5][2]).toBe(2);
         });
     });
 });

@@ -541,17 +541,35 @@ async function Query (query, options = {}) {
                         group = [ ...rows ];
                     }
 
+                    const index = group.indexOf(row);
+
                     if (window.order) {
                         group.sort(rowSorter(window.order));
+
+                        if (window.frameUnit === "rows") {
+                            const start = Math.max(index - window.preceding, 0);
+                            group = group.slice(start, index + window.following + 1);
+
+                        } else if (window.frameUnit === "range") {
+                            const currentVal = evaluateExpression(row, window.order);
+                            const min = currentVal - window.preceding;
+                            const max = currentVal + window.following;
+
+                            group = group.filter(r => {
+                                const v = evaluateExpression(r, window.order);
+                                return min <= v && v <= max;
+                            });
+                        }
+                    } else if (window.frameUnit) {
+                        throw Error("Frames can only be specified with an ORDER BY clause");
                     }
 
                     if (node.id in WINDOW_FUNCTIONS) {
                         if (!window.order) {
-                            throw Error("ORDER BY clause required in OVER clause for window functions");
+                            throw Error("Window functions require ORDER BY in OVER clause");
                         }
 
                         const fn = WINDOW_FUNCTIONS[node.id];
-                        const index = group.indexOf(row);
                         const orderVals = aggregateValues(group, window.order, node.distinct);
                         row[i] = fn(index, orderVals, group, evaluateExpression, ...node.children);
                     }

@@ -524,6 +524,51 @@ describe("Window Functions", () => {
         });
     });
 
+    test("ORDER BY", () => {
+        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+        });
+    });
+
+    test("ORDER BY ASC", () => {
+        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n ASC)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+        });
+    });
+
+    test("ORDER BY DESC", () => {
+        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n DESC)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe("9,8,7,6,5,4,3,2,1,0");
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe("9,8,7,6,5,4,3,2,1,0");
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe("9,8,7,6,5,4,3,2,1,0");
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe("9,8,7,6,5,4,3,2,1,0");
+        });
+    });
+
     test("Ordering Using Alias", () => {
         return demoQuery("FROM Test SELECT n AS m, n2 AS m2, n3 AS m3, LAST_VALUE(m2) OVER (PARTITION BY m3 ORDER BY m)").then (r => {
             expect(r.length - 1).toBe(10);
@@ -534,6 +579,116 @@ describe("Window Functions", () => {
             expect(r[4][3]).toBe(2);
             expect(r[5][3]).toBe(2);
             expect(r[6][3]).toBe(2);
+        });
+    });
+
+    test("ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW", () => {
+        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe("0");
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe("0,1");
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe("0,1,2");
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe("0,1,2,3");
+        });
+    });
+
+    test("ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING", () => {
+        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n ASC ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe("1,2,3,4,5,6,7,8,9");
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe("2,3,4,5,6,7,8,9");
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe("3,4,5,6,7,8,9");
+        });
+    });
+
+    test("ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING", () => {
+        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n ASC ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe("0,1,2");
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe("0,1,2,3");
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe("0,1,2,3,4");
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe("1,2,3,4,5");
+        });
+    });
+
+    test("RANGE BETWEEN 1 PRECEDING AND 2 FOLLOWING", () => {
+        return demoQuery("FROM Test SELECT n2, COUNT(*) OVER(ORDER BY n2 ASC RANGE BETWEEN 1 PRECEDING AND 2 FOLLOWING)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(6);
+            expect(r[2][0]).toBe(0);
+            expect(r[2][1]).toBe(6);
+
+            expect(r[3][0]).toBe(1);
+            expect(r[3][1]).toBe(8);
+            expect(r[4][0]).toBe(1);
+            expect(r[4][1]).toBe(8);
+
+            expect(r[5][0]).toBe(2);
+            expect(r[5][1]).toBe(8);
+            expect(r[6][0]).toBe(2);
+            expect(r[6][1]).toBe(8);
+
+            expect(r[7][0]).toBe(3);
+            expect(r[7][1]).toBe(6);
+            expect(r[8][0]).toBe(3);
+            expect(r[8][1]).toBe(6);
+
+            expect(r[9][0]).toBe(4);
+            expect(r[9][1]).toBe(4);
+            expect(r[10][0]).toBe(4);
+            expect(r[10][1]).toBe(4);
+        });
+    });
+
+    test("RANGE BETWEEN UNBOUNDED PRECEDING AND 2 FOLLOWING", () => {
+        return demoQuery("FROM Test SELECT n, SUM(n) OVER(ORDER BY n ASC RANGE BETWEEN UNBOUNDED PRECEDING AND 2 FOLLOWING)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(3);
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe(6);
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe(10);
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe(15);
+        });
+    });
+
+    test("RANGE BETWEEN 1 PRECEDING AND UNBOUNDED FOLLOWING", () => {
+        return demoQuery("FROM Test SELECT n, SUM(n) OVER(ORDER BY n ASC RANGE BETWEEN 1 PRECEDING AND UNBOUNDED FOLLOWING)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(45);
+            expect(r[2][0]).toBe(1);
+            expect(r[2][1]).toBe(45);
+            expect(r[3][0]).toBe(2);
+            expect(r[3][1]).toBe(45);
+            expect(r[4][0]).toBe(3);
+            expect(r[4][1]).toBe(44);
+            expect(r[5][0]).toBe(4);
+            expect(r[5][1]).toBe(42);
+            expect(r[6][0]).toBe(5);
+            expect(r[6][1]).toBe(39);
         });
     });
 });

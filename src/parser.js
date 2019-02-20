@@ -361,6 +361,42 @@ function parse (tokenList, source="") {
             window.order = descendOrder();
         }
 
+        if (peek(TOKEN_TYPES.KEYWORD, "ROWS") ||
+            peek(TOKEN_TYPES.KEYWORD, "RANGE") ||
+            peek(TOKEN_TYPES.KEYWORD, "GROUPS")
+        ) {
+            // @ts-ignore
+            window.frameUnit = next().value.toLowerCase();
+
+            expect(TOKEN_TYPES.OPERATOR, "BETWEEN");
+
+            if (suspect(TOKEN_TYPES.KEYWORD, "UNBOUNDED")) {
+                window.preceding = Number.POSITIVE_INFINITY;
+                expect(TOKEN_TYPES.KEYWORD, "PRECEDING");
+
+            } else if (suspect(TOKEN_TYPES.KEYWORD, "CURRENT ROW")) {
+                window.preceding = 0;
+
+            } else {
+                window.preceding = +expect(TOKEN_TYPES.NUMBER).value;
+                expect(TOKEN_TYPES.KEYWORD, "PRECEDING");
+            }
+
+            expect(TOKEN_TYPES.OPERATOR, "AND");
+
+            if (suspect(TOKEN_TYPES.KEYWORD, "UNBOUNDED")) {
+                window.following = Number.POSITIVE_INFINITY;
+                expect(TOKEN_TYPES.KEYWORD, "FOLLOWING");
+
+            } else if (suspect(TOKEN_TYPES.KEYWORD, "CURRENT ROW")) {
+                window.following = 0;
+
+            } else {
+                window.following = +expect(TOKEN_TYPES.NUMBER).value;
+                expect(TOKEN_TYPES.KEYWORD, "FOLLOWING");
+            }
+        }
+
         return window;
     }
 

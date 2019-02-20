@@ -23,6 +23,8 @@ export declare interface WindowSpec {
   partition?: Node;
   order?: Node;
   frameUnit?: "rows"|"range"|"groups";
+  preceding?: number;
+  following?: number;
 }
 
 export declare class ResultRow extends Array {

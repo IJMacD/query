@@ -27,8 +27,12 @@ WITH
 
 OVER
 - https://vimeo.com/289497563#t=16:50s
+- https://modern-sql.com/blog/2019-02/postgresql-11
 - https://modern-sql.com/blog/2019-01/sqlite-in-2018#window-functions
 - https://modern-sql.com/blog/2018-04/mysql-8.0#window-functions
+- https://tapoueh.org/blog/2013/08/understanding-window-functions/
+- https://www.slideshare.net/MarkusWinand/modern-sql/75
+- https://www.slideshare.net/MarkusWinand/modern-sql/127
 
 Expressions
 ===========

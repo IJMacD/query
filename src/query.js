@@ -167,15 +167,11 @@ async function simpleQuery (query, options) {
             const endIdx = cteMatch[0].length + 2 + cte.length;
             query = query.substr(endIdx);
 
-            if (query[0] === ",") {
-                query = query.substr(1);
-            }
+            query = query.replace(/^\s*,\s*/, "");
         }
     }
 
     const parsedQuery = Parse.parseQuery(query);
-
-    // console.log(parsedQuery);
 
     if (!parsedQuery.from && !parsedQuery.select) {
         throw new Error("You must specify FROM or SELECT");
@@ -200,9 +196,13 @@ async function simpleQuery (query, options) {
     /** @type {{ [name: string]: WindowSpec }} */
     const windows = Parse.parseWindow(parsedQuery.window);
 
+    const colNodes = [];
+    const colHeaders = [];
+    const colAlias = {};
+
     /** @type {QueryContext} */
     const self = {
-        cols: rawCols,
+        cols: colNodes,
         parsedTables,
         parsedWhere,
         parsedHaving,
@@ -231,10 +231,6 @@ async function simpleQuery (query, options) {
     };
 
     const evaluate = getEvaluator(self);
-
-    let colNodes;
-    let colHeaders;
-    let colAlias = {};
 
     /** @type {ResultRow[]} */
     let rows;
@@ -269,11 +265,8 @@ async function simpleQuery (query, options) {
     /******************
      * Columns
      ******************/
-    const colVars = processColumns({ tables: parsedTables }, rawCols, rows);
-
-    colNodes = colVars.colNodes;
-    colHeaders = colVars.colHeaders;
-    colAlias = colVars.colAlias;
+    const colVars = { colNodes, colHeaders, colAlias };
+    processColumns({ tables: parsedTables, colVars }, rawCols, rows);
 
     /*****************
      * Column Values

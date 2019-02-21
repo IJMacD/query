@@ -99,11 +99,7 @@ async function getRows(ctx) {
     return rows;
 }
 
-function processColumns ({ tables }, cols, rows) {
-    const colNodes = [];
-    const colHeaders = [];
-    const colAlias = {};
-
+function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }, cols, rows) {
     const tableAlias = getTableAliasMap(tables);
 
     for (const node of cols) {

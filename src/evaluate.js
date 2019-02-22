@@ -63,10 +63,17 @@ function getEvaluator ({ resolveValue = () => {}, userFunctions = {}, windows = 
                     group = [ ...rows ];
                 }
 
-                const index = group.indexOf(row);
-
                 if (window.order) {
                     group.sort(rowSorter(evaluator, window.order));
+                }
+
+                const index = group.indexOf(row);
+
+                if (window.frameUnit) {
+
+                    if (!window.order) {
+                        throw Error("Frames can only be specified with an ORDER BY clause");
+                    }
 
                     if (window.frameUnit === "rows") {
                         const start = Math.max(index - window.preceding, 0);
@@ -82,8 +89,6 @@ function getEvaluator ({ resolveValue = () => {}, userFunctions = {}, windows = 
                             return min <= v && v <= max;
                         });
                     }
-                } else if (window.frameUnit) {
-                    throw Error("Frames can only be specified with an ORDER BY clause");
                 }
 
                 if (node.id in WINDOW_FUNCTIONS) {

@@ -155,37 +155,37 @@ describe("LIMIT", () => {
 
 describe("ORDER BY", () => {
     test("Ascending name", () => {
-        return demoQuery("FROM Test ORDER BY n ASC").then(r => {
-            expect(r[1][0]).toBe(0);
-            expect(r[10][0]).toBe(9);
+        return demoQuery("FROM Test_2 ORDER BY c ASC").then(r => {
+            expect(r[1][1]).toBe('a');
+            expect(r[10][1]).toBe('j');
         });
     });
 
     test("Ascending name implicit", () => {
-        return demoQuery("FROM Test ORDER BY n").then(r => {
-            expect(r[1][0]).toBe(0);
-            expect(r[10][0]).toBe(9);
+        return demoQuery("FROM Test_2 ORDER BY c").then(r => {
+            expect(r[1][1]).toBe('a');
+            expect(r[10][1]).toBe('j');
         });
     });
 
     test("Descending name", () => {
-        return demoQuery("FROM Test ORDER BY n DESC").then(r => {
-            expect(r[1][0]).toBe(9);
-            expect(r[10][0]).toBe(0);
+        return demoQuery("FROM Test_2 ORDER BY c DESC").then(r => {
+            expect(r[1][1]).toBe('j');
+            expect(r[10][1]).toBe('a');
         });
     });
 
     test("Ascending number", () => {
-        return demoQuery("FROM Test ORDER BY 1 ASC").then(r => {
-            expect(r[1][0]).toBe(0);
-            expect(r[10][0]).toBe(9);
+        return demoQuery("FROM Test_2 ORDER BY 2 ASC").then(r => {
+            expect(r[1][1]).toBe('a');
+            expect(r[10][1]).toBe('j');
         });
     });
 
     test("Descending number", () => {
-        return demoQuery("FROM Test ORDER BY 1 DESC").then(r => {
-            expect(r[1][0]).toBe(9);
-            expect(r[10][0]).toBe(0);
+        return demoQuery("FROM Test_2 ORDER BY 2 DESC").then(r => {
+            expect(r[1][1]).toBe('j');
+            expect(r[10][1]).toBe('a');
         });
     });
 
@@ -551,47 +551,47 @@ describe("Window Functions", () => {
     });
 
     test("ORDER BY", () => {
-        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n)").then (r => {
+        return demoQuery("FROM Test_2 SELECT c, LISTAGG(c) OVER(ORDER BY c)").then (r => {
             expect(r.length - 1).toBe(10);
 
-            expect(r[1][0]).toBe(0);
-            expect(r[1][1]).toBe("0,1,2,3,4,5,6,7,8,9");
-            expect(r[2][0]).toBe(1);
-            expect(r[2][1]).toBe("0,1,2,3,4,5,6,7,8,9");
-            expect(r[3][0]).toBe(2);
-            expect(r[3][1]).toBe("0,1,2,3,4,5,6,7,8,9");
-            expect(r[4][0]).toBe(3);
-            expect(r[4][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[1][0]).toBe('f');
+            expect(r[1][1]).toBe("a,b,c,d,e,f,g,h,i,j");
+            expect(r[2][0]).toBe('g');
+            expect(r[2][1]).toBe("a,b,c,d,e,f,g,h,i,j");
+            expect(r[3][0]).toBe('h');
+            expect(r[3][1]).toBe("a,b,c,d,e,f,g,h,i,j");
+            expect(r[4][0]).toBe('i');
+            expect(r[4][1]).toBe("a,b,c,d,e,f,g,h,i,j");
         });
     });
 
     test("ORDER BY ASC", () => {
-        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n ASC)").then (r => {
+        return demoQuery("FROM Test_2 SELECT c, LISTAGG(c) OVER(ORDER BY c ASC)").then (r => {
             expect(r.length - 1).toBe(10);
 
-            expect(r[1][0]).toBe(0);
-            expect(r[1][1]).toBe("0,1,2,3,4,5,6,7,8,9");
-            expect(r[2][0]).toBe(1);
-            expect(r[2][1]).toBe("0,1,2,3,4,5,6,7,8,9");
-            expect(r[3][0]).toBe(2);
-            expect(r[3][1]).toBe("0,1,2,3,4,5,6,7,8,9");
-            expect(r[4][0]).toBe(3);
-            expect(r[4][1]).toBe("0,1,2,3,4,5,6,7,8,9");
+            expect(r[1][0]).toBe('f');
+            expect(r[1][1]).toBe("a,b,c,d,e,f,g,h,i,j");
+            expect(r[2][0]).toBe('g');
+            expect(r[2][1]).toBe("a,b,c,d,e,f,g,h,i,j");
+            expect(r[3][0]).toBe('h');
+            expect(r[3][1]).toBe("a,b,c,d,e,f,g,h,i,j");
+            expect(r[4][0]).toBe('i');
+            expect(r[4][1]).toBe("a,b,c,d,e,f,g,h,i,j");
         });
     });
 
     test("ORDER BY DESC", () => {
-        return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n DESC)").then (r => {
+        return demoQuery("FROM Test_2 SELECT c, LISTAGG(c) OVER(ORDER BY c DESC)").then (r => {
             expect(r.length - 1).toBe(10);
 
-            expect(r[1][0]).toBe(0);
-            expect(r[1][1]).toBe("9,8,7,6,5,4,3,2,1,0");
-            expect(r[2][0]).toBe(1);
-            expect(r[2][1]).toBe("9,8,7,6,5,4,3,2,1,0");
-            expect(r[3][0]).toBe(2);
-            expect(r[3][1]).toBe("9,8,7,6,5,4,3,2,1,0");
-            expect(r[4][0]).toBe(3);
-            expect(r[4][1]).toBe("9,8,7,6,5,4,3,2,1,0");
+            expect(r[1][0]).toBe('f');
+            expect(r[1][1]).toBe("j,i,h,g,f,e,d,c,b,a");
+            expect(r[2][0]).toBe('g');
+            expect(r[2][1]).toBe("j,i,h,g,f,e,d,c,b,a");
+            expect(r[3][0]).toBe('h');
+            expect(r[3][1]).toBe("j,i,h,g,f,e,d,c,b,a");
+            expect(r[4][0]).toBe('i');
+            expect(r[4][1]).toBe("j,i,h,g,f,e,d,c,b,a");
         });
     });
 
@@ -605,6 +605,43 @@ describe("Window Functions", () => {
             expect(r[4][3]).toBe(2);
             expect(r[5][3]).toBe(2);
             expect(r[6][3]).toBe(2);
+        });
+    });
+
+    test("Using row position", () => {
+        return demoQuery("FROM Test_2 SELECT c, RANK() OVER(ORDER BY c)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r.slice(1)).toEqual([
+                ['f',6],
+                ['g',7],
+                ['h',8],
+                ['i',9],
+                ['j',10],
+                ['a',1],
+                ['b',2],
+                ['c',3],
+                ['d',4],
+                ['e',5],
+            ]);
+        });
+    });
+
+    test("PARTITION BY and ORDER BY", () => {
+        return demoQuery("FROM Test_2 SELECT b, c, LISTAGG(c) OVER(PARTITION BY b ORDER BY c)").then (r => {
+            expect(r.length - 1).toBe(10);
+
+            expect(r[1][0]).toBe(true);
+            expect(r[1][1]).toBe('f');
+            expect(r[1][2]).toBe("c,d,f,g,i,j");
+
+            expect(r[2][0]).toBe(true);
+            expect(r[2][1]).toBe('g');
+            expect(r[2][2]).toBe("c,d,f,g,i,j");
+
+            expect(r[3][0]).toBe(false);
+            expect(r[3][1]).toBe('h');
+            expect(r[3][2]).toBe("a,b,e,h");
         });
     });
 

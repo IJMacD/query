@@ -333,79 +333,79 @@ describe("Operator Precedence", () => {
     test("> AND LIKE", () => {
         return demoQuery("FROM Test_2 WHERE d > '2018-08-28' AND c LIKE 'h'").then(r => {
             expect(r.length - 1).toBe(1);
-            expect(r[1][0]).toBe('h');
+            expect(r[1][1]).toBe('h');
         });
     });
 
     test("> AND NOT LIKE", () => {
         return demoQuery("FROM Test_2 WHERE d > '2018-08-28' AND c NOT LIKE 'h'").then(r => {
             expect(r.length - 1).toBe(3);
-            expect(r[1][0]).toBe('g');
-            expect(r[2][0]).toBe('i');
-            expect(r[3][0]).toBe('j');
+            expect(r[1][1]).toBe('g');
+            expect(r[2][1]).toBe('i');
+            expect(r[3][1]).toBe('j');
         });
     });
 
     test("= AND NOT LIKE", () => {
         return demoQuery("FROM Test_2 WHERE c = 'f' AND c NOT LIKE 'e'").then(r => {
             expect(r.length - 1).toBe(1);
-            expect(r[1][0]).toBe('f');
+            expect(r[1][1]).toBe('f');
         });
     });
 
     test("NOT LIKE AND =", () => {
         return demoQuery("FROM Test_2 WHERE c NOT LIKE 'f' AND c = 'e'").then(r => {
             expect(r.length - 1).toBe(1);
-            expect(r[1][0]).toBe('e');
+            expect(r[1][1]).toBe('e');
         });
     });
 
     test("NOT LIKE AND <", () => {
         return demoQuery("FROM Test_2 WHERE c NOT LIKE 'b' AND d < '2018-08-28'").then(r => {
             expect(r.length - 1).toBe(3);
-            expect(r[1][0]).toBe('a');
+            expect(r[1][1]).toBe('a');
         });
     });
 
     test("+ > AND NOT LIKE", () => {
         return demoQuery("FROM Test_2 WHERE 3 + 3 > 5 AND c NOT LIKE 'a'").then(r => {
             expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe('b');
+            expect(r[1][1]).toBe('f');
         });
     });
 
     test(" * > - AND NOT LIKE", () => {
         return demoQuery("FROM Test_2 WHERE 2 * 4 > 7 AND c NOT LIKE 'a'").then(r => {
             expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe('b');
+            expect(r[1][1]).toBe('f');
         });
     });
 
     test("|| LIKE", () => {
         return demoQuery("FROM Test_2 WHERE c || 'z' LIKE 'az'").then(r => {
             expect(r.length - 1).toBe(1);
-            expect(r[1][0]).toBe('a');
+            expect(r[1][1]).toBe('a');
         });
     });
 
     test("|| NOT LIKE", () => {
         return demoQuery("FROM Test_2 WHERE c || 'z' NOT LIKE 'az'").then(r => {
             expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe('b');
+            expect(r[1][1]).toBe('f');
         });
     });
 
     test("|| NOT LIKE ||", () => {
         return demoQuery("FROM Test_2 WHERE c || 'z' NOT LIKE 'a' || '%'").then(r => {
             expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe('b');
+            expect(r[1][1]).toBe('f');
         });
     });
 
     test("|| NOT LIKE || AND ", () => {
         return demoQuery("FROM Test_2 WHERE c || 'z' NOT LIKE 'e' || '%' AND 1 = 1").then(r => {
             expect(r.length - 1).toBe(9);
-            expect(r[1][0]).toBe('a');
+            expect(r[1][1]).toBe('f');
         });
     });
 })

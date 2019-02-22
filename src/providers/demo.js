@@ -16,16 +16,16 @@ function primaryTable (table) {
         ];
     } else if (table.name === "Test_2") {
         return [
-            { c: 'a', d: new Date("2018-08-21") },
-            { c: 'b', d: new Date("2018-08-21") },
-            { c: 'c', d: new Date("2018-08-22") },
-            { c: 'd', d: new Date("2018-08-22") },
-            { c: 'e', d: new Date("2018-08-28") },
-            { c: 'f', d: new Date("2018-08-28") },
-            { c: 'g', d: new Date("2018-09-21") },
-            { c: 'h', d: new Date("2018-09-28") },
-            { c: 'i', d: new Date("2018-09-29") },
-            { c: 'j', d: new Date("2018-09-29") },
+            { b: true,  c: 'f', d: new Date("2018-08-28") },
+            { b: true,  c: 'g', d: new Date("2018-09-21") },
+            { b: false, c: 'h', d: new Date("2018-09-28") },
+            { b: true,  c: 'i', d: new Date("2018-09-29") },
+            { b: true,  c: 'j', d: new Date("2018-09-29") },
+            { b: false, c: 'a', d: new Date("2018-08-21") },
+            { b: false, c: 'b', d: new Date("2018-08-21") },
+            { b: true,  c: 'c', d: new Date("2018-08-22") },
+            { b: true,  c: 'd', d: new Date("2018-08-22") },
+            { b: false, c: 'e', d: new Date("2018-08-28") },
         ];
     } else if (table.name === "Test_3") {
         return [

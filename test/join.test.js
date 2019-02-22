@@ -89,16 +89,16 @@ test("CROSS JOIN", () => {
 
       // Check the values are the cartesian product
       expect(r[1][0]).toBe(0);
-      expect(r[1][1]).toBe('a');
+      expect(r[1][1]).toBe('f');
 
       expect(r[2][0]).toBe(0);
-      expect(r[2][1]).toBe('b');
+      expect(r[2][1]).toBe('g');
 
       expect(r[11][0]).toBe(1);
-      expect(r[11][1]).toBe('a');
+      expect(r[11][1]).toBe('f');
 
       expect(r[12][0]).toBe(1);
-      expect(r[12][1]).toBe('b');
+      expect(r[12][1]).toBe('g');
   });
 });
 
@@ -107,7 +107,7 @@ test("CROSS JOIN Explicit Columns", () => {
       // Don't forget header row
       expect(r.length - 1).toBe(100);
       expect(r[1].length).toBe(2);
-      expect(r[1][0]).toBe('a');
+      expect(r[1][0]).toBe('f');
       expect(r[1][1]).toBe(0);
   });
 });
@@ -117,7 +117,7 @@ test("CROSS JOIN Resolved Columns", () => {
       // Don't forget header row
       expect(r.length - 1).toBe(100);
       expect(r[1].length).toBe(2);
-      expect(r[1][0]).toBe('a');
+      expect(r[1][0]).toBe('f');
       expect(r[1][1]).toBe(0);
   });
 });
@@ -127,7 +127,7 @@ test("CROSS JOIN Aliased Columns", () => {
       // Don't forget header row
       expect(r.length - 1).toBe(100);
       expect(r[1].length).toBe(2);
-      expect(r[1][0]).toBe('a');
+      expect(r[1][0]).toBe('f');
       expect(r[1][1]).toBe(0);
   });
 });

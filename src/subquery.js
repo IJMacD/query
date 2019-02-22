@@ -1,34 +1,42 @@
+
 module.exports = {
-    getCTEs,
-};
+  runQueries,
+  getCTEsMap,
+}
 
 const Query = require('./query');
-const { matchInBrackets, queryResultToObjectArray } = require('./util');
+const { NODE_TYPES } = require('./parser');
+const { queryResultToObjectArray } = require('./util');
+
+/**
+ * @typedef {import('../types').Node} Node
+ */
 
 /**
  *
- * @param {string} cteList
- * @returns {Promise<{ [name: string ]: any[] }>}
+ * @param {string[]} queries
+ * @param {*} options
+ * @returns {Promise<any[][][]>}
  */
-async function getCTEs (cteList, options) {
+function runQueries (queries, options) {
+  return Promise.all(queries.map(q => Query(q, options)));
+}
 
-    /** @type {{ [name: string ]: any[] }} */
-    const CTEs = {};
+/**
+ *
+ * @param {Node[]} nodes
+ */
+async function getCTEsMap (evaluateQuery, nodes, options) {
+  /** @type {{ [name: string]: any[] }} */
+  const out = {};
 
-    const cteRegex = /^\s*([a-zA-Z0-9_]+)\s*(?:\(([^)]+)\))? AS\s+/;
-    let cteMatch;
-    while (cteMatch = cteRegex.exec(cteList)) {
-        const name = cteMatch[1];
-        const headers = cteMatch[2] && cteMatch[2].split(",").map(v => v.trim());
-        const cte = matchInBrackets(cteList.substr(cteMatch[0].length));
+  for (const node of nodes) {
+      if (node.type !== NODE_TYPES.SYMBOL) {
+          throw TypeError(`getCTEsMap: node isn't a symbol`);
+      }
 
-        CTEs[name] = queryResultToObjectArray(await Query(cte, options), headers);
+      out[node.id] = queryResultToObjectArray(await evaluateQuery(node.children[0], options), node.headers);
+  }
 
-        const endIdx = cteMatch[0].length + 2 + cte.length;
-        cteList = cteList.substr(endIdx);
-
-        cteList = cteList.replace(/^\s*,\s*/, "");
-    }
-
-    return CTEs;
+  return out;
 }

@@ -17,6 +17,7 @@ export declare interface Node {
   order?: Node;
   desc?: boolean;
   distinct?: boolean;
+  headers?: string[];
 }
 
 export declare interface WindowSpec {

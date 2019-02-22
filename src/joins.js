@@ -1,4 +1,4 @@
-const { parseString } = require('./parser');
+const { parseExpression } = require('./parser');
 
 const { filterRows } = require('./filter');
 
@@ -184,7 +184,7 @@ function setJoin (table, targetTable) {
  * @param {string} predicate
  */
 function setJoinPredicate (table, predicate) {
-    table.predicate = parseString(predicate);
+    table.predicate = parseExpression(predicate);
 }
 
 function getRowData (row, table) {

@@ -1,19 +1,20 @@
 
 module.exports = Query;
 
-const Parse = require('./parse');
-const { scalar, matchInBrackets, queryResultToObjectArray } = require('./util');
+const Parser = require('./parser');
+const { scalar, matchInBrackets } = require('./util');
 const { getRows, processColumns, populateValues } = require('./process');
 const { setJoin, setJoinPredicate, getRowData, setRowData } = require('./joins');
 const { resolveConstant, resolvePath, valueResolver, setTableAliases } = require('./resolve');
-const { getEvaluator } = require('./evaluate');
+const { getEvaluator, evaluateConstantExpression } = require('./evaluate');
 const { filterRows, traverseWhereTree } = require('./filter');
 const { groupRows, populateAggregates } = require ('./aggregates');
 const { sortRows } = require('./sort');
 const { explain } = require('./explain');
 const persist = require('./persist');
 const { intersectResults, exceptResults, unionResults, unionAllResults, distinctResults } = require('./compound');
-const { getCTEs } = require('./subquery');
+const { runQueries, getCTEsMap } = require('./subquery');
+const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('./prepare');
 
 /**
  * @typedef {import('../types').Node} Node
@@ -133,41 +134,41 @@ async function Query (query, options = {}) {
     return simpleQuery(query, options);
 }
 
+/**
+ *
+ * @param {string} query
+ * @param {*} options
+ */
 async function simpleQuery (query, options) {
+    const parsedQuery = Parser.parse(query);
+
+    return await evaluateQuery(parsedQuery, options);
+}
+
+/**
+ *
+ * @param {Node} statement
+ * @param {*} options
+ */
+async function evaluateQuery (statement, options) {
     const { callbacks, userFunctions = {} } = options;
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
 
-    /**********************
-     * Start Parsing
-     *********************/
+    const query = nodeToQueryObject(statement);
 
-    const parsedQuery = Parse.parseQuery(query);
+    const select = query.select;
+    const rawCols = select;
 
-    if (!parsedQuery.from && !parsedQuery.select) {
-        throw new Error("You must specify FROM or SELECT");
-    }
-
-    if (!parsedQuery.select) {
-        // Default to selecting all scalar values
-        parsedQuery.select = "*";
-    }
-
+    /** @type {ParsedTable[]} */
+    const tables = nodesToTables(query.from);
+    /** @type {boolean} */
+    const analyse = query.explain && (query.explain.id === "ANALYSE" || query.explain.id === "ANALYZE");
     /** @type {{ [name: string]: any[] }} */
-    const CTEs = await getCTEs(parsedQuery.with, options);
-
-    const select = Parse.parseSelect(parsedQuery.select);
-    const rawCols = select.children;
-
-    const tables = Parse.parseFrom(parsedQuery.from);
-    const where = Parse.parseWhere(parsedQuery.where);
-    const having = Parse.parseWhere(parsedQuery.having);
-    const orderBy = Parse.parseOrderBy(parsedQuery['order by']);
-    const groupBy = Parse.parseGroupBy(parsedQuery['group by']);
-    const analyse = parsedQuery.explain === "ANALYSE" || parsedQuery.explain === "ANALYZE";
+    const CTEs = query.with ? await getCTEsMap(evaluateQuery, query.with, options) : {};
     /** @type {{ [name: string]: WindowSpec }} */
-    const windows = Parse.parseWindow(parsedQuery.window);
+    const windows = query.window ? getWindowsMap(query.window) : {};
 
     const colNodes = [];
     const colHeaders = [];
@@ -177,10 +178,10 @@ async function simpleQuery (query, options) {
     const self = {
         cols: colNodes,
         parsedTables: tables,
-        parsedWhere: where,
-        parsedHaving: having,
-        orderBy,
-        groupBy,
+        parsedWhere: query.where,
+        parsedHaving: query.having,
+        orderBy: query['order by'],
+        groupBy: query['group by'],
         windows,
 
         resolveConstant,
@@ -223,7 +224,7 @@ async function simpleQuery (query, options) {
      * EXPLAIN
      ************/
 
-    if (typeof parsedQuery.explain !== "undefined") {
+    if (typeof query.explain !== "undefined") {
         return explain(tables, analyse);
     }
 
@@ -233,7 +234,7 @@ async function simpleQuery (query, options) {
 
     // One last filter, this time strict because there shouldn't be
     // anything slipping through since we have all the data now.
-    rows = filterRows(evaluate, rows, where);
+    rows = filterRows(evaluate, rows, query.where);
 
     /******************
      * Columns
@@ -249,42 +250,42 @@ async function simpleQuery (query, options) {
     /*************
      * Grouping
      *************/
-    if (groupBy) {
-        rows = groupRows(evaluate, rows, groupBy);
+    if (query['group by']) {
+        rows = groupRows(evaluate, rows, query['group by']);
     }
 
     /**********************
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    rows = populateAggregates(evaluate, colNodes, rows, groupBy);
+    rows = populateAggregates(evaluate, colNodes, rows, query['group by']);
 
     /*******************
-     * Having Filtering
+     * query.Having Filtering
      ******************/
-    if (having) {
-        rows = filterRows(evaluate, rows, having);
+    if (query.having) {
+        rows = filterRows(evaluate, rows, query.having);
     }
 
     /*******************
      * Distinct
      *******************/
-    if (select.distinct) {
+    if (statement.children.some(c => c.id === "SELECT" && c.distinct)) {
         rows = distinctResults(rows);
     }
 
     /****************
      * Sorting
      ***************/
-    if (orderBy) {
+    if (query['order by']) {
         // Parse the orderBy clause into an array of objects
-        rows = sortRows({ evaluate, colAlias }, rows, orderBy);
+        rows = sortRows({ evaluate, colAlias }, rows, query['order by']);
     }
 
     /******************
      * Limit and Offset
      ******************/
-    rows = applyLimit(rows, parseInt(parsedQuery.limit), parseInt(parsedQuery.offset));
+    rows = applyLimit(rows, query.limit, query.offset);
 
     /*****************
      * Output
@@ -314,26 +315,16 @@ async function simpleQuery (query, options) {
      * @param {string|string[]} [operator]
      */
     function findWhere (symbol, operator="=") {
-        if (!where) {
+        if (!query.where) {
             return; // undefined
         }
 
-        return traverseWhereTree(where, symbol, operator);
+        return traverseWhereTree(query.where, symbol, operator);
     }
 }
 
-/**
- *
- * @param {string[]} queries
- * @param {*} options
- * @returns {Promise<any[][][]>}
- */
-function runQueries (queries, options) {
-  return Promise.all(queries.map(q => Query(q, options)));
-}
-
 function applyLimit(rows, limit, offset) {
-    const start = offset || 0;
-    const end = start + (isNaN(limit) ? rows.length : limit);
+    const start = offset ? evaluateConstantExpression(offset) : 0;
+    const end = limit ? (start + evaluateConstantExpression(limit)) : rows.length;
     return rows.slice(start, end);
 }

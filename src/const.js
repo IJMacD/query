@@ -5,10 +5,6 @@ momentDurationFormatSetup(moment);
 
 const { isNullDate } = require('./util');
 
-const CLAUSES = ["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "GROUP BY", "OFFSET", "HAVING", "EXPLAIN", "WINDOW", "WITH" ];
-const CONDITION_REGEX = /([^\s]*)\s*([!=><]+|IS(?: NOT)? NULL|(?:NOT )?LIKE |(?:NOT )?REGEXP )(.*)/i;
-const FUNCTION_REGEX = /^([a-z_]+)\(([^)]*)\)$/i;
-
 const VALUE_FUNCTIONS = {
     'WEEKDAY': v => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][v],
     'RAND': Math.random,
@@ -258,9 +254,6 @@ function rowValue (index, rows, evaluator, expr) {
 }
 
 module.exports = {
-    CLAUSES,
-    CONDITION_REGEX,
-    FUNCTION_REGEX,
     VALUE_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
     OPERATORS,

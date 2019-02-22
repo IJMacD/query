@@ -18,18 +18,21 @@ describe("Tokenizer", () => {
 describe("Parser", () => {
   test("SELECT list", () => {
     const source = "SELECT a, b, c";
-    const tokens = Tokenizer.tokenize(source);
-    const ast = Parser.parse(tokens, source);
+    const ast = Parser.parse(source);
 
     expect(ast).toEqual({
-      type: 2,
-      id: "SELECT",
-      source,
-      children: [
-        { type: 4, id: "a", source: "a" },
-        { type: 4, id: "b", source: "b" },
-        { type: 4, id: "c", source: "c" },
-      ]
+      type: 1,
+      id: null,
+      children: [{
+        type: 2,
+        id: "SELECT",
+        source,
+        children: [
+          { type: 4, id: "a", source: "a" },
+          { type: 4, id: "b", source: "b" },
+          { type: 4, id: "c", source: "c" },
+        ]
+      }]
     });
   });
 });

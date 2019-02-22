@@ -17,10 +17,10 @@ const NODE_TYPES = {
 
 module.exports = {
 
-    parse,
+    parseTokenList: parseFromTokenList,
 
-    parseString (sql) {
-        return parse(tokenize(sql), sql);
+    parse (sql) {
+        return parseFromTokenList(tokenize(sql), sql);
     },
 
     NODE_TYPES,
@@ -31,7 +31,7 @@ module.exports = {
  * @param {string} source
  * @returns {Node}
  */
-function parse (tokenList, source="") {
+function parseFromTokenList (tokenList, source="") {
     let i = 0;
 
     /**
@@ -47,7 +47,7 @@ function parse (tokenList, source="") {
             return false;
         }
 
-        if ((type !== current.type) || (typeof value != "undefined" && value !== current.value)) {
+        if ((type !== current.type) || (typeof value !== "undefined" && value !== current.value)) {
             return false;
         }
 
@@ -89,7 +89,7 @@ function parse (tokenList, source="") {
             throw new Error(`ParseError: Expected ${expected()} but ran out of tokens.`);
         }
 
-        if ((type !== current.type) && (typeof value != "undefined" && value !== current.value)) {
+        if ((type !== current.type) && (typeof value === "undefined" || value !== current.value)) {
             throw new Error(`ParseError: Expected ${expected()} got token[${current.type} '${current.value}']`);
         }
 
@@ -104,6 +104,169 @@ function parse (tokenList, source="") {
         return tokenList[i++];
     }
 
+    function end () {
+        return i >= tokenList.length;
+    }
+
+    function isList () {
+        suspect(TOKEN_TYPES.COMMA);
+        return (!end() && !peek(TOKEN_TYPES.KEYWORD) && !peek(TOKEN_TYPES.BRACKET));
+    }
+
+    function descendStatement () {
+        /** @type {Node} */
+        let out = {
+            type: NODE_TYPES.STATEMENT,
+            id: null,
+            children: [],
+        };
+
+        while (!end() && !peek(TOKEN_TYPES.BRACKET, ")")) {
+            out.children.push(descendClause());
+        }
+
+        return out;
+    }
+
+    function descendClause () {
+        const t = expect(TOKEN_TYPES.KEYWORD);
+
+        /** @type {Node} */
+        let out = {
+            type: NODE_TYPES.CLAUSE,
+            id: t.value,
+            children: [],
+        };
+
+        switch (t.value) {
+            case "FROM":
+                while (isList()) {
+                    // It can't quite be an expression but it can be a function
+                    // call i.e. RANGE()
+                    const child = descend();
+                    out.children.push(child);
+
+                    if (suspect(TOKEN_TYPES.KEYWORD, "AS")) {
+                        const alias = expect(TOKEN_TYPES.NAME);
+
+                        child.alias = alias.value;
+                        child.source += ` AS ${alias.value}`;
+                    }
+
+                    if (suspect(TOKEN_TYPES.KEYWORD, "ON")) {
+                        child.predicate = descendExpression();
+                        child.source += ` ON ${child.predicate.source}`;
+
+                    } else if (suspect(TOKEN_TYPES.KEYWORD, "USING")) {
+                        const name = expect(TOKEN_TYPES.NAME);
+                        child.predicate = { type: NODE_TYPES.SYMBOL, id: name.value };
+                        child.source += ` USING ${child.predicate.source}`;
+
+                    } else if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {
+                        child.inner = true;
+                    }
+
+                    suspect(TOKEN_TYPES.COMMA);
+                }
+                break;
+            case "SELECT":
+                if (suspect(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
+                    out.distinct = true;
+                }
+
+                while (isList()) {
+                    const child = descendExpression();
+                    out.children.push(child);
+
+                    if (suspect(TOKEN_TYPES.KEYWORD, "AS")) {
+                        const alias = expect(TOKEN_TYPES.NAME);
+
+                        child.alias = alias.value;
+                        child.source += ` AS ${alias.value}`;
+                    }
+                }
+                break;
+            case "ORDER BY":
+                while (isList()) {
+                    // Consume each item in the list following the keyword
+                    out.children.push(descendOrder());
+                }
+                break;
+            case "GROUP BY":
+                while (isList()) {
+                    // Consume each item in the list following the keyword
+                    out.children.push(descendExpression());
+                }
+                break;
+            case "WHERE":
+            case "HAVING":
+                // Single expression child
+                out.children.push(descendExpression());
+                break;
+            case "WITH":
+                while (isList()) {
+                    const id = expect(TOKEN_TYPES.NAME).value;
+
+                    /** @type {Node} */
+                    const child = { type: NODE_TYPES.SYMBOL, id };
+                    out.children.push(child);
+
+                    if (suspect(TOKEN_TYPES.BRACKET, "(")) {
+                        child.headers = [];
+
+                        while(isList()) {
+                            const id = expect(TOKEN_TYPES.NAME).value;
+                            child.headers.push(id);
+                        }
+
+                        expect(TOKEN_TYPES.BRACKET, ")");
+                    }
+
+                    expect(TOKEN_TYPES.KEYWORD, "AS");
+                    expect(TOKEN_TYPES.BRACKET, "(");
+
+                    child.children = [ descendStatement() ];
+
+                    expect(TOKEN_TYPES.BRACKET, ")");
+                }
+                break;
+            case "WINDOW":
+                while (isList()) {
+                    const id = expect(TOKEN_TYPES.NAME).value;
+
+                    /** @type {Node} */
+                    const child = { type: NODE_TYPES.SYMBOL, id };
+
+                    expect(TOKEN_TYPES.KEYWORD, "AS");
+                    expect(TOKEN_TYPES.BRACKET, "(");
+
+                    child.window = descendWindow();
+
+                    expect(TOKEN_TYPES.BRACKET, ")");
+
+                    out.children.push(child);
+                }
+                break;
+            case "VALUES":
+                break;
+            case "LIMIT":
+                out.children.push(descendExpression())
+                break;
+            case "OFFSET":
+                out.children.push(descendExpression())
+                break;
+            case "EXPLAIN":
+                break;
+            default:
+                throw TypeError(`Unexpected Keyword. Expected a clause but got ${t.value}`);
+        }
+
+        const next_token = current();
+        out.source = source.substring(t.start, next_token && next_token.start).trim();
+
+        return out;
+    }
+
     /**
      * @returns {Node}
      */
@@ -115,69 +278,6 @@ function parse (tokenList, source="") {
 
         switch (t.type) {
             case TOKEN_TYPES.KEYWORD:
-                next();
-
-                out.type = NODE_TYPES.CLAUSE;
-                out.id = t.value;
-                out.children = [];
-
-                if (t.value === "WINDOW") {
-                    while (i < tokenList.length) {
-                        const id = expect(TOKEN_TYPES.NAME).value;
-
-                        /** @type {Node} */
-                        const child = { type: NODE_TYPES.SYMBOL, id };
-
-                        expect(TOKEN_TYPES.KEYWORD, "AS");
-                        expect(TOKEN_TYPES.BRACKET, "(");
-
-                        child.window = descendWindow();
-
-                        expect(TOKEN_TYPES.BRACKET, ")");
-
-                        out.children.push(child);
-
-                        suspect(TOKEN_TYPES.COMMA);
-                    }
-                    return out;
-                }
-
-                if (suspect(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
-                    out.distinct = true;
-                }
-
-                // TODO: Why are we avoiding brackets here?
-                while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
-
-                    // Consume each item in the list following the keyword
-                    const child = appendChild(out, descend());
-
-                    if (suspect(TOKEN_TYPES.KEYWORD, "AS")) {
-                        next_token = expect(TOKEN_TYPES.NAME);
-
-                        child.alias = next_token.value;
-                        child.source += ` AS ${next_token.value}`;
-                    }
-
-                    if (suspect(TOKEN_TYPES.KEYWORD, "ON")) {
-                        child.predicate = descendExpression();
-                        child.source += ` ON ${child.predicate.source}`;
-
-                    } else if (suspect(TOKEN_TYPES.KEYWORD, "USING")) {
-                        child.predicate = descend();
-                        child.source += ` USING ${child.predicate.source}`;
-
-                    } else if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {
-                        child.inner = true;
-                    }
-
-                    suspect(TOKEN_TYPES.COMMA);
-                }
-
-                next_token = current();
-                out.source = source.substring(t.start, next_token && next_token.start).trim();
-
-                return out;
             case TOKEN_TYPES.NAME:
                 next();
 
@@ -192,7 +292,7 @@ function parse (tokenList, source="") {
                         out.distinct = true;
                     }
 
-                    while (i < tokenList.length && current().type !== TOKEN_TYPES.BRACKET) {
+                    while (isList()) {
 
                         // Loop through adding each paramater
                         appendChild(out, descend());
@@ -403,7 +503,7 @@ function parse (tokenList, source="") {
         return window;
     }
 
-    return descendExpression();
+    return descendStatement();
 }
 
 /**

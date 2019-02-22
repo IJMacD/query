@@ -207,7 +207,7 @@ async function getPrimaryResults(context, table) {
     return await callbacks.primaryTable.call(context, table) || [];
 }
 
-function populateValues ({ evaluate }, cols, rows) {
+function populateValues (evaluate, cols, rows) {
     for(const row of rows) {
         // @ts-ignore
         for(const [i, node] of cols.entries()) {

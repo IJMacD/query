@@ -1,13 +1,7 @@
+
+module.exports = Query;
+
 const Parse = require('./parse');
-
-const {
-    intersectResults,
-    exceptResults,
-    unionResults,
-    unionAllResults,
-    distinctResults
-} = require('./compound');
-
 const { scalar, matchInBrackets, queryResultToObjectArray } = require('./util');
 const { getRows, processColumns, populateValues } = require('./process');
 const { setJoin, setJoinPredicate, getRowData, setRowData } = require('./joins');
@@ -18,6 +12,8 @@ const { groupRows, populateAggregates } = require ('./aggregates');
 const { sortRows } = require('./sort');
 const { explain } = require('./explain');
 const persist = require('./persist');
+const { intersectResults, exceptResults, unionResults, unionAllResults, distinctResults } = require('./compound');
+const { getCTEs } = require('./subquery');
 
 /**
  * @typedef {import('../types').Node} Node
@@ -27,8 +23,6 @@ const persist = require('./persist');
  * @typedef {import('../types').QueryCallbacks} QueryCallbacks
  * @typedef {import('../types').QueryContext} QueryContext
  */
-
-module.exports = Query;
 
 const VIEW_KEY = "views";
 
@@ -145,31 +139,9 @@ async function simpleQuery (query, options) {
     const output_buffer = [];
     const output = row => output_buffer.push(row);
 
-    /***************************
-     * Common Table Expressions
-     ***************************/
-    /** @type {{ [name: string]: any[] }} */
-    const CTEs = {};
-
-    const withMatch = /^WITH /.exec(query);
-    if (withMatch)
-    {
-        query = query.substr(withMatch[0].length);
-        const cteRegex = /^\s*([a-zA-Z0-9_]+)\s*(?:\(([^)]+)\))? AS\s+/;
-        let cteMatch;
-        while (cteMatch = cteRegex.exec(query)) {
-            const name = cteMatch[1];
-            const headers = cteMatch[2] && cteMatch[2].split(",").map(v => v.trim());
-            const cte = matchInBrackets(query.substr(cteMatch[0].length));
-
-            CTEs[name] = queryResultToObjectArray(await Query(cte, options), headers);
-
-            const endIdx = cteMatch[0].length + 2 + cte.length;
-            query = query.substr(endIdx);
-
-            query = query.replace(/^\s*,\s*/, "");
-        }
-    }
+    /**********************
+     * Start Parsing
+     *********************/
 
     const parsedQuery = Parse.parseQuery(query);
 
@@ -182,17 +154,18 @@ async function simpleQuery (query, options) {
         parsedQuery.select = "*";
     }
 
+    /** @type {{ [name: string]: any[] }} */
+    const CTEs = await getCTEs(parsedQuery.with, options);
+
     const select = Parse.parseSelect(parsedQuery.select);
     const rawCols = select.children;
-    const parsedTables = Parse.parseFrom(parsedQuery.from);
-    const where = parsedQuery.where;
-    const parsedWhere = Parse.parseWhere(where);
-    const having = parsedQuery.having;
-    const parsedHaving = Parse.parseWhere(having);
+
+    const tables = Parse.parseFrom(parsedQuery.from);
+    const where = Parse.parseWhere(parsedQuery.where);
+    const having = Parse.parseWhere(parsedQuery.having);
     const orderBy = Parse.parseOrderBy(parsedQuery['order by']);
     const groupBy = Parse.parseGroupBy(parsedQuery['group by']);
     const analyse = parsedQuery.explain === "ANALYSE" || parsedQuery.explain === "ANALYZE";
-
     /** @type {{ [name: string]: WindowSpec }} */
     const windows = Parse.parseWindow(parsedQuery.window);
 
@@ -203,9 +176,9 @@ async function simpleQuery (query, options) {
     /** @type {QueryContext} */
     const self = {
         cols: colNodes,
-        parsedTables,
-        parsedWhere,
-        parsedHaving,
+        parsedTables: tables,
+        parsedWhere: where,
+        parsedHaving: having,
         orderBy,
         groupBy,
         windows,
@@ -236,9 +209,9 @@ async function simpleQuery (query, options) {
     let rows;
 
     // Set auto aliases i.e. avoid duplicates
-    setTableAliases(parsedTables);
+    setTableAliases(tables);
 
-    if (parsedTables.length === 0) {
+    if (tables.length === 0) {
         // If there is no table specified create one token row
         // so that we can return constants etc.
         rows = [[]];
@@ -251,7 +224,7 @@ async function simpleQuery (query, options) {
      ************/
 
     if (typeof parsedQuery.explain !== "undefined") {
-        return explain(parsedTables, analyse);
+        return explain(tables, analyse);
     }
 
     /******************
@@ -260,37 +233,37 @@ async function simpleQuery (query, options) {
 
     // One last filter, this time strict because there shouldn't be
     // anything slipping through since we have all the data now.
-    rows = filterRows(evaluate, rows, parsedWhere);
+    rows = filterRows(evaluate, rows, where);
 
     /******************
      * Columns
      ******************/
     const colVars = { colNodes, colHeaders, colAlias };
-    processColumns({ tables: parsedTables, colVars }, rawCols, rows);
+    processColumns({ tables, colVars }, rawCols, rows);
 
     /*****************
      * Column Values
      *****************/
-    populateValues({ evaluate }, colNodes, rows);
+    populateValues(evaluate, colNodes, rows);
 
     /*************
      * Grouping
      *************/
     if (groupBy) {
-        rows = groupRows({ evaluate }, rows, groupBy);
+        rows = groupRows(evaluate, rows, groupBy);
     }
 
     /**********************
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    rows = populateAggregates({ evaluate }, colNodes, rows, groupBy);
+    rows = populateAggregates(evaluate, colNodes, rows, groupBy);
 
     /*******************
      * Having Filtering
      ******************/
-    if (parsedHaving) {
-        rows = filterRows(evaluate, rows, parsedHaving);
+    if (having) {
+        rows = filterRows(evaluate, rows, having);
     }
 
     /*******************
@@ -329,11 +302,11 @@ async function simpleQuery (query, options) {
      ************************/
 
     function resolveValue (row, col, rows=null) {
-        return valueResolver({ evaluate, tables: parsedTables, colAlias, cols: colNodes }, row, col, rows);
+        return valueResolver({ evaluate, tables, colAlias, cols: colNodes }, row, col, rows);
     }
 
     function findTable (name) {
-        return parsedTables.find(t => t.name === name && t.join !== undefined);
+        return tables.find(t => t.name === name && t.join !== undefined);
     }
 
     /**
@@ -341,11 +314,11 @@ async function simpleQuery (query, options) {
      * @param {string|string[]} [operator]
      */
     function findWhere (symbol, operator="=") {
-        if (!parsedWhere) {
+        if (!where) {
             return; // undefined
         }
 
-        return traverseWhereTree(parsedWhere, symbol, operator);
+        return traverseWhereTree(where, symbol, operator);
     }
 }
 

@@ -1,6 +1,5 @@
 const {
   CLAUSES,
-  CONDITION_REGEX,
 } = require('./const');
 
 const tokenizer = require('./tokenizer');
@@ -14,7 +13,6 @@ module.exports = {
   parseWhere,
   parseFrom,
   parseGroupBy,
-  parseArgumentList,
   parseOrderBy,
   parseWindow,
 };
@@ -57,13 +55,6 @@ function parseQuery (query) {
 
   return parsed;
 }
-
-/**
-* @typedef ParsedColumn
-* @prop {string} value
-* @prop {string} [alias]
-* @prop {Node} [node]
-*/
 
 /**
  * @param {string} select
@@ -171,15 +162,6 @@ function parseFrom (from) {
         rowCount: 0
       };
   });
-}
-
-/**
- *
- * @param {string} list
- * @return {string[]}
- */
-function parseArgumentList (list) {
-    return matchAll(list, /([^,']+|'[^']*'),?/g).map(s => s[1].trim());
 }
 
 /**

@@ -17,7 +17,7 @@ module.exports = {
  * @typedef {import('../types').ResultRow} ResultRow
  */
 
-function populateAggregates({ evaluate }, cols, rows, groupBy) {
+function populateAggregates(evaluate, cols, rows, groupBy) {
     if (cols.some(node => node && node.id in AGGREGATE_FUNCTIONS && !node.window)) {
         if (rows.length === 0) {
             // Special case for COUNT(*)
@@ -38,7 +38,7 @@ function populateAggregates({ evaluate }, cols, rows, groupBy) {
                     aggRow // Single row result set
                 ];
             }
-            rows = rows.map(row => computeAggregates({ evaluate }, cols, row['group']));
+            rows = rows.map(row => computeAggregates(evaluate, cols, row['group']));
         }
     }
     return rows;
@@ -46,12 +46,12 @@ function populateAggregates({ evaluate }, cols, rows, groupBy) {
 
 /**
  * Turns a group of rows into one aggregate row
- * @param {any} context
+ * @param {(row: ResultRow, node: Node, rows?: ResultRow[]) => any} evaluate
  * @param {Node[]} cols
  * @param {any[][]} rows
  * @return {any[]}
  */
-function computeAggregates ({ evaluate }, cols, rows) {
+function computeAggregates (evaluate, cols, rows) {
     // If there are no rows (i.e. due to filtering) then
     // just return an empty row.
     if (rows.length === 0) {
@@ -101,12 +101,12 @@ function computeAggregates ({ evaluate }, cols, rows) {
 
 /**
  * Collapse multiple rows into a single row
- * @param {any} context
+ * @param {(row: ResultRow, node: Node, rows?: ResultRow[]) => any} evaluate
  * @param {any[][]} rows
  * @param {Node[]} groupBy
  * @returns {any[]}
  */
-function groupRows ({ evaluate }, rows, groupBy) {
+function groupRows (evaluate, rows, groupBy) {
     const groupByMap = {};
 
     for(const row of rows) {

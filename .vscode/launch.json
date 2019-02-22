@@ -10,7 +10,7 @@
             "name": "Demo Server",
             "program": "${workspaceFolder}/server.js",
             "args": [
-                "--demo"
+                // "--placeholder"
             ],
             "skipFiles": [
                 "<node_internals>/**/*.js"
@@ -22,7 +22,6 @@
             "name": "CLI Demo",
             "program": "${workspaceFolder}\\bin\\cli.js",
             "args": [
-                "--demo",
                 "FROM Test AS a, Test AS b ON a.n + 1 = b.n"
                 // "--placeholder",
                 // "FROM Posts GROUP BY userId SELECT userId, COUNT(*)"

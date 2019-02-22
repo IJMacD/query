@@ -19,7 +19,7 @@ const debugMode = args.includes("--debug");
 /**
  * @type {(query: string, options) => Promise<any[][]>}
  */
-let QueryExecutor = global['QueryExecutor'] || (args.includes("--demo") ? demoQuery : placeholderQuery);
+let QueryExecutor = global['QueryExecutor'] || (args.includes("--placeholder") ? placeholderQuery : demoQuery);
 
 app.use(express.urlencoded({ extended: false }));
 

@@ -59,7 +59,7 @@ async function getRows(ctx) {
         }
         else {
             if (callbacks.beforeJoin) {
-                await callbacks.beforeJoin.call(self, table, rows);
+                await callbacks.beforeJoin.call(ctx, table, rows);
             }
 
             startupTime = Date.now() - start;
@@ -89,7 +89,7 @@ async function getRows(ctx) {
         table.rowCount = rows.length;
 
         if (callbacks.afterJoin) {
-            await callbacks.afterJoin.call(self, table, rows);
+            await callbacks.afterJoin.call(ctx, table, rows);
         }
 
         const totalTime = Date.now() - start;

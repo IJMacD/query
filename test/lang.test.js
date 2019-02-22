@@ -783,7 +783,24 @@ describe("Window Functions", () => {
 
 describe("WINDOW clause", () => {
     test("Simple named window", () => {
-        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER(win) WINDOW win AS (ORDER BY n)").then(data => {
+        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER win WINDOW win AS (ORDER BY n)").then(data => {
+            expect(data.length - 1).toBe(10);
+
+            expect(data[1][0]).toBe(0);
+            expect(data[1][1]).toBe(0.1);
+
+            expect(data[2][0]).toBe(1);
+            expect(data[2][1]).toBe(0.2);
+
+            expect(data[3][0]).toBe(2);
+            expect(data[3][1]).toBe(0.3);
+
+            expect(data[4][0]).toBe(3);
+            expect(data[4][1]).toBe(0.4);
+        });
+    });
+    test("Named window with brackets", () => {
+        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER (win) WINDOW win AS (ORDER BY n)").then(data => {
             expect(data.length - 1).toBe(10);
 
             expect(data[1][0]).toBe(0);
@@ -801,7 +818,7 @@ describe("WINDOW clause", () => {
     });
 
     test("Named window multiple references", () => {
-        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER(win), CUME_SUM() OVER(win) WINDOW win AS (ORDER BY n)").then(data => {
+        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER win, CUME_SUM() OVER win WINDOW win AS (ORDER BY n)").then(data => {
             expect(data.length - 1).toBe(10);
 
             expect(data[1][0]).toBe(0);
@@ -823,7 +840,7 @@ describe("WINDOW clause", () => {
     });
 
     test("Multiple named windows", () => {
-        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER(win), RANK() OVER(win2) WINDOW win AS (ORDER BY n), win2 AS (PARTITION BY n3 ORDER BY n2)").then(data => {
+        return demoQuery("FROM Test SELECT n, CUME_DIST() OVER win, RANK() OVER win2 WINDOW win AS (ORDER BY n), win2 AS (PARTITION BY n3 ORDER BY n2)").then(data => {
             expect(data.length - 1).toBe(10);
 
             expect(data[1][0]).toBe(0);

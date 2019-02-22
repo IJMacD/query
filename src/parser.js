@@ -347,16 +347,18 @@ function parseFromTokenList (tokenList, source="") {
 
                     if (suspect(TOKEN_TYPES.KEYWORD, "OVER")) {
 
-                        expect(TOKEN_TYPES.BRACKET, "(");
+                        const bracket = suspect(TOKEN_TYPES.BRACKET, "(");
 
                         if (peek(TOKEN_TYPES.NAME)) {
                             out.window = next().value;
+                            bracket && expect(TOKEN_TYPES.BRACKET, ")");
                         }
                         else {
+                            bracket || expect(TOKEN_TYPES.BRACKET, "(");
                             out.window = descendWindow();
+                            expect(TOKEN_TYPES.BRACKET, ")");
                         }
 
-                        expect(TOKEN_TYPES.BRACKET, ")");
                     }
 
                     out.source = source.substring(t.start, current() && current().start).trim();

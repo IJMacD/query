@@ -492,4 +492,31 @@ describe("Window Functions", () => {
       expect(r[6][3]).toBe(4);
     });
   });
+
+  test("MAP", () => {
+    return demoQuery("FROM Test SELECT JSON_STRINGIFY(MAP(n) OVER (PARTITION BY n3 ORDER BY n2))").then(r => {
+      expect(r.length - 1).toBe(10);
+      expect(r[1][0]).toBe('[0,1,2]');
+      expect(r[2][0]).toBe('[0,1,2]')
+      expect(r[3][0]).toBe('[0,1,2]');
+      expect(r[4][0]).toBe('[3,4,5]');
+      expect(r[5][0]).toBe('[3,4,5]');
+      expect(r[6][0]).toBe('[3,4,5]');
+      expect(r[7][0]).toBe('[6,7,8]');
+      expect(r[8][0]).toBe('[6,7,8]');
+      expect(r[9][0]).toBe('[6,7,8]');
+      expect(r[10][0]).toBe('[9]');
+    });
+  });
+
+  test("IN MAP", () => {
+    return demoQuery("FROM Test WHERE n2 IN MAP(n3) OVER (PARTITION BY n3 ORDER BY n2)").then(r => {
+      expect(r.length - 1).toBe(3);
+      expect(r.slice(1)).toEqual([
+        [0,0,0],
+        [1,0,0],
+        [3,1,1],
+      ]);
+    });
+  });
 })

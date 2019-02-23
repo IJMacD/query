@@ -240,6 +240,10 @@ const WINDOW_FUNCTIONS = {
     FREQ (index, values) {
         const n = values[index];
         return values.filter(v => v === n).length / values.length;
+    },
+
+    MAP (index, values, rows, evaluator, expr) {
+        return rows.map(r => evaluator(r, expr));
     }
 }
 

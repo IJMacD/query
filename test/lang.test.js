@@ -1,4 +1,4 @@
-const demoQuery = require('../src/providers/demo');
+const demoQuery = require('./demoQuery');
 
 test("FROM/SELECT required", () => {
     expect.assertions(1);

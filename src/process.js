@@ -6,6 +6,7 @@ module.exports = {
 };
 
 /**
+ * @typedef {import('./query')} Query
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ResultRow} ResultRow
  * @typedef {import('../types').ParsedTable} ParsedTable
@@ -24,10 +25,10 @@ const { scalar, queryResultToObjectArray } = require('./util');
 const { getEvaluator, evaluateConstantExpression, SymbolError } = require('./evaluate');
 
 /**
- *
+ * @param {Query} query
  * @param {QueryContext} ctx
  */
-async function getRows(ctx) {
+async function getRows(query, ctx) {
     const { parsedTables, options: { callbacks }, resolveValue, parsedWhere } = ctx;
     let rows;
 
@@ -43,7 +44,7 @@ async function getRows(ctx) {
             /** @type {Array} */
             let results;
 
-            results = await getPrimaryResults(ctx, table);
+            results = await getPrimaryResults(query, ctx, table);
 
             startupTime = Date.now() - start;
 
@@ -77,7 +78,7 @@ async function getRows(ctx) {
             if (!findResult) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
-                const results = await getPrimaryResults(ctx, table);
+                const results = await getPrimaryResults(query, ctx, table);
 
                 table.explain += " cross-join";
 
@@ -185,11 +186,12 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
 }
 
 /**
+ * @param {Query} query
  * @param {QueryContext} context
  * @param {ParsedTable} table
  * @returns {Promise<any[]>}
  */
-async function getPrimaryResults(context, table) {
+async function getPrimaryResults(query, context, table) {
     const { subqueries, CTEs, views, findWhere, options, options: { callbacks } } = context;
 
     if (table.name in subqueries) {
@@ -201,7 +203,7 @@ async function getPrimaryResults(context, table) {
     }
 
     if (table.name in views) {
-        return queryResultToObjectArray(await Query(views[table.name], options));
+        return queryResultToObjectArray(await query.run(views[table.name]));
     }
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);

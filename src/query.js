@@ -1,8 +1,5 @@
-
-module.exports = Query;
-
 const Parser = require('./parser');
-const { scalar, matchInBrackets } = require('./util');
+const { scalar } = require('./util');
 const { getRows, processColumns, populateValues } = require('./process');
 const { setJoin, setJoinPredicate, getRowData, setRowData } = require('./joins');
 const { resolveConstant, resolvePath, valueResolver, setTableAliases } = require('./resolve');
@@ -13,7 +10,7 @@ const { sortRows } = require('./sort');
 const { explain } = require('./explain');
 const persist = require('./persist');
 const { intersectResults, exceptResults, unionResults, unionAllResults, distinctResults } = require('./compound');
-const { runQueries, getSubqueries, getCTEsMap } = require('./subquery');
+const { getSubqueries, getCTEsMap } = require('./subquery');
 const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('./prepare');
 
 /**
@@ -32,102 +29,129 @@ const VIEW_KEY = "views";
  */
 const views = persist.getItem(VIEW_KEY) || {};
 
-/**
- *
- * @param {string} query
- * @param {{ callbacks?: QueryCallbacks, userFunctions?: { [name: string]: (...args: any[]) => any }}} [options]
- */
-async function Query (query, options = {}) {
-
-    const viewMatch = /^CREATE VIEW ([a-zA-Z0-9_]+) AS\s+/.exec(query);
-    if (viewMatch)
-    {
-        const name = viewMatch[1];
-        const view = query.substring(viewMatch[0].length);
-
-        views[name] = view;
-
-        persist.setItem(VIEW_KEY, views);
-
-        return [];
+class Query {
+    constructor () {
+        this.providers = {};
     }
 
-    /****************
-     * Set Functions
-     ****************/
-
-    if (/INTERSECT/.test(query)) {
-        const [ resultsL, resultsR ] = await runQueries(query.split("INTERSECT", 2), options);
-        return intersectResults(resultsL, resultsR);
+    addProvider (name, options) {
+        this.providers[name] = options;
     }
 
-    if (/EXCEPT/.test(query)) {
-        const [ resultsL, resultsR ] = await runQueries(query.split("EXCEPT", 2), options);
-        return exceptResults(await resultsL, await resultsR);
-    }
+    /**
+     * @param {string} query
+     * @returns {Promise<any[][]>}
+     */
+    async run (query) {
 
-    const unionMatch = /UNION (ALL)?/.exec(query)
-    if (unionMatch) {
-        const qLEnd = unionMatch.index;
-        const qRStart = qLEnd + unionMatch[0].length;
-        const all = unionMatch[1] === "ALL";
-        const queryL = query.substring(0, qLEnd);
-        const queryR = query.substring(qRStart);
-        const [ resultsL, resultsR ] = await runQueries([queryL, queryR], options);
-        return all ? unionAllResults(resultsL, resultsR) : unionResults(resultsL, resultsR);
-    }
+        const viewMatch = /^CREATE VIEW ([a-zA-Z0-9_]+) AS\s+/.exec(query);
+        if (viewMatch)
+        {
+            const name = viewMatch[1];
+            const view = query.substring(viewMatch[0].length);
 
-    /**************
-     * Matrix
-     **************/
+            views[name] = view;
 
-    if (/^TRANSPOSE/.test(query)) {
-        const subQuery = await Query(query.replace(/TRANSPOSE\s*/, ""), options);
+            persist.setItem(VIEW_KEY, views);
 
-        const out = [];
-
-        if (subQuery.length > 0) {
-            const headers = subQuery[0];
-            const dummyArray = Array(subQuery.length - 1).fill("");
-
-            for (let i = 0; i < headers.length; i++) {
-                out.push([headers[i], ...dummyArray.map((x, j) => subQuery[j+1][i])]);
-            }
-
+            return [];
         }
-        return out;
+
+        /****************
+         * Set Functions
+         ****************/
+
+        if (/INTERSECT/.test(query)) {
+            const [ resultsL, resultsR ] = await this.runQueries(query.split("INTERSECT", 2));
+            return intersectResults(resultsL, resultsR);
+        }
+
+        if (/EXCEPT/.test(query)) {
+            const [ resultsL, resultsR ] = await this.runQueries(query.split("EXCEPT", 2));
+            return exceptResults(await resultsL, await resultsR);
+        }
+
+        const unionMatch = /UNION (ALL)?/.exec(query)
+        if (unionMatch) {
+            const qLEnd = unionMatch.index;
+            const qRStart = qLEnd + unionMatch[0].length;
+            const all = unionMatch[1] === "ALL";
+            const queryL = query.substring(0, qLEnd);
+            const queryR = query.substring(qRStart);
+            const [ resultsL, resultsR ] = await this.runQueries([queryL, queryR]);
+            return all ? unionAllResults(resultsL, resultsR) : unionResults(resultsL, resultsR);
+        }
+
+        /**************
+         * Matrix
+         **************/
+
+        if (/^TRANSPOSE/.test(query)) {
+            const subQuery = await this.run(query.replace(/TRANSPOSE\s*/, ""));
+
+            const out = [];
+
+            if (subQuery.length > 0) {
+                const headers = subQuery[0];
+                const dummyArray = Array(subQuery.length - 1).fill("");
+
+                for (let i = 0; i < headers.length; i++) {
+                    out.push([headers[i], ...dummyArray.map((x, j) => subQuery[j+1][i])]);
+                }
+
+            }
+            return out;
+        }
+
+        // Everything above was to process a compound query of some
+        // description. If we've got to this point we just need to
+        // perform a "simple" query.
+
+        return simpleQuery.call(this, query);
     }
 
-    // Everything above was to process a compound query of some
-    // description. If we've got to this point we just need to
-    // perform a "simple" query.
+    /**
+     *
+     * @param {string[]} queries
+     * @returns {Promise<any[][][]>}
+     */
+    runQueries (queries) {
+        return Promise.all(queries.map(q => this.run(q)));
+    }
 
-    return simpleQuery(query, options);
 }
+
+module.exports = Query;
+
 
 /**
  *
- * @param {string} query
- * @param {*} options
+ * @param {string} sql
+ * @this {Query}
  */
-async function simpleQuery (query, options) {
-    const parsedQuery = Parser.parse(query);
+async function simpleQuery (sql) {
+    const parsedQuery = Parser.parse(sql);
 
-    return await evaluateQuery(parsedQuery, options);
+    return await evaluateQuery.call(this, parsedQuery);
 }
 
 /**
- *
- * @param {Node} statement
- * @param {*} options
+ * @this {Query}
+ * @param {Node} statementNode
  */
-async function evaluateQuery (statement, options) {
+async function evaluateQuery (statementNode) {
+
+    // TODO: Only uses first provider
+    const key = Object.keys(this.providers)[0];
+    const options = this.providers[key] || {};
+    options.name = key;
+
     const { userFunctions = {} } = options;
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
 
-    const query = nodeToQueryObject(statement);
+    const query = nodeToQueryObject(statementNode);
 
     if (query.values) {
         // VALUES clause trumps everything else
@@ -137,13 +161,13 @@ async function evaluateQuery (statement, options) {
     const select = query.select;
     const rawCols = select;
 
-    const subqueries = await getSubqueries(evaluateQuery, query.from, options);
+    const subqueries = await getSubqueries(evaluateQuery.bind(this), query.from);
     /** @type {ParsedTable[]} */
     const tables = nodesToTables(query.from);
     /** @type {boolean} */
     const analyse = query.explain && (query.explain.id === "ANALYSE" || query.explain.id === "ANALYZE");
     /** @type {{ [name: string]: any[] }} */
-    const CTEs = query.with ? await getCTEsMap(evaluateQuery, query.with, options) : {};
+    const CTEs = query.with ? await getCTEsMap(evaluateQuery.bind(this), query.with) : {};
     /** @type {{ [name: string]: WindowSpec }} */
     const windows = query.window ? getWindowsMap(query.window) : {};
 
@@ -197,7 +221,7 @@ async function evaluateQuery (statement, options) {
             []
         ];
     } else {
-        rows = await getRows(self);
+        rows = await getRows(this, self);
     }
 
     /*************
@@ -250,7 +274,7 @@ async function evaluateQuery (statement, options) {
     /*******************
      * Distinct
      *******************/
-    if (statement.children.some(c => c.id === "SELECT" && c.distinct)) {
+    if (statementNode.children.some(c => c.id === "SELECT" && c.distinct)) {
         rows = distinctResults(rows);
     }
 

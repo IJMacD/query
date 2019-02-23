@@ -4,9 +4,11 @@ const getStdin = require('get-stdin');
 require('fetch-everywhere');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const demoQuery = require('../src/providers/demo');
-const placeholderQuery = require('../src/providers/placeholder');
+const Query = require('../src/query')
+const demoProvider = require('../src/providers/demo');
+const placeholderProvider = require('../src/providers/placeholder');
 const Formatter = require('../src/formatter');
+
 
 run();
 
@@ -16,14 +18,17 @@ async function run () {
     const opts = rest.filter(a => a[0] === "-");
     let query = rest.filter(a => a[0] !== "-").join(" ").trim();
 
+    const QueryExecutor = new Query();
+
+    if (opts.includes("--placeholder")) {
+        QueryExecutor.addProvider("Placeholder", placeholderProvider);
+    } else {
+        QueryExecutor.addProvider("Demo", demoProvider);
+    }
+
     if (query.length === 0) {
         query = await getStdin();
     }
-
-    /**
-     * @type {(query: string) => Promise<any[][]>}
-     */
-    let QueryExecutor = global['QueryExecutor'] || (opts.includes("--placeholder") ? placeholderQuery : demoQuery);
 
     let mime = "text/plain";
     let name;
@@ -43,7 +48,7 @@ async function run () {
         }
     }
 
-    QueryExecutor(query).then(result => {
+    QueryExecutor.run(query).then(result => {
         console.log(Formatter.format(result, { mime, name }));
     }).catch(e => console.error(e));
 }

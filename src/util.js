@@ -1,5 +1,6 @@
 module.exports = {
   scalar,
+  getColumnTypes,
   repeat,
   isNullDate,
   isValidDate,
@@ -27,6 +28,18 @@ function scalar (data) {
       return; // undefined
   }
   return data;
+}
+
+function getColumnTypes (row) {
+
+    if (row) {
+        return Object
+            .entries(row)
+            .filter(([name, value]) => typeof scalar(value) !== "undefined")
+            .map(([name, value]) => ({ name, type: value instanceof Date ? "date" : typeof value }));
+    }
+
+    return [];
 }
 
 /**

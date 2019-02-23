@@ -18,12 +18,20 @@ async function informationSchema({ findWhere, options, views, options: { callbac
             let table_type = "BASE TABLE";
 
             if (typeof callbacks.getTables === "function") {
-                results.push(...callbacks.getTables().map(table_name => ({ table_name, table_type })));
+                results.push(...callbacks.getTables().map(table_name => ({
+                    table_catalog: options.name,
+                    table_name,
+                    table_type
+                })));
             }
 
             table_type = "VIEW";
             for (const table_name in views) {
-                results.push({ table_name, table_type });
+                results.push({
+                    table_catalog: options.name,
+                    table_name,
+                    table_type
+                });
             }
 
             return results;
@@ -40,6 +48,7 @@ async function informationSchema({ findWhere, options, views, options: { callbac
                     if (!whereName || table_name === whereName) {
                         const cols = await callbacks.getColumns(table_name);
                         results.push(...cols.map(({ name, type }, i) => ({
+                            table_catalog: options.name,
                             table_name,
                             column_name: name,
                             ordinal_position: i + 1,
@@ -49,20 +58,20 @@ async function informationSchema({ findWhere, options, views, options: { callbac
                 }
             }
 
-            for (const table_name in views) {
-                if (!whereName || table_name === whereName) {
-                    const rows = await Query(views[table_name], options);
-                    const headers = rows[0];
-                    for (let i = 0; i < headers.length; i++) {
-                        results.push({
-                            table_name,
-                            column_name: headers[i],
-                            ordinal_position: i + 1,
-                            data_type: rows.length > 1 ? typeof rows[1][i] : null,
-                        });
-                    }
-                }
-            }
+            // for (const table_name in views) {
+            //     if (!whereName || table_name === whereName) {
+            //         const rows = await Query(views[table_name], options);
+            //         const headers = rows[0];
+            //         for (let i = 0; i < headers.length; i++) {
+            //             results.push({
+            //                 table_name,
+            //                 column_name: headers[i],
+            //                 ordinal_position: i + 1,
+            //                 data_type: rows.length > 1 ? typeof rows[1][i] : null,
+            //             });
+            //         }
+            //     }
+            // }
 
             return results;
         }
@@ -70,7 +79,11 @@ async function informationSchema({ findWhere, options, views, options: { callbac
             const results = [];
 
             for (const table_name in views) {
-                results.push({ table_name, view_definition: views[table_name] });
+                results.push({
+                    table_catalog: options.name,
+                    table_name,
+                    view_definition: views[table_name]
+                });
             }
 
             return results;

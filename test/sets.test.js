@@ -1,4 +1,4 @@
-const demoQuery = require('../src/providers/demo');
+const demoQuery = require('./demoQuery');
 
 test("UNION ALL", () => {
     return demoQuery("FROM Test UNION ALL FROM Test").then(r => {

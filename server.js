@@ -6,20 +6,22 @@ const path = require('path');
 
 const port = 3000;
 
-const demoQuery = require('./src/providers/demo');
-const placeholderQuery = require('./src/providers/placeholder');
+const Query = require('./src/query')
+const demoProvider = require('./src/providers/demo');
+const placeholderProvider = require('./src/providers/placeholder');
 const Formatter = require('./src/formatter');
 
 const [ node, script, ...rest ] = process.argv;
 
 const args = rest.filter(a => a[0] === "-");
 
-const debugMode = args.includes("--debug");
+const QueryExecutor = new Query();
 
-/**
- * @type {(query: string, options) => Promise<any[][]>}
- */
-let QueryExecutor = global['QueryExecutor'] || (args.includes("--placeholder") ? placeholderQuery : demoQuery);
+if (args.includes("--placeholder")) {
+    QueryExecutor.addProvider("Placeholder", placeholderProvider);
+} else {
+    QueryExecutor.addProvider("Demo", demoProvider);
+}
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -76,7 +78,7 @@ function handleQuery (req, res, query, type, name) {
         res.setHeader("Access-Control-Allow-Credentials", "true");
     }
 
-    QueryExecutor(query, {debug: debugMode }).then(result => {
+    QueryExecutor.run(query).then(result => {
         const mime = type || determineMimeType(req.header("accept"));
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];

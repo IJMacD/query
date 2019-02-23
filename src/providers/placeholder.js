@@ -1,35 +1,22 @@
-const Parser = require('../parser');
-const Query = require('../query');
-
-module.exports = QueryExecutor;
+module.exports = {
+    callbacks: {
+        primaryTable,
+        afterJoin,
+        beforeJoin,
+        getTables: () => [ "Posts", "Comments", "Albums", "Photos", "Todos", "Users" ],
+    },
+    userFunctions: {
+    }
+};
 
 const API_ROOT = `https://jsonplaceholder.typicode.com/`;
 
 /**
- *
- * @param {string} query
- * @param {{ debug?: boolean }} options
- * @returns {Promise<any[][]>}
- */
-async function QueryExecutor (query, { debug } = {}) {
-    return Query(query, {
-        callbacks: {
-            primaryTable,
-            afterJoin,
-            beforeJoin,
-            getTables: () => [ "Posts", "Comments", "Albums", "Photos", "Todos", "Users" ],
-        },
-        userFunctions: {
-        }
-    });
-}
-
-/**
- * @typedef {import ('../parse').ParsedTable} ParsedTable
+ * @typedef {import ('../../types').ParsedTable} ParsedTable
  */
 
 /**
- * @typedef {import ('../parse').Node} Node
+ * @typedef {import ('../../types').Node} Node
  */
 
 /**

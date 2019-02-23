@@ -1,4 +1,4 @@
-const Query = require('../query');
+const { getColumnTypes } = require('../util');
 
 function primaryTable (table) {
     if (table.name === "Test") {
@@ -58,9 +58,16 @@ function primaryTable (table) {
     throw new Error(`Table not recognised: ${table.name}`);
 }
 
-module.exports = function (query) {
-    return Query(query, { callbacks: {
+module.exports = {
+    callbacks: {
         primaryTable,
         getTables: () => [ "Test", "Test_2", "Test_3", "Test_4" ],
-    }});
-}
+        getColumns: (name) => {
+            const results = primaryTable({ name });
+
+            if (!results) return [];
+
+            return getColumnTypes(results[0]);
+        }
+    }
+};

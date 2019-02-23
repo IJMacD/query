@@ -27,12 +27,12 @@ async function run () {
     }
 
     if (opts.includes("--placeholder")) {
-        QueryExecutor.addProvider("Placeholder", placeholderProvider);
+        QueryExecutor.addProvider(placeholderProvider, "Placeholder");
         providers++;
     }
 
     if (providers === 0 || opts.includes("--demo")) {
-        QueryExecutor.addProvider("Demo", demoProvider);
+        QueryExecutor.addProvider(demoProvider, "Demo");
     }
 
     if (query.length === 0) {

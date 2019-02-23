@@ -29,12 +29,15 @@ const VIEW_KEY = "views";
  */
 const views = persist.getItem(VIEW_KEY) || {};
 
+let providerCount = 1;
+
 class Query {
     constructor () {
         this.providers = {};
     }
 
-    addProvider (name, options) {
+    addProvider (options, name=undefined) {
+        name = name || options.name || `PROVIDER_${providerCount++}`;
         this.providers[name] = options;
     }
 

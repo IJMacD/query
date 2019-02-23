@@ -81,3 +81,7 @@ export declare interface ParsedTable {
   rowCount?: number;
   analyse?: any;
 }
+
+import Query from './src/query';
+
+export = Query;

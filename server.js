@@ -25,12 +25,12 @@ if (global['QueryProvider']) {
 }
 
 if (args.includes("--placeholder")) {
-    QueryExecutor.addProvider("Placeholder", placeholderProvider);
+    QueryExecutor.addProvider(placeholderProvider, "Placeholder");
     providers++;
 }
 
 if (providers === 0 || args.includes("--demo")) {
-    QueryExecutor.addProvider("Demo", demoProvider);
+    QueryExecutor.addProvider(demoProvider, "Demo");
 }
 
 app.use(express.urlencoded({ extended: false }));

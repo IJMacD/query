@@ -197,7 +197,7 @@ async function evaluateQuery (statement, options) {
             []
         ];
     } else {
-        rows = await getRows({ ...self, evaluate });
+        rows = await getRows(self);
     }
 
     /*************

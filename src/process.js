@@ -21,15 +21,17 @@ const { filterRows } = require('./filter');
 const { setAnalysis } = require('./explain');
 const { getTableAliasMap, PendingValue } = require('./resolve');
 const { scalar, queryResultToObjectArray } = require('./util');
-const { evaluateConstantExpression, SymbolError } = require('./evaluate');
+const { getEvaluator, evaluateConstantExpression, SymbolError } = require('./evaluate');
 
 /**
  *
  * @param {QueryContext} ctx
  */
 async function getRows(ctx) {
-    const { parsedTables, options: { callbacks }, evaluate, resolveValue, parsedWhere } = ctx;
+    const { parsedTables, options: { callbacks }, resolveValue, parsedWhere } = ctx;
     let rows;
+
+    const evaluate = getEvaluator(ctx);
 
     for (let table of parsedTables) {
         const start = Date.now();

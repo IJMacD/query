@@ -430,4 +430,43 @@ describe("Operator Precedence", () => {
             expect(r[1][1]).toBe('f');
         });
     });
+
+    test("+ IN", () => {
+        return Promise.all([
+            demoQuery("SELECT 5 + 3 IN (8)").then(r => {
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 5 + 3 IN (11)").then(r => {
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).toBe(false);
+            })
+        ]);
+    });
+
+    test("* IN", () => {
+        return Promise.all([
+            demoQuery("SELECT 5 * 3 IN (15)").then(r => {
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 5 * 3 IN (16)").then(r => {
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).toBe(false);
+            })
+        ]);
+    });
+
+    test("+ * IN", () => {
+        return Promise.all([
+            demoQuery("SELECT 5 + 3 * 2 IN (11)").then(r => {
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 5 + 3 * 2 IN (16)").then(r => {
+                expect(r.length - 1).toBe(1);
+                expect(r[1][0]).toBe(false);
+            })
+        ]);
+    });
 })

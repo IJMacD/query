@@ -601,30 +601,34 @@ function lastChild (node) {
 
 /**
  * Get operator precedence
+ * Higher number is tighter binding
  * @param {Node} node
  */
 function getPrecedence (node) {
     switch (node.id) {
         case "AND":
-            return 0;
+            return 10;
         case ">":
         case "<":
         case "=":
         case "!=":
         case "<=":
         case ">=":
-            return 1;
-        case "+":
-        case "-":
-            return 2;
-        case "*":
-        case "/":
-            return 3;
+        case "IS NULL":
+        case "IS NOT NULL":
+        case "IN":
+        case "NOT IN":
         case "LIKE":
         case "NOT LIKE":
         case "REGEXP":
         case "NOT REGEXP":
-            return 4;
+            return 20;
+        case "+":
+        case "-":
+            return 30;
+        case "*":
+        case "/":
+            return 40;
         default:
             return 100;
     }

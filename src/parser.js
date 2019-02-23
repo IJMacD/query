@@ -142,30 +142,34 @@ function parseFromTokenList (tokenList, source="") {
         switch (t.value) {
             case "FROM":
                 while (isList()) {
+                    let child;
+
                     // First check for a sub-query
                     if (suspect(TOKEN_TYPES.BRACKET, "(")) {
-                        const child = descendStatement();
-                        out.children.push(child);
+                        child = descendStatement();
 
                         expect(TOKEN_TYPES.BRACKET, ")");
-
-                        if (suspect(TOKEN_TYPES.KEYWORD, "AS")) {
-                            child.id = expect(TOKEN_TYPES.NAME).value
-                        }
-
-                        continue;
+                    } else {
+                        // It can't quite be an expression but it can be a function
+                        // call i.e. RANGE()
+                        child = descend();
                     }
-
-                    // It can't quite be an expression but it can be a function
-                    // call i.e. RANGE()
-                    const child = descend();
                     out.children.push(child);
 
                     if (suspect(TOKEN_TYPES.KEYWORD, "AS")) {
-                        const alias = expect(TOKEN_TYPES.NAME);
+                        child.alias = expect(TOKEN_TYPES.NAME).value
 
-                        child.alias = alias.value;
-                        child.source += ` AS ${alias.value}`;
+                        // Column rename
+                        if (suspect(TOKEN_TYPES.BRACKET, "(")) {
+                            child.headers = [];
+
+                            while(isList()) {
+                                const id = expect(TOKEN_TYPES.NAME).value;
+                                child.headers.push(id);
+                            }
+
+                            expect(TOKEN_TYPES.BRACKET, ")");
+                        }
                     }
 
                     if (suspect(TOKEN_TYPES.KEYWORD, "ON")) {
@@ -177,11 +181,11 @@ function parseFromTokenList (tokenList, source="") {
                         child.predicate = { type: NODE_TYPES.SYMBOL, id: name.value };
                         child.source += ` USING ${child.predicate.source}`;
 
-                    } else if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {
-                        child.inner = true;
                     }
 
-                    suspect(TOKEN_TYPES.COMMA);
+                    if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {
+                        child.inner = true;
+                    }
                 }
                 break;
             case "SELECT":

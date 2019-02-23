@@ -35,9 +35,9 @@ async function getSubqueries (evaluateQuery, nodes, options) {
 
     for (const node of nodes) {
         if (node.type === NODE_TYPES.STATEMENT) {
-            const name = node.id || `SUBQUERY_${i++}`;
+            const name = node.alias || `SUBQUERY_${i++}`;
 
-            out[name] = queryResultToObjectArray(await evaluateQuery(node, options));
+            out[name] = queryResultToObjectArray(await evaluateQuery(node, options), node.headers);
 
             node.id = name;
             node.type = NODE_TYPES.SYMBOL;

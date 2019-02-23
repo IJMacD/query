@@ -57,6 +57,17 @@ describe("FROM", () => {
         });
     });
 
+    test("Column rename", () => {
+        return demoQuery("FROM (VALUES (1,2)) AS v (number, number2) SELECT number2, number").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[0][0]).toBe("number2");
+            expect(r[0][1]).toBe("number");
+
+            expect(r[1][0]).toBe(2);
+            expect(r[1][1]).toBe(1);
+        })
+    })
+
     describe("Table Valued Functions", () => {
         test("in FROM", () => {
             return demoQuery("FROM RANGE(1)").then(r => {

@@ -911,17 +911,52 @@ describe("WINDOW clause", () => {
     });
 });
 
-test("VALUES", () => {
-    return demoQuery("VALUES (1,'a'),(2,'b'),(3,'c')").then(r => {
-        expect(r.length - 1).toBe(3);
+describe("VALUES", () => {
+    test("Standalone statement", () => {
+        return demoQuery("VALUES (1,'a'),(2,'b'),(3,'c')").then(r => {
+            expect(r.length - 1).toBe(3);
 
-        expect(r[1][0]).toBe(1);
-        expect(r[1][1]).toBe('a');
+            expect(r[1][0]).toBe(1);
+            expect(r[1][1]).toBe('a');
 
-        expect(r[2][0]).toBe(2);
-        expect(r[2][1]).toBe('b');
+            expect(r[2][0]).toBe(2);
+            expect(r[2][1]).toBe('b');
 
-        expect(r[3][0]).toBe(3);
-        expect(r[3][1]).toBe('c');
-    })
+            expect(r[3][0]).toBe(3);
+            expect(r[3][1]).toBe('c');
+        });
+    });
+
+    test("In CTE", () => {
+        return demoQuery("WITH v (n,c) AS (VALUES (1,'a'),(2,'b'),(3,'c')) FROM v").then(r => {
+            expect(r.length - 1).toBe(3);
+
+            expect(r[0][0]).toBe('n');
+            expect(r[0][1]).toBe('c');
+
+            expect(r[1][0]).toBe(1);
+            expect(r[1][1]).toBe('a');
+
+            expect(r[2][0]).toBe(2);
+            expect(r[2][1]).toBe('b');
+
+            expect(r[3][0]).toBe(3);
+            expect(r[3][1]).toBe('c');
+        });
+    });
+
+    test("In Subquery", () => {
+        return demoQuery("FROM (VALUES (1,'a'),(2,'b'),(3,'c'))").then(r => {
+            expect(r.length - 1).toBe(3);
+
+            expect(r[1][0]).toBe(1);
+            expect(r[1][1]).toBe('a');
+
+            expect(r[2][0]).toBe(2);
+            expect(r[2][1]).toBe('b');
+
+            expect(r[3][0]).toBe(3);
+            expect(r[3][1]).toBe('c');
+        });
+    });
 })

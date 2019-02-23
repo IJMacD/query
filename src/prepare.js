@@ -22,15 +22,15 @@ function nodeToQueryObject (node) {
   for (const clause of node.children) {
       const name = clause.id.toString().toLowerCase();
 
-      if (/FROM|SELECT|ORDER BY|GROUP BY|WINDOW|WITH/.test(clause.id)) {
+      if (/FROM|SELECT|ORDER BY|GROUP BY|WINDOW|WITH|VALUES/.test(clause.id)) {
           out[name] = clause.children;
       } else {
           out[name] = clause.children[0];
       }
   }
 
-  if (!out.from && !out.select) {
-      throw new Error("You must specify FROM or SELECT");
+  if (!out.from && !out.select && !out.values) {
+      throw new Error("You must specify FROM or SELECT or VALUES");
   }
 
   if (!out.from) {

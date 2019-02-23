@@ -13,6 +13,7 @@ const NODE_TYPES = {
     STRING: 5,
     NUMBER: 6,
     OPERATOR: 7,
+    LIST: 8,
 };
 
 module.exports = {
@@ -262,6 +263,16 @@ function parseFromTokenList (tokenList, source="") {
                 }
                 break;
             case "VALUES":
+                while (isList()) {
+                    const child = { type: NODE_TYPES.LIST, id: null, children: [] };
+                    out.children.push(child);
+
+                    expect(TOKEN_TYPES.BRACKET, "(");
+                    while (isList()) {
+                        child.children.push(descend());
+                    }
+                    expect(TOKEN_TYPES.BRACKET, ")");
+                }
                 break;
             case "LIMIT":
                 out.children.push(descendExpression())

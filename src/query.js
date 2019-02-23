@@ -98,35 +98,6 @@ async function Query (query, options = {}) {
         return out;
     }
 
-    /****************
-     * VALUES Clause
-     ****************/
-    if (/^VALUES/.test(query)) {
-        let index = "VALUES".length;
-        const out = [];
-
-        while (index < query.length) {
-            const subString = query.substr(index);
-            const match = matchInBrackets(subString);
-
-            if (!match) break;
-
-            // Parse comma list as JSON array for quoting and number forms
-            out.push(JSON.parse(`[${match.replace(/'/g, '"')}]`));
-
-            const start = subString.indexOf(match);
-            index += start + match.length + 2;
-        }
-
-        if (out.length) {
-            const width = out[0].length;
-            const headers = Array(width).fill(0).map((_, i) => `Col ${i + 1}`);
-            out.unshift(headers);
-        }
-
-        return out;
-    }
-
     // Everything above was to process a compound query of some
     // description. If we've got to this point we just need to
     // perform a "simple" query.
@@ -157,6 +128,11 @@ async function evaluateQuery (statement, options) {
     const output = row => output_buffer.push(row);
 
     const query = nodeToQueryObject(statement);
+
+    if (query.values) {
+        // VALUES clause trumps everything else
+        return evaluateValues(query.values);
+    }
 
     const select = query.select;
     const rawCols = select;
@@ -217,7 +193,9 @@ async function evaluateQuery (statement, options) {
     if (tables.length === 0) {
         // If there is no table specified create one token row
         // so that we can return constants etc.
-        rows = [[]];
+        rows = [
+            []
+        ];
     } else {
         rows = await getRows({ ...self, evaluate });
     }
@@ -329,4 +307,25 @@ function applyLimit(rows, limit, offset) {
     const start = offset ? evaluateConstantExpression(offset) : 0;
     const end = limit ? (start + evaluateConstantExpression(limit)) : rows.length;
     return rows.slice(start, end);
+}
+
+/**
+ *
+ * @param {Node[]} values
+ */
+function evaluateValues (values) {
+    const firstRow = values[0];
+
+    if (!firstRow) {
+        return [];
+    }
+
+    const width = firstRow.children.length;
+    const headers = Array(width).fill(0).map((_, i) => `Col ${i + 1}`);
+
+    const out = values.map(row => row.children.map(col => col.id));
+
+    out.unshift(headers);
+
+    return out;
 }

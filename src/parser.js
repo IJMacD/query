@@ -1,4 +1,4 @@
-const { tokenize, TOKEN_TYPES } = require('./tokenizer');
+const { tokenize, TOKEN_TYPES, DEBUG_TOKEN_TYPES } = require('./tokenizer');
 
 /** @typedef {import('../types').Token} Token */
 /** @typedef {import('../types').Node} Node */
@@ -16,6 +16,18 @@ const NODE_TYPES = {
     LIST: 8,
 };
 
+const DEBUG_NODE_TYPES = [
+    "UNKNOWN",
+    "STATEMENT",
+    "CLAUSE",
+    "FUNCTION_CALL",
+    "SYMBOL",
+    "STRING",
+    "NUMBER",
+    "OPERATOR",
+    "LIST",
+];
+
 module.exports = {
 
     parseTokenList: parseFromTokenList,
@@ -25,6 +37,7 @@ module.exports = {
     },
 
     NODE_TYPES,
+    DEBUG_NODE_TYPES,
 }
 
 /**
@@ -84,14 +97,14 @@ function parseFromTokenList (tokenList, source="") {
     function expect (type, value=undefined) {
         const current = tokenList[i];
 
-        const expected = () => `token[${type}${typeof value !== "undefined" ? ` '${value}'`: ""}]`;
+        const expected = () => `token[${DEBUG_TOKEN_TYPES[type]}${typeof value !== "undefined" ? ` '${value}'`: ""}]`;
 
         if (!current) {
             throw new Error(`ParseError: Expected ${expected()} but ran out of tokens.`);
         }
 
         if ((type !== current.type) && (typeof value === "undefined" || value !== current.value)) {
-            throw new Error(`ParseError: Expected ${expected()} got token[${current.type} '${current.value}']`);
+            throw new Error(`ParseError: Expected ${expected()} got token[${DEBUG_TOKEN_TYPES[current.type]} '${current.value}']`);
         }
 
         return tokenList[i++];
@@ -110,7 +123,6 @@ function parseFromTokenList (tokenList, source="") {
     }
 
     function isList () {
-        suspect(TOKEN_TYPES.COMMA);
         return (!end() && !peek(TOKEN_TYPES.KEYWORD) && !peek(TOKEN_TYPES.BRACKET, ")"));
     }
 
@@ -166,6 +178,10 @@ function parseFromTokenList (tokenList, source="") {
                             while(isList()) {
                                 const id = expect(TOKEN_TYPES.NAME).value;
                                 child.headers.push(id);
+
+                                if (!suspect(TOKEN_TYPES.COMMA)) {
+                                    break;
+                                }
                             }
 
                             expect(TOKEN_TYPES.BRACKET, ")");
@@ -186,6 +202,10 @@ function parseFromTokenList (tokenList, source="") {
                     if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {
                         child.inner = true;
                     }
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
                 break;
             case "SELECT":
@@ -203,18 +223,30 @@ function parseFromTokenList (tokenList, source="") {
                         child.alias = alias.value;
                         child.source += ` AS ${alias.value}`;
                     }
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
                 break;
             case "ORDER BY":
                 while (isList()) {
                     // Consume each item in the list following the keyword
                     out.children.push(descendOrder());
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
                 break;
             case "GROUP BY":
                 while (isList()) {
                     // Consume each item in the list following the keyword
                     out.children.push(descendExpression());
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
                 break;
             case "WHERE":
@@ -236,6 +268,10 @@ function parseFromTokenList (tokenList, source="") {
                         while(isList()) {
                             const id = expect(TOKEN_TYPES.NAME).value;
                             child.headers.push(id);
+
+                            if (!suspect(TOKEN_TYPES.COMMA)) {
+                                break;
+                            }
                         }
 
                         expect(TOKEN_TYPES.BRACKET, ")");
@@ -247,6 +283,10 @@ function parseFromTokenList (tokenList, source="") {
                     child.children = [ descendStatement() ];
 
                     expect(TOKEN_TYPES.BRACKET, ")");
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
                 break;
             case "WINDOW":
@@ -264,6 +304,10 @@ function parseFromTokenList (tokenList, source="") {
                     expect(TOKEN_TYPES.BRACKET, ")");
 
                     out.children.push(child);
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
                 break;
             case "VALUES":
@@ -274,8 +318,16 @@ function parseFromTokenList (tokenList, source="") {
                     expect(TOKEN_TYPES.BRACKET, "(");
                     while (isList()) {
                         child.children.push(descend());
+
+                        if (!suspect(TOKEN_TYPES.COMMA)) {
+                            break;
+                        }
                     }
                     expect(TOKEN_TYPES.BRACKET, ")");
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
                 break;
             case "LIMIT":
@@ -439,6 +491,10 @@ function parseFromTokenList (tokenList, source="") {
 
                 while(isList()) {
                     out.children.push(descendExpression());
+
+                    if (!suspect(TOKEN_TYPES.COMMA)) {
+                        break;
+                    }
                 }
 
                 expect(TOKEN_TYPES.BRACKET, ")");
@@ -460,8 +516,19 @@ function parseFromTokenList (tokenList, source="") {
         // When we're finished looping we can extract the child
         const dummyNode = { type: NODE_TYPES.UNKNOWN, id: null, children: [ node ] };
 
-        while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
-            appendChild(dummyNode, descend());
+        while (i < tokenList.length && (peek(TOKEN_TYPES.OPERATOR) || peek(TOKEN_TYPES.NUMBER))) {
+            let child;
+
+            if (peek(TOKEN_TYPES.NUMBER) && +(current().value) < 0) {
+                // '-' was interpreted as unary minus rather than subtract operator
+                const val = current().value;
+                current().value = String(+val * -1);
+                child = { type: NODE_TYPES.OPERATOR, id: '-', children: [ null, descend() ], source: val };
+            } else {
+                child = descend();
+            }
+
+            appendChild(dummyNode, child);
         }
 
         // Haha I've just invented the double pointer in javascript

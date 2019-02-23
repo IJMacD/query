@@ -20,6 +20,17 @@ const TOKEN_TYPES = {
     OPERATOR: 7,
 };
 
+const DEBUG_TOKEN_TYPES = [
+    "UNKNOWN",
+    "BRACKET",
+    "COMMA",
+    "KEYWORD",
+    "NAME",
+    "STRING",
+    "NUMBER",
+    "OPERATOR",
+];
+
  /**
   * @typedef Token
   * @prop {number} type
@@ -115,4 +126,5 @@ module.exports = {
     },
 
     TOKEN_TYPES,
+    DEBUG_TOKEN_TYPES,
 }

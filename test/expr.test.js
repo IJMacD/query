@@ -76,6 +76,12 @@ describe("Maths", () => {
         });
     });
 
+    test("Compact Subtraction", () => {
+        return Query("SELECT 21-15").then(r => {
+            expect(r[1][0]).toBe(6);
+        });
+    });
+
     test("Multiplication", () => {
         return Query("SELECT 14 * 28").then(r => {
             expect(r[1][0]).toBe(14 * 28);

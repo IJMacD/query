@@ -255,6 +255,28 @@ describe("Logic Operators", () => {
             expect(r[1][0]).toBe(true);
         });
     });
+
+    test("IN", () => {
+        return Promise.all([
+            Query("SELECT 'b' IN ('a','b','c')").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            Query("SELECT 'd' IN ('a','b','c')").then(r => {
+                expect(r[1][0]).toBe(false);
+            })
+        ]);
+    });
+
+    test("NOT IN", () => {
+        return Promise.all([
+            Query("SELECT 'b' NOT IN ('a','b','c')").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+            Query("SELECT 'd' NOT IN ('a','b','c')").then(r => {
+                expect(r[1][0]).toBe(true);
+            })
+        ]);
+    });
 });
 
 describe("Operator Precedence", () => {

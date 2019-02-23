@@ -301,7 +301,7 @@ function parseFromTokenList (tokenList, source="") {
      */
     function descend () {
         /** @type {Node} */
-        let out = {};
+        let out;
         const t = current();
         let next_token;
 
@@ -312,9 +312,7 @@ function parseFromTokenList (tokenList, source="") {
                 if (suspect(TOKEN_TYPES.BRACKET, "(")) {
                     // Open bracket signifies a function call
 
-                    out.type = NODE_TYPES.FUNCTION_CALL;
-                    out.id = t.value;
-                    out.children = [];
+                    out = { type: NODE_TYPES.FUNCTION_CALL, id: t.value, children: [] };
 
                     if (suspect(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
                         out.distinct = true;
@@ -433,6 +431,17 @@ function parseFromTokenList (tokenList, source="") {
 
                 next_token = current();
                 out.source = source.substring(t.start, next_token && next_token.start).trim();
+
+                return out;
+            case TOKEN_TYPES.BRACKET:
+                next();
+                out = { type: NODE_TYPES.LIST, id: null, children: [] };
+
+                while(isList()) {
+                    out.children.push(descendExpression());
+                }
+
+                expect(TOKEN_TYPES.BRACKET, ")");
 
                 return out;
             case TOKEN_TYPES.COMMA:

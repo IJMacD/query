@@ -48,146 +48,158 @@ function getEvaluator ({ resolveValue = () => {}, userFunctions = {}, windows = 
     * @param {ResultRow[]} [rows]
     */
     function evaluator(row, node, rows=null) {
-        if (node.type === NODE_TYPES.FUNCTION_CALL) {
-            const fnName = node.id;
+        switch (node.type) {
+            case NODE_TYPES.FUNCTION_CALL: {
+                const fnName = node.id;
 
-            // First check if we're evaluating a window function
-            if (node.window) {
-                let group;
-                const window = typeof node.window === "string" ? windows[node.window] : node.window;
+                // First check if we're evaluating a window function
+                if (node.window) {
+                    let group;
+                    const window = typeof node.window === "string" ? windows[node.window] : node.window;
 
-                if (window.partition) {
-                    const partitionVal = evaluator(row, window.partition, rows);
-                    group = rows.filter(r => OPERATORS['='](evaluator(r, window.partition, rows), partitionVal));
-                } else {
-                    group = [ ...rows ];
-                }
-
-                if (window.order) {
-                    group.sort(rowSorter(evaluator, window.order));
-                }
-
-                const index = group.indexOf(row);
-
-                if (window.frameUnit) {
-
-                    if (!window.order) {
-                        throw Error("Frames can only be specified with an ORDER BY clause");
+                    if (window.partition) {
+                        const partitionVal = evaluator(row, window.partition, rows);
+                        group = rows.filter(r => OPERATORS['='](evaluator(r, window.partition, rows), partitionVal));
+                    } else {
+                        group = [ ...rows ];
                     }
 
-                    if (window.frameUnit === "rows") {
-                        const start = Math.max(index - window.preceding, 0);
-                        group = group.slice(start, index + window.following + 1);
+                    if (window.order) {
+                        group.sort(rowSorter(evaluator, window.order));
+                    }
 
-                    } else if (window.frameUnit === "range") {
-                        const currentVal = evaluator(row, window.order, rows);
-                        const min = currentVal - window.preceding;
-                        const max = currentVal + window.following;
+                    const index = group.indexOf(row);
 
-                        group = group.filter(r => {
-                            const v = evaluator(r, window.order, rows);
-                            return min <= v && v <= max;
-                        });
+                    if (window.frameUnit) {
+
+                        if (!window.order) {
+                            throw Error("Frames can only be specified with an ORDER BY clause");
+                        }
+
+                        if (window.frameUnit === "rows") {
+                            const start = Math.max(index - window.preceding, 0);
+                            group = group.slice(start, index + window.following + 1);
+
+                        } else if (window.frameUnit === "range") {
+                            const currentVal = evaluator(row, window.order, rows);
+                            const min = currentVal - window.preceding;
+                            const max = currentVal + window.following;
+
+                            group = group.filter(r => {
+                                const v = evaluator(r, window.order, rows);
+                                return min <= v && v <= max;
+                            });
+                        }
+                    }
+
+                    if (node.id in WINDOW_FUNCTIONS) {
+                        if (!window.order) {
+                            throw Error("Window functions require ORDER BY in OVER clause");
+                        }
+
+                        const fn = WINDOW_FUNCTIONS[node.id];
+                        const orderVals = group.map(getRowEvaluator(evaluator, window.order, rows));
+                        return fn(index, orderVals, group, evaluator, ...node.children);
+                    }
+
+                    if (node.id in AGGREGATE_FUNCTIONS) {
+                        if (node.children.length === 0) {
+                            throw new Error(`Function ${node.id} requires at least one paramater.`);
+                        }
+
+                        const fn = AGGREGATE_FUNCTIONS[node.id];
+
+                        // Aggregate values could have '*' as a child (paramater) node
+                        // so they get run through a special function first
+                        return fn(aggregateValues(evaluator, group, node.children[0], node.distinct));
+                    }
+
+                    throw Error(`${node.id} is not a window function`);
+                }
+
+                if (fnName in AGGREGATE_FUNCTIONS) {
+                    if (row['group']) {
+                        // Aggregate functions are evaluated after grouping.
+                        //
+                        // Normally the main query will fill in the aggregates
+                        // in a separate step rather than here.
+                        //
+                        // There is a special case meaning we end up here instead
+                        // though, namely a brand new aggregate function named
+                        // in a HAVING clase. It gets evaluated here.
+                        const fn = AGGREGATE_FUNCTIONS[fnName];
+                        return fn(aggregateValues(evaluator, row['group'], node.children[0]));
+                    }
+                    return;
+                }
+
+                const fn = userFunctions[fnName] || VALUE_FUNCTIONS[fnName];
+
+                if (!fn) {
+                    throw new Error(`Tried to call a non-existant function (${fnName})`);
+                }
+
+                const args = node.children.map(c => evaluator(row, c, rows));
+
+                try {
+                    return fn(...args);
+                } catch (e) {
+                    return null;
+                }
+
+            }
+            case NODE_TYPES.SYMBOL: {
+                const val = resolveValue(row, String(node.id), rows);
+
+                if (typeof val === "undefined") {
+                    // We must throw a SymbolError so that e.g. filterRows() can catch it
+                    throw new SymbolError("Unable to resolve symbol: " + node.id);
+                }
+
+                return val;
+            }
+            case NODE_TYPES.STRING: {
+                // We need to check for date here and convert if necessary
+                if (/^\d{4}-\d{2}-\d{2}/.test(String(node.id))) {
+                    const d = new Date(node.id);
+                    if (isValidDate(d)) {
+                        return d;
                     }
                 }
 
-                if (node.id in WINDOW_FUNCTIONS) {
-                    if (!window.order) {
-                        throw Error("Window functions require ORDER BY in OVER clause");
+                return String(node.id);
+            }
+            case NODE_TYPES.NUMBER: {
+                return +node.id;
+            }
+            case NODE_TYPES.KEYWORD: {
+                // Pass keywords like YEAR, SECOND, INT, FLOAT as strings
+                return String(node.id);
+            }
+            case NODE_TYPES.OPERATOR: {
+                const op = OPERATORS[node.id];
+
+                if (!op) {
+                    throw new Error(`Unsupported operator '${node.id}'`);
+                }
+
+                return op(...node.children.map(c => evaluator(row, c, rows)));
+            }
+            case NODE_TYPES.CLAUSE: {
+                if (node.id === "WHERE" || node.id === "ON") {
+                    if (node.children.length > 0) {
+                        return Boolean(evaluator(row, node.children[0], rows));
+                    } else {
+                        throw new Error(`Empty predicate clause: ${node.id}`);
                     }
-
-                    const fn = WINDOW_FUNCTIONS[node.id];
-                    const orderVals = group.map(getRowEvaluator(evaluator, window.order, rows));
-                    return fn(index, orderVals, group, evaluator, ...node.children);
-                }
-
-                if (node.id in AGGREGATE_FUNCTIONS) {
-                    if (node.children.length === 0) {
-                        throw new Error(`Function ${node.id} requires at least one paramater.`);
-                    }
-
-                    const fn = AGGREGATE_FUNCTIONS[node.id];
-
-                    // Aggregate values could have '*' as a child (paramater) node
-                    // so they get run through a special function first
-                    return fn(aggregateValues(evaluator, group, node.children[0], node.distinct));
-                }
-
-                throw Error(`${node.id} is not a window function`);
-            }
-
-            if (fnName in AGGREGATE_FUNCTIONS) {
-                if (row['group']) {
-                    // Aggregate functions are evaluated after grouping.
-                    //
-                    // Normally the main query will fill in the aggregates
-                    // in a separate step rather than here.
-                    //
-                    // There is a special case meaning we end up here instead
-                    // though, namely a brand new aggregate function named
-                    // in a HAVING clase. It gets evaluated here.
-                    const fn = AGGREGATE_FUNCTIONS[fnName];
-                    return fn(aggregateValues(evaluator, row['group'], node.children[0]));
-                }
-                return;
-            }
-
-            const fn = userFunctions[fnName] || VALUE_FUNCTIONS[fnName];
-
-            if (!fn) {
-                throw new Error(`Tried to call a non-existant function (${fnName})`);
-            }
-
-            const args = node.children.map(c => evaluator(row, c, rows));
-
-            try {
-                return fn(...args);
-            } catch (e) {
-                return null;
-            }
-
-        } else if (node.type === NODE_TYPES.SYMBOL) {
-            const val = resolveValue(row, String(node.id), rows);
-
-            if (typeof val === "undefined") {
-                // We must throw a SymbolError so that e.g. filterRows() can catch it
-                throw new SymbolError("Unable to resolve symbol: " + node.id);
-            }
-
-            return val;
-        } else if (node.type === NODE_TYPES.STRING) {
-            // We need to check for date here and convert if necessary
-            if (/^\d{4}-\d{2}-\d{2}/.test(String(node.id))) {
-                const d = new Date(node.id);
-                if (isValidDate(d)) {
-                    return d;
                 }
             }
-
-            return String(node.id);
-        } else if (node.type === NODE_TYPES.NUMBER) {
-            return +node.id;
-        } else if (node.type === NODE_TYPES.KEYWORD) {
-            // Pass keywords like YEAR, SECOND, INT, FLOAT as strings
-            return String(node.id);
-        } else if (node.type === NODE_TYPES.OPERATOR) {
-            const op = OPERATORS[node.id];
-
-            if (!op) {
-                throw new Error(`Unsupported operator '${node.id}'`);
+            case NODE_TYPES.LIST: {
+                return node.children.map(c => evaluator(row, c, rows));
             }
-
-            return op(...node.children.map(c => evaluator(row, c, rows)));
-        } else if (node.type === NODE_TYPES.CLAUSE
-            && (node.id === "WHERE" || node.id === "ON")
-        ) {
-            if (node.children.length > 0) {
-                return Boolean(evaluator(row, node.children[0], rows));
-            } else {
-                throw new Error(`Empty predicate clause: ${node.id}`);
+            default: {
+                throw new Error(`Can't execute node type ${node.type}: ${node.id}`);
             }
-        } else {
-            throw new Error(`Can't execute node type ${node.type}: ${node.id}`);
         }
     }
 }

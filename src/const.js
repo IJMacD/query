@@ -122,6 +122,8 @@ const OPERATORS = {
     'NOT REGEXP': (a,b) => !OPERATORS['REGEXP'](a, b),
     'AND': (a,b) => a && b,
     'OR': (a,b) => a || b,
+    'IN': (v, a) => a.includes(v),
+    'NOT IN': (v, a) => !OPERATORS['IN'](v, a),
 };
 
 const TABLE_VALUED_FUNCTIONS = {

@@ -110,7 +110,7 @@ function parseFromTokenList (tokenList, source="") {
 
     function isList () {
         suspect(TOKEN_TYPES.COMMA);
-        return (!end() && !peek(TOKEN_TYPES.KEYWORD) && !peek(TOKEN_TYPES.BRACKET));
+        return (!end() && !peek(TOKEN_TYPES.KEYWORD) && !peek(TOKEN_TYPES.BRACKET, ")"));
     }
 
     function descendStatement () {
@@ -141,6 +141,20 @@ function parseFromTokenList (tokenList, source="") {
         switch (t.value) {
             case "FROM":
                 while (isList()) {
+                    // First check for a sub-query
+                    if (suspect(TOKEN_TYPES.BRACKET, "(")) {
+                        const child = descendStatement();
+                        out.children.push(child);
+
+                        expect(TOKEN_TYPES.BRACKET, ")");
+
+                        if (suspect(TOKEN_TYPES.KEYWORD, "AS")) {
+                            child.id = expect(TOKEN_TYPES.NAME).value
+                        }
+
+                        continue;
+                    }
+
                     // It can't quite be an expression but it can be a function
                     // call i.e. RANGE()
                     const child = descend();
@@ -277,7 +291,6 @@ function parseFromTokenList (tokenList, source="") {
         let next_token;
 
         switch (t.type) {
-            case TOKEN_TYPES.KEYWORD:
             case TOKEN_TYPES.NAME:
                 next();
 

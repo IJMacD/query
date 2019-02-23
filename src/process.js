@@ -9,8 +9,10 @@ module.exports = {
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ResultRow} ResultRow
  * @typedef {import('../types').ParsedTable} ParsedTable
+ * @typedef {import('../types').QueryContext} QueryContext
  */
 
+const Query = require('./query');
 const { NODE_TYPES } = require('./parser');
 const { informationSchema } = require('./information');
 const { TABLE_VALUED_FUNCTIONS } = require('./const');
@@ -21,8 +23,12 @@ const { getTableAliasMap, PendingValue } = require('./resolve');
 const { scalar, queryResultToObjectArray } = require('./util');
 const { evaluateConstantExpression, SymbolError } = require('./evaluate');
 
+/**
+ *
+ * @param {QueryContext} ctx
+ */
 async function getRows(ctx) {
-    const { parsedTables, callbacks, evaluate, resolveValue, parsedWhere } = ctx;
+    const { parsedTables, options: { callbacks }, evaluate, resolveValue, parsedWhere } = ctx;
     let rows;
 
     for (let table of parsedTables) {
@@ -177,12 +183,17 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
 }
 
 /**
- * @param {any} context
+ * @param {QueryContext} context
  * @param {ParsedTable} table
  * @returns {Promise<any[]>}
  */
 async function getPrimaryResults(context, table) {
-    const { CTEs, views, callbacks, findWhere, options, Query } = context;
+    const { subqueries, CTEs, views, findWhere, options, options: { callbacks } } = context;
+
+    if (table.name in subqueries) {
+        return subqueries[table.name];
+    }
+
     if (table.name in CTEs) {
         return CTEs[table.name];
     }
@@ -193,7 +204,7 @@ async function getPrimaryResults(context, table) {
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
     if (infoMatch) {
-        return await informationSchema({ callbacks, findWhere, options, views, Query }, infoMatch[1]);
+        return await informationSchema({ findWhere, options, views }, infoMatch[1]);
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {

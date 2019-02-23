@@ -42,6 +42,7 @@ export declare interface QueryContext {
   groupBy: Node[];
   windows: { [name: string]: WindwSpec };
 
+  subqueries: { [name: string]: any[] };
   CTEs: { [name: string]: any[] };
   views: { [name: string]: string };
   userFunctions: { [name: string]: () => any }

@@ -1,7 +1,8 @@
 
 module.exports = {
-  runQueries,
-  getCTEsMap,
+    runQueries,
+    getSubqueries,
+    getCTEsMap,
 }
 
 const Query = require('./query');
@@ -19,7 +20,32 @@ const { queryResultToObjectArray } = require('./util');
  * @returns {Promise<any[][][]>}
  */
 function runQueries (queries, options) {
-  return Promise.all(queries.map(q => Query(q, options)));
+    return Promise.all(queries.map(q => Query(q, options)));
+}
+
+/**
+ *
+ * @param {Node[]} nodes
+ */
+async function getSubqueries (evaluateQuery, nodes, options) {
+    /** @type {{ [name: string]: any[] }} */
+    const out = {};
+
+    let i = 1;
+
+    for (const node of nodes) {
+        if (node.type === NODE_TYPES.STATEMENT) {
+            const name = node.id || `SUBQUERY_${i++}`;
+
+            out[name] = queryResultToObjectArray(await evaluateQuery(node, options));
+
+            node.id = name;
+            node.type = NODE_TYPES.SYMBOL;
+            node.children.length = 0;
+        }
+    }
+
+    return out;
 }
 
 /**
@@ -27,16 +53,16 @@ function runQueries (queries, options) {
  * @param {Node[]} nodes
  */
 async function getCTEsMap (evaluateQuery, nodes, options) {
-  /** @type {{ [name: string]: any[] }} */
-  const out = {};
+    /** @type {{ [name: string]: any[] }} */
+    const out = {};
 
-  for (const node of nodes) {
-      if (node.type !== NODE_TYPES.SYMBOL) {
-          throw TypeError(`getCTEsMap: node isn't a symbol`);
-      }
+    for (const node of nodes) {
+        if (node.type !== NODE_TYPES.SYMBOL) {
+            throw TypeError(`getCTEsMap: node isn't a symbol`);
+        }
 
-      out[node.id] = queryResultToObjectArray(await evaluateQuery(node.children[0], options), node.headers);
-  }
+        out[node.id] = queryResultToObjectArray(await evaluateQuery(node.children[0], options), node.headers);
+    }
 
-  return out;
+    return out;
 }

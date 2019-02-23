@@ -13,7 +13,7 @@ const { sortRows } = require('./sort');
 const { explain } = require('./explain');
 const persist = require('./persist');
 const { intersectResults, exceptResults, unionResults, unionAllResults, distinctResults } = require('./compound');
-const { runQueries, getCTEsMap } = require('./subquery');
+const { runQueries, getSubqueries, getCTEsMap } = require('./subquery');
 const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('./prepare');
 
 /**
@@ -151,7 +151,7 @@ async function simpleQuery (query, options) {
  * @param {*} options
  */
 async function evaluateQuery (statement, options) {
-    const { callbacks, userFunctions = {} } = options;
+    const { userFunctions = {} } = options;
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
@@ -161,6 +161,7 @@ async function evaluateQuery (statement, options) {
     const select = query.select;
     const rawCols = select;
 
+    const subqueries = await getSubqueries(evaluateQuery, query.from, options);
     /** @type {ParsedTable[]} */
     const tables = nodesToTables(query.from);
     /** @type {boolean} */
@@ -197,6 +198,7 @@ async function evaluateQuery (statement, options) {
         getRowData,
         setRowData,
 
+        subqueries,
         CTEs,
         views,
         userFunctions,
@@ -217,7 +219,7 @@ async function evaluateQuery (statement, options) {
         // so that we can return constants etc.
         rows = [[]];
     } else {
-        rows = await getRows({ ...self, evaluate, callbacks });
+        rows = await getRows({ ...self, evaluate });
     }
 
     /*************

@@ -9,7 +9,9 @@ module.exports = {
   informationSchema,
 };
 
-async function informationSchema({ callbacks, findWhere, options, views, Query }, schema) {
+const Query = require('./query');
+
+async function informationSchema({ findWhere, options, views, options: { callbacks } }, schema) {
     switch (schema) {
         case "tables": {
             const results = [];

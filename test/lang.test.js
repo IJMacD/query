@@ -445,6 +445,51 @@ describe("TRANSPOSE", () => {
     });
 });
 
+describe("Subqueries", () => {
+    test("Simple", () => {
+        return demoQuery("FROM (FROM Test WHERE n > 4)").then (r => {
+            expect(r.length - 1).toBe(5);
+            expect(r[0]).toHaveLength(3);
+            expect(r[1][0]).toBe(5);
+            expect(r[2][0]).toBe(6);
+            expect(r[3][0]).toBe(7);
+            expect(r[4][0]).toBe(8);
+            expect(r[5][0]).toBe(9);
+        });
+    });
+
+    test("With Alias", () => {
+        return demoQuery("FROM (FROM Test WHERE n > 6) AS alias SELECT alias.n2").then (r => {
+            expect(r.length - 1).toBe(3);
+            expect(r[0]).toHaveLength(1);
+            expect(r[1][0]).toBe(3);
+            expect(r[2][0]).toBe(4);
+            expect(r[3][0]).toBe(4);
+        });
+    });
+
+    test("Joined to normal table", () => {
+        return demoQuery("FROM Test_2, (FROM Test WHERE n2 = 2)").then (r => {
+            expect(r.length - 1).toBe(20);
+            expect(r[0]).toHaveLength(6);
+
+            expect(r[1][0]).toBe(true);
+            expect(r[1][1]).toBe('f');
+            expect(r[1][2]).toBeInstanceOf(Date);
+            expect(r[1][3]).toBe(4);
+            expect(r[1][4]).toBe(2);
+            expect(r[1][5]).toBe(1);
+
+            expect(r[2][0]).toBe(true);
+            expect(r[2][1]).toBe('f');
+            expect(r[2][2]).toBeInstanceOf(Date);
+            expect(r[2][3]).toBe(5);
+            expect(r[2][4]).toBe(2);
+            expect(r[2][5]).toBe(1);
+        });
+    });
+});
+
 describe("Common Table Expression", () => {
     test("Single", () => {
         return demoQuery("WITH foo AS (FROM Test WHERE n > 4) FROM foo ORDER BY n DESC").then (r => {

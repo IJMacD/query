@@ -54,28 +54,28 @@ function nodeToQueryObject (node) {
 * @returns {ParsedTable[]}
 */
 function nodesToTables (nodes) {
-  return nodes.map(node => {
+    return nodes.map(node => {
 
-      if (node.type !== NODE_TYPES.SYMBOL &&
-          node.type !== NODE_TYPES.FUNCTION_CALL)
-      {
-      throw new Error(`Node type ${node.type} cannot be a table`);
-      }
+        if (node.type !== NODE_TYPES.SYMBOL &&
+            node.type !== NODE_TYPES.FUNCTION_CALL)
+        {
+            throw new Error(`Node type ${node.type} cannot be a table`);
+        }
 
-      const name = String(node.id);
-      const using = name; // ast.using
+        const name = String(node.id);
+        const using = name; // ast.using
 
-      return {
-          name,
-          alias: node.alias,
-          join: using,
-          predicate: node.predicate,
-          inner: node.inner,
-          params: node.children,
-          explain: "",
-          rowCount: 0
-      };
-  });
+        return {
+            name,
+            alias: node.alias,
+            join: using,
+            predicate: node.predicate,
+            inner: node.inner,
+            params: node.children,
+            explain: "",
+            rowCount: 0
+        };
+    });
 }
 
 /**

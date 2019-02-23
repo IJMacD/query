@@ -524,8 +524,8 @@ describe("Common Table Expression", () => {
         });
     });
 
-    test("Multiple", () => {
-        return demoQuery("WITH foo AS (FROM Test WHERE n > 4), bar AS (FROM Test WHERE n < 6) FROM foo, bar ORDER BY n DESC").then (r => {
+    test("Multiple CTEs", () => {
+        return demoQuery("WITH foo AS (FROM Test WHERE n > 4), bar AS (FROM Test WHERE n < 6) FROM foo, bar ORDER BY foo.n DESC, bar.n DESC").then (r => {
             expect(r.length - 1).toBe(30);
             expect(r[1][0]).toBe(9);
             expect(r[1][1]).toBe(4);

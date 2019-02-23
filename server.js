@@ -17,9 +17,19 @@ const args = rest.filter(a => a[0] === "-");
 
 const QueryExecutor = new Query();
 
+let providers = 0;
+
+if (global['QueryProvider']) {
+    QueryExecutor.addProvider(global['QueryProvider']);
+    providers++;
+}
+
 if (args.includes("--placeholder")) {
     QueryExecutor.addProvider("Placeholder", placeholderProvider);
-} else {
+    providers++;
+}
+
+if (providers === 0 || args.includes("--demo")) {
     QueryExecutor.addProvider("Demo", demoProvider);
 }
 

@@ -9,7 +9,6 @@ const demoProvider = require('../src/providers/demo');
 const placeholderProvider = require('../src/providers/placeholder');
 const Formatter = require('../src/formatter');
 
-
 run();
 
 async function run () {
@@ -20,9 +19,19 @@ async function run () {
 
     const QueryExecutor = new Query();
 
+    let providers = 0;
+
+    if (global['QueryProvider']) {
+        QueryExecutor.addProvider(global['QueryProvider']);
+        providers++;
+    }
+
     if (opts.includes("--placeholder")) {
         QueryExecutor.addProvider("Placeholder", placeholderProvider);
-    } else {
+        providers++;
+    }
+
+    if (providers === 0 || opts.includes("--demo")) {
         QueryExecutor.addProvider("Demo", demoProvider);
     }
 

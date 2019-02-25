@@ -13,11 +13,11 @@ module.exports = {
 /**
  * Supposed to be an efficient sorter which aims to avoid evaluating
  * any more than necessary by caching results and bailing as soon as possible
- * @param {any} context
+ * @param {any} evaluate
  * @param {ResultRow[]} rows
  * @param {Node[]} orderBy
  */
-function sortRows({ evaluate, colAlias }, rows, orderBy) {
+function sortRows(evaluate, rows, orderBy) {
     // Pre-create ordering value array for each row
     rows.forEach(row => {
         row['orderBy'] = [];
@@ -27,10 +27,10 @@ function sortRows({ evaluate, colAlias }, rows, orderBy) {
         for (let depth = 0; depth < orderBy.length; depth++) {
             const orderNode = orderBy[depth];
 
-            const valA = getOrderingValue({ evaluate, colAlias }, a, orderNode, depth);
-            const valB = getOrderingValue({ evaluate, colAlias }, b, orderNode, depth);
+            const valA = getOrderingValue(evaluate, a, orderNode, depth);
+            const valB = getOrderingValue(evaluate, b, orderNode, depth);
 
-            const sort = comparator(valA, valB, orderNode.desc);
+            const sort = comparator(valA, valB) * (orderNode.desc ? -1 : 1);
 
             if (sort !== 0) {
                 return sort;
@@ -44,13 +44,13 @@ function sortRows({ evaluate, colAlias }, rows, orderBy) {
 }
 
 /**
- * @param {any} context
+ * @param {any} evaluate
  * @param {any[]} row
  * @param {Node} parsedOrder
  * @param {ResultRow[]} [rows]
  * @param {number} depth
  */
-function getOrderingValue ({ evaluate, colAlias }, row, parsedOrder, depth, rows=null) {
+function getOrderingValue (evaluate, row, parsedOrder, depth, rows=null) {
     let va = row['orderBy'][depth];
 
     // The first time this row is visited (at this depth) we'll
@@ -58,12 +58,11 @@ function getOrderingValue ({ evaluate, colAlias }, row, parsedOrder, depth, rows
     if (typeof va === "undefined") {
         let v;
 
+        // If we have a literal number it means we should
+        // sort by nth column
         if (parsedOrder.type === NODE_TYPES.NUMBER) {
             // Column numbers are 1-indexed
             v = row[+parsedOrder.id - 1];
-        }
-        else if (parsedOrder.type === NODE_TYPES.SYMBOL && parsedOrder.id in colAlias) {
-            v = row[colAlias[parsedOrder.id]];
         }
         else {
             v = evaluate(row, parsedOrder, rows);
@@ -72,9 +71,6 @@ function getOrderingValue ({ evaluate, colAlias }, row, parsedOrder, depth, rows
         if (typeof v === "undefined") {
             throw new Error("Order by unknown column: " + parsedOrder.source);
         }
-
-        // Try to coerce into number if possible
-        v = isNaN(+v) ? v : +v;
 
         // Set value to save resolution next time
         row['orderBy'][depth] = v;

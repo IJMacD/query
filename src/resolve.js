@@ -14,6 +14,7 @@ module.exports = {
 const { getRowData } = require('./joins');
 
 /**
+ * @typedef {import('../types')} Query
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ResultRow} ResultRow
  * @typedef {import('../types').ParsedTable} ParsedTable
@@ -69,12 +70,14 @@ function resolveConstant (str) {
 
 /**
  * Resolve a col into a concrete value (constant or from object)
- * @param {any} context
+ * @param {Query} query
  * @param {ResultRow} row
  * @param {string} col
  * @param {ResultRow[]} [rows]
  */
-function valueResolver ({ evaluate, tables, colAlias, cols }, row, col, rows=null) {
+function valueResolver (query, row, col, rows=null) {
+    const { tables, colAlias, cols } = query.context;
+
     // Check for constant values first
     const constant = resolveConstant(col);
 
@@ -97,7 +100,7 @@ function valueResolver ({ evaluate, tables, colAlias, cols }, row, col, rows=nul
         // Let's see if we can be helpful and fill it in now.
         if (typeof row[i] === "undefined") {
             row[i] = PendingValue;
-            row[i] = evaluate(row, cols[i], rows);
+            row[i] = query.evaluate(row, cols[i], rows);
         }
 
         if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {

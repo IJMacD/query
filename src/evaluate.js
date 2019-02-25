@@ -238,20 +238,28 @@ function evaluateConstantExpression(node) {
  * @returns {(a: ResultRow, b: ResultRow) => number}
  */
 function rowSorter(evaluator, order, rows=null) {
-    return (ra, rb) => comparator(evaluator(ra, order, rows), evaluator(rb, order, rows), order.desc);
+    return (ra, rb) => comparator(evaluator(ra, order, rows), evaluator(rb, order, rows)) * (order.desc ? -1 : 1);
 }
 /**
  * Compares two values of the same type
  * @param {any} a
  * @param {any} b
- * @param {boolean} desc
  */
-function comparator (a, b, desc) {
-    let sort = (Number.isFinite(a) && Number.isFinite(b)) ?
-        (a - b) :
-        String(a).localeCompare(b);
+function comparator (a, b) {
+    if (a instanceof Date) {
+        a = +a;
+    }
 
-    return sort * (desc ? -1 : 1);
+    if (b instanceof Date) {
+        b = +b;
+    }
+
+    // Coerce into numbers if we can
+    if (isFinite(a) && isFinite(b)) {
+        return +a - +b;
+    }
+
+    return String(a).localeCompare(b);
 }
 
 /**

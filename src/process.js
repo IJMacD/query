@@ -26,15 +26,14 @@ const { getEvaluator, evaluateConstantExpression, SymbolError } = require('./eva
 
 /**
  * @param {Query} query
- * @param {QueryContext} ctx
  */
-async function getRows(query, ctx) {
-    const { parsedTables, options: { callbacks }, resolveValue, parsedWhere } = ctx;
+async function getRows(query) {
+    /** @type {QueryContext} */
+    const ctx = query.context;
+    const { tables, options: { callbacks }, where } = ctx;
     let rows;
 
-    const evaluate = getEvaluator(ctx);
-
-    for (let table of parsedTables) {
+    for (let table of tables) {
         const start = Date.now();
         let startupTime;
 
@@ -44,7 +43,11 @@ async function getRows(query, ctx) {
             /** @type {Array} */
             let results;
 
-            results = await getPrimaryResults(query, ctx, table);
+            results = await getPrimaryResults(query, table);
+
+            if (!results) {
+                throw Error("Couldn't get Primary Results");
+            }
 
             startupTime = Date.now() - start;
 
@@ -73,12 +76,12 @@ async function getRows(query, ctx) {
 
             startupTime = Date.now() - start;
 
-            const findResult = findJoin(parsedTables, table, rows);
+            const findResult = findJoin(tables, table, rows);
 
             if (!findResult) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
-                const results = await getPrimaryResults(query, ctx, table);
+                const results = await getPrimaryResults(query, table);
 
                 table.explain += " cross-join";
 
@@ -87,13 +90,13 @@ async function getRows(query, ctx) {
                 }
             }
 
-            rows = applyJoin({ evaluate, resolveValue }, table, rows);
+            rows = applyJoin(query, table, rows);
         }
 
         const initialCount = rows.length;
 
         // Filter out any rows we can early to avoid extra processing
-        rows = filterRows(evaluate, rows, parsedWhere, false);
+        rows = filterRows(query, rows, where, false);
 
         table.rowCount = rows.length;
 
@@ -187,12 +190,12 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
 
 /**
  * @param {Query} query
- * @param {QueryContext} context
  * @param {ParsedTable} table
  * @returns {Promise<any[]>}
  */
-async function getPrimaryResults(query, context, table) {
-    const { subqueries, CTEs, views, findWhere, options, options: { callbacks } } = context;
+async function getPrimaryResults(query, table) {
+    const { views, context } = query;
+    const { subqueries, CTEs, options: { callbacks } } = context;
 
     if (table.name in subqueries) {
         return subqueries[table.name];
@@ -208,7 +211,7 @@ async function getPrimaryResults(query, context, table) {
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
     if (infoMatch) {
-        return await informationSchema({ findWhere, options, views }, infoMatch[1]);
+        return await informationSchema(query, infoMatch[1]);
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {

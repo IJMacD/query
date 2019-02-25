@@ -13,6 +13,7 @@
                 // "--placeholder"
             ],
             "skipFiles": [
+                "node_modules/**/*.js",
                 "<node_internals>/**/*.js"
             ]
         },
@@ -27,6 +28,7 @@
                 // "FROM Posts GROUP BY userId SELECT userId, COUNT(*)"
             ],
             "skipFiles": [
+                "node_modules/**/*.js",
                 "<node_internals>/**/*.js"
             ]
         }

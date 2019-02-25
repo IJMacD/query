@@ -35,16 +35,17 @@ export declare class ResultRow extends Array {
 
 export declare interface QueryContext {
   cols: Node[];
-  parsedTables: ParsedTable[];
-  parsedWhere: Node;
-  parsedHaving: Node;
+  colAlias: { [alias: string]: number };
+
+  tables: ParsedTable[];
+  where: Node;
+  having: Node;
   orderBy: Node[];
   groupBy: Node[];
-  windows: { [name: string]: WindwSpec };
+  windows: { [name: string]: WindowSpec };
 
   subqueries: { [name: string]: any[] };
   CTEs: { [name: string]: any[] };
-  views: { [name: string]: string };
   userFunctions: { [name: string]: () => any }
   options: any;
 
@@ -62,12 +63,18 @@ export declare interface QueryContext {
   setRowData: (row: ResultRow, table: ParsedTable, data: any) => void;
 }
 
+export declare interface Schema {
+  name?: string;
+  callbacks?: QueryCallbacks;
+  userFunctions?: { [name: string]: () => any };
+}
+
 export declare interface QueryCallbacks {
-  primaryTable: (ParsedFrom) => Promise<any[]>|any[];
-  beforeJoin: (ParsedFrom, results: any[]) => Promise;
-  afterJoin: (ParsedFrom, results: any[]) => Promise;
-  getTables: () => string[];
-  getColumns: (tableName: string) => Promise<{ name: string, type: string }[]>;
+  primaryTable?: (ParsedFrom) => Promise<any[]>|any[];
+  beforeJoin?: (ParsedFrom, results: any[]) => Promise;
+  afterJoin?: (ParsedFrom, results: any[]) => Promise;
+  getTables?: () => string[];
+  getColumns?: (tableName: string) => Promise<{ name: string, type: string }[]>|{ name: string, type: string }[];
 }
 
 export declare interface ParsedTable {

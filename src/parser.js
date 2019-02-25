@@ -38,6 +38,22 @@ module.exports = {
 
     NODE_TYPES,
     DEBUG_NODE_TYPES,
+};
+
+class TokenError extends Error {
+    constructor (token, expectedType=undefined, expectedValue=undefined) {
+        const tokenMessage = token ?
+            `Invalid token found: [${DEBUG_TOKEN_TYPES[token.type]} ${token.value}] at ${token.start}` :
+            "Unexpected end of tokens";
+
+        let message = tokenMessage;
+
+        if (typeof expectedType !== "undefined") {
+            message += `\nExpected: [${DEBUG_TOKEN_TYPES[expectedType]}${typeof expectedValue !== "undefined" ? ` '${expectedValue}'`: ""}]`;
+        }
+
+        super(message);
+    }
 }
 
 /**
@@ -97,14 +113,12 @@ function parseFromTokenList (tokenList, source="") {
     function expect (type, value=undefined) {
         const current = tokenList[i];
 
-        const expected = () => `token[${DEBUG_TOKEN_TYPES[type]}${typeof value !== "undefined" ? ` '${value}'`: ""}]`;
-
         if (!current) {
-            throw new Error(`ParseError: Expected ${expected()} but ran out of tokens.`);
+            throw new TokenError(null, type, value);
         }
 
         if ((type !== current.type) && (typeof value === "undefined" || value !== current.value)) {
-            throw new Error(`ParseError: Expected ${expected()} got token[${DEBUG_TOKEN_TYPES[current.type]} '${current.value}']`);
+            throw new TokenError(current, type, value);
         }
 
         return tokenList[i++];
@@ -519,11 +533,19 @@ function parseFromTokenList (tokenList, source="") {
         while (i < tokenList.length && (peek(TOKEN_TYPES.OPERATOR) || peek(TOKEN_TYPES.NUMBER))) {
             let child;
 
-            if (peek(TOKEN_TYPES.NUMBER) && +(current().value) < 0) {
-                // '-' was interpreted as unary minus rather than subtract operator
-                const val = current().value;
-                current().value = String(+val * -1);
-                child = { type: NODE_TYPES.OPERATOR, id: '-', children: [ null, descend() ], source: val };
+            if (peek(TOKEN_TYPES.NUMBER)) {
+                const currToken = current();
+                const currValue = +currToken.value;
+                if(currValue < 0) {
+                    // '-' was interpreted as unary minus rather than subtract operator
+                    const val = current().value;
+                    current().value = String(+val * -1);
+                    child = { type: NODE_TYPES.OPERATOR, id: '-', children: [ null, descend() ], source: val };
+                } else {
+                    // we had a positive number following a node other than an operator
+                    // that's illegal
+                    throw new TokenError(currToken);
+                }
             } else {
                 child = descend();
             }

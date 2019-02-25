@@ -156,12 +156,12 @@ describe("LIMIT", () => {
         });
     });
 
-    // test("Expression LIMIT", () => {
-    //     return demoQuery("FROM Test LIMIT 3 + 3").then(r => {
-    //         // Remember header row
-    //         expect(r.length - 1).toBe(6);
-    //     });
-    // });
+    test("Expression LIMIT", () => {
+        return demoQuery("FROM Test LIMIT 3 + 3").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(6);
+        });
+    });
 });
 
 describe("ORDER BY", () => {
@@ -186,14 +186,14 @@ describe("ORDER BY", () => {
         });
     });
 
-    test("Ascending number", () => {
+    test("Ascending column number", () => {
         return demoQuery("FROM Test_2 ORDER BY 2 ASC").then(r => {
             expect(r[1][1]).toBe('a');
             expect(r[10][1]).toBe('j');
         });
     });
 
-    test("Descending number", () => {
+    test("Descending column number", () => {
         return demoQuery("FROM Test_2 ORDER BY 2 DESC").then(r => {
             expect(r[1][1]).toBe('j');
             expect(r[10][1]).toBe('a');
@@ -226,6 +226,81 @@ describe("ORDER BY", () => {
             expect(r[4][0]).toBe(5);
             expect(r[9][0]).toBe(2);
             expect(r[10][0]).toBe(0);
+        });
+    });
+
+    test("Descending int", () => {
+        return demoQuery("FROM Test ORDER BY n DESC").then(r => {
+            expect(r[1][0]).toBe(9);
+            expect(r[2][0]).toBe(8);
+            expect(r[3][0]).toBe(7);
+            expect(r[4][0]).toBe(6);
+            expect(r[5][0]).toBe(5);
+            expect(r[6][0]).toBe(4);
+            expect(r[7][0]).toBe(3);
+            expect(r[8][0]).toBe(2);
+            expect(r[9][0]).toBe(1);
+            expect(r[10][0]).toBe(0);
+        });
+    });
+
+    test("Ascending string", () => {
+        return demoQuery("FROM Test_2 SELECT c ORDER BY c ASC").then(r => {
+            expect(r[1][0]).toBe('a');
+            expect(r[2][0]).toBe('b');
+            expect(r[3][0]).toBe('c');
+            expect(r[4][0]).toBe('d');
+            expect(r[5][0]).toBe('e');
+            expect(r[6][0]).toBe('f');
+            expect(r[7][0]).toBe('g');
+            expect(r[8][0]).toBe('h');
+            expect(r[9][0]).toBe('i');
+            expect(r[10][0]).toBe('j');
+        });
+    });
+
+    test("Descending string", () => {
+        return demoQuery("FROM Test_2 SELECT c ORDER BY c DESC").then(r => {
+            expect(r[1][0]).toBe('j');
+            expect(r[2][0]).toBe('i');
+            expect(r[3][0]).toBe('h');
+            expect(r[4][0]).toBe('g');
+            expect(r[5][0]).toBe('f');
+            expect(r[6][0]).toBe('e');
+            expect(r[7][0]).toBe('d');
+            expect(r[8][0]).toBe('c');
+            expect(r[9][0]).toBe('b');
+            expect(r[10][0]).toBe('a');
+        });
+    });
+
+    test("Ascending date", () => {
+        return demoQuery("FROM Test_2 SELECT d ORDER BY d ASC").then(r => {
+            expect(r[1][0].getDate()).toBe(21);
+            expect(r[2][0].getDate()).toBe(21);
+            expect(r[3][0].getDate()).toBe(22);
+            expect(r[4][0].getDate()).toBe(22);
+            expect(r[5][0].getDate()).toBe(28);
+            expect(r[6][0].getDate()).toBe(28);
+            expect(r[7][0].getDate()).toBe(21);
+            expect(r[8][0].getDate()).toBe(28);
+            expect(r[9][0].getDate()).toBe(29);
+            expect(r[10][0].getDate()).toBe(29);
+        });
+    });
+
+    test("Descending date", () => {
+        return demoQuery("FROM Test_2 SELECT d ORDER BY d DESC").then(r => {
+            expect(r[1][0].getDate()).toBe(29);
+            expect(r[2][0].getDate()).toBe(29);
+            expect(r[3][0].getDate()).toBe(28);
+            expect(r[4][0].getDate()).toBe(21);
+            expect(r[5][0].getDate()).toBe(28);
+            expect(r[6][0].getDate()).toBe(28);
+            expect(r[7][0].getDate()).toBe(22);
+            expect(r[8][0].getDate()).toBe(22);
+            expect(r[9][0].getDate()).toBe(21);
+            expect(r[10][0].getDate()).toBe(21);
         });
     });
 });

@@ -59,6 +59,7 @@ function primaryTable (table) {
 }
 
 module.exports = {
+    name: "Demo",
     callbacks: {
         primaryTable,
         getTables: () => [ "Test", "Test_2", "Test_3", "Test_4" ],
@@ -69,5 +70,8 @@ module.exports = {
 
             return getColumnTypes(results[0]);
         }
+    },
+    userFunctions: {
+        RAND_CHAR: () => String.fromCharCode(32 + Math.floor(Math.random() * 96))
     }
 };

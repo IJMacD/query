@@ -14,6 +14,7 @@ module.exports = {
 const { resolvePath } = require('./resolve');
 
 /**
+ * @typedef {import('../types')} Query
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ResultRow} ResultRow
  * @typedef {import('../types').ParsedTable} ParsedTable
@@ -103,12 +104,12 @@ function findJoin (tables, table, rows) {
  * Then if the data object is an array, it will split the row as necessary.
  *
  * Finally this function will update ROWIDs
- * @param {any} context
+ * @param {Query} query
  * @param {ParsedTable} table
  * @param {ResultRow[]} rows
  * @returns {ResultRow[]}
  */
-function applyJoin ({ resolveValue, evaluate }, table, rows) {
+function applyJoin (query, table, rows) {
     const newRows = [];
     let one2many = false;
 
@@ -116,7 +117,7 @@ function applyJoin ({ resolveValue, evaluate }, table, rows) {
         // Check to make sure we have data object saved,
         // if not fill in the data object of each row now
         if (typeof getRowData(row, table) === "undefined") {
-            setRowData(row, table, resolveValue(row, table.join));
+            setRowData(row, table, query.resolveValue(row, table.join));
         }
 
         const data = getRowData(row, table);
@@ -169,7 +170,7 @@ function applyJoin ({ resolveValue, evaluate }, table, rows) {
     }
 
     if (table.predicate) {
-        return filterRows(evaluate, newRows, table.predicate);
+        return filterRows(query, newRows, table.predicate);
     }
 
     return newRows;

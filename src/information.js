@@ -15,13 +15,13 @@ module.exports = {
 /** @typedef {import('../types').QueryContext} QueryContext */
 
 /**
- *
+ * @this {Query}
  * @param {QueryContext} context
  * @param {*} schema
  */
 async function informationSchema(context, schema) {
     if (schema in infoTables) {
-        return await infoTables[schema](context);
+        return await infoTables[schema].call(this, context);
     }
 
     throw new Error(`Unkown information_schema view: ${schema}`);
@@ -61,7 +61,7 @@ const infoTables = {
     },
 
     /**
-     *
+     * @this {Query}
      * @param {QueryContext} context
      */
     async columns (context) {
@@ -91,12 +91,8 @@ const infoTables = {
 
         for (const table_name in views) {
             if (!whereName || table_name === whereName) {
-                const query = new Query();
-                query.addProvider(context.schema);
-                // TODO: views need scope
-                // i.e. what providers were available wehn the were created?
-                // should we have a query.clone() etc.?
-                const rows = await query.run(views[table_name]);
+                const rows = await this.run(views[table_name]);
+
                 const headers = rows[0];
                 for (let i = 0; i < headers.length; i++) {
                     results.push({

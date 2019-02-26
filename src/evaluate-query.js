@@ -27,11 +27,11 @@ module.exports = evaluateQuery;
 
 
 /**
+ * @this {QueryContext}
  * @param {Node} statementNode
- * @param {{ [name: string]: Schema }} providers
- * @param {{ [name: string]: string }} views
  */
-async function evaluateQuery (statementNode, providers, views) {
+async function evaluateQuery (statementNode) {
+    const { providers, views } = this;
 
     // TODO: Only uses first provider
     const key = Object.keys(providers)[0];
@@ -52,7 +52,7 @@ async function evaluateQuery (statementNode, providers, views) {
     const select = query.select;
     const rawCols = select;
 
-    const eQ = sN => evaluateQuery(sN, providers, views);
+    const eQ = evaluateQuery.bind(this);
 
     const subqueries = await getSubqueries(eQ, query.from);
     /** @type {ParsedTable[]} */
@@ -64,15 +64,8 @@ async function evaluateQuery (statementNode, providers, views) {
     /** @type {{ [name: string]: WindowSpec }} */
     const windows = query.window ? getWindowsMap(query.window) : {};
 
-    const colNodes = [];
-    const colHeaders = [];
-    /** @type {{ [alias: string]: number }} */
-    const colAlias = {};
-
     /** @type {QueryContext} */
-    const context = getQueryContext({
-        colNodes,
-        colAlias,
+    const context = getQueryContext.call(this, {
         tables,
         query,
         windows,
@@ -98,7 +91,7 @@ async function evaluateQuery (statementNode, providers, views) {
             []
         ];
     } else {
-        rows = await getRows(context);
+        rows = await getRows.call(this, context);
     }
 
     /*************
@@ -115,37 +108,36 @@ async function evaluateQuery (statementNode, providers, views) {
 
     // One last filter, this time strict because there shouldn't be
     // anything slipping through since we have all the data now.
-    rows = filterRows(evaluate, rows, query.where);
+    rows = filterRows(context, rows, query.where);
 
     /******************
      * Columns
      ******************/
-    const colVars = { colNodes, colHeaders, colAlias };
-    processColumns({ tables, colVars }, rawCols, rows);
+    processColumns(context, rawCols, rows);
 
     /*****************
      * Column Values
      *****************/
-    populateValues(evaluate, colNodes, rows);
+    populateValues(context, context.cols, rows);
 
     /*************
      * Grouping
      *************/
     if (query['group by']) {
-        rows = groupRows(evaluate, rows, query['group by']);
+        rows = groupRows(context, rows, query['group by']);
     }
 
     /**********************
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    rows = populateAggregates(evaluate, colNodes, rows, query['group by']);
+    rows = populateAggregates(context, context.cols, rows, query['group by']);
 
     /*******************
      * query.Having Filtering
      ******************/
     if (query.having) {
-        rows = filterRows(evaluate, rows, query.having);
+        rows = filterRows(context, rows, query.having);
     }
 
     /*******************
@@ -172,7 +164,7 @@ async function evaluateQuery (statementNode, providers, views) {
      * Output
      ****************/
 
-    output(colHeaders);
+    output(context.colHeaders);
     rows.forEach(r => output(r.map(scalar)));
     // Print to stderr
     // console.warn(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);

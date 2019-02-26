@@ -171,7 +171,7 @@ function applyJoin (context, table, rows) {
     }
 
     if (table.predicate) {
-        return filterRows(context.evaluate, newRows, table.predicate);
+        return filterRows(context, newRows, table.predicate);
     }
 
     return newRows;

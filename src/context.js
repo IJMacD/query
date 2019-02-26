@@ -21,13 +21,16 @@ module.exports = {
 
 
 /**
- *
+ * @this {Query}
  * @returns {QueryContext}
  */
-function getQueryContext({ colNodes, colAlias, tables, query, windows, subqueries, CTEs, schema, views, providers }) {
+function getQueryContext({ tables, query, windows, subqueries, CTEs, schema, views, providers }) {
     const context = {
-        cols: colNodes,
-        colAlias,
+        query: this,
+
+        cols: [],
+        colHeaders: [],
+        colAlias: {},
         tables,
 
         where: query.where,

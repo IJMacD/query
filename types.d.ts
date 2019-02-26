@@ -34,7 +34,10 @@ export declare class ResultRow extends Array {
 }
 
 export declare interface QueryContext {
+  query: Query;
+
   cols: Node[];
+  colHeaders: string[];
   colAlias: { [alias: string]: number };
 
   tables: ParsedTable[];

@@ -25,10 +25,12 @@ const { scalar, queryResultToObjectArray } = require('./util');
 const { evaluateConstantExpression, SymbolError } = require('./evaluate');
 
 /**
+ * @this {Query}
  * @param {QueryContext} context
  */
 async function getRows(context) {
-    const { tables, schema: { callbacks }, where } = context;
+    const { schema: { callbacks } } = this;
+    const { tables, where } = context;
     let rows;
 
     for (let table of tables) {
@@ -41,7 +43,7 @@ async function getRows(context) {
             /** @type {Array} */
             let results;
 
-            results = await getPrimaryResults(context, table);
+            results = await getPrimaryResults.call(this, context, table);
 
             if (!results) {
                 throw Error("Couldn't get Primary Results");
@@ -79,7 +81,7 @@ async function getRows(context) {
             if (!findResult) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
-                const results = await getPrimaryResults(context, table);
+                const results = await getPrimaryResults.call(this, context, table);
 
                 table.explain += " cross-join";
 
@@ -94,7 +96,7 @@ async function getRows(context) {
         const initialCount = rows.length;
 
         // Filter out any rows we can early to avoid extra processing
-        rows = filterRows(context.evaluate, rows, where, false);
+        rows = filterRows(context, rows, where, false);
 
         table.rowCount = rows.length;
 
@@ -109,10 +111,17 @@ async function getRows(context) {
     return rows;
 }
 
-function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }, cols, rows) {
+/**
+ *
+ * @param {QueryContext} context
+ * @param {ResultRow[]} rows
+ */
+function processColumns (context, rawCols, rows) {
+    const { tables, cols, colHeaders, colAlias } = context;
+
     const tableAlias = getTableAliasMap(tables);
 
-    for (const node of cols) {
+    for (const node of rawCols) {
 
         const nodeId = String(node.id);
 
@@ -120,7 +129,7 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
         if (node.type === NODE_TYPES.SYMBOL && nodeId.endsWith("*")) {
             if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
-                colNodes.push(node);
+                cols.push(node);
                 colHeaders.push(node.id);
                 continue;
             }
@@ -146,7 +155,7 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
 
                     // If we're not the root table, then add placeholder headers
                     if (table.join != "") {
-                        colNodes.push(null);
+                        cols.push(null);
                         colHeaders.push(`${table.alias || table.name}.*`);
                     }
 
@@ -156,7 +165,7 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
                 // only add "primitive" columns
                 let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
-                colNodes.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.join}.${c}` })));
+                cols.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.join}.${c}` })));
 
                 if (tables.length > 1) {
                     newCols = newCols.map(c => `${table.alias || table.name}.${c}`);
@@ -164,7 +173,7 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
                 colHeaders.push(...newCols);
             }
         } else {
-            colNodes.push(node);
+            cols.push(node);
             colHeaders.push(node.alias || node.source);
 
             if (node.alias && typeof colAlias[node.alias] !== "undefined") {
@@ -178,15 +187,10 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
             }
         });
     }
-
-    return {
-        colNodes,
-        colHeaders,
-        colAlias,
-    };
 }
 
 /**
+ * @this {Query}
  * @param {QueryContext} context
  * @param {ParsedTable} table
  * @returns {Promise<any[]>}
@@ -203,16 +207,12 @@ async function getPrimaryResults(context, table) {
     }
 
     if (table.name in views) {
-        // Effectively query.clone() or new Query(oldContext) etc.
-        const query = new Query();
-        query.addProvider(context.schema);
-
-        return queryResultToObjectArray(await query.run(views[table.name]));
+        return queryResultToObjectArray(await this.run(views[table.name]));
     }
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
     if (infoMatch) {
-        return await informationSchema(context, infoMatch[1]);
+        return await informationSchema.call(this, context, infoMatch[1]);
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {
@@ -226,7 +226,13 @@ async function getPrimaryResults(context, table) {
     return await callbacks.primaryTable.call(context, table) || [];
 }
 
-function populateValues (evaluate, cols, rows) {
+/**
+ *
+ * @param {QueryContext} context
+ * @param {Node[]} cols
+ * @param {ResultRow[]} rows
+ */
+function populateValues (context, cols, rows) {
     for(const row of rows) {
         // @ts-ignore
         for(const [i, node] of cols.entries()) {
@@ -251,7 +257,7 @@ function populateValues (evaluate, cols, rows) {
             try {
                 // Use PendingValue flag to avoid infinite recursion
                 row[i] = PendingValue;
-                row[i] = evaluate(row, node, rows);
+                row[i] = context.evaluate(row, node, rows);
             } catch (e) {
                 if (e instanceof SymbolError) {
                     row[i] = null;

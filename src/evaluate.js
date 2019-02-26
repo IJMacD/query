@@ -1,4 +1,5 @@
 const { NODE_TYPES } = require('./parser');
+const evaluateQuery = require('./evaluate-query');
 
 const {
     OPERATORS,
@@ -88,7 +89,7 @@ function evaluate (row, node, rows=null) {
                     }
 
                     const fn = WINDOW_FUNCTIONS[node.id];
-                    const orderVals = group.map(getRowEvaluator(this.evaluate, window.order, rows));
+                    const orderVals = group.map(getRowEvaluator(this, window.order, rows));
                     return fn(index, orderVals, group, this.evaluate, ...node.children);
                 }
 
@@ -101,7 +102,7 @@ function evaluate (row, node, rows=null) {
 
                     // Aggregate values could have '*' as a child (paramater) node
                     // so they get run through a special function first
-                    return fn(aggregateValues(this.evaluate, group, node.children[0], node.distinct));
+                    return fn(aggregateValues(this, group, node.children[0], node.distinct));
                 }
 
                 throw Error(`${node.id} is not a window function`);
@@ -118,7 +119,7 @@ function evaluate (row, node, rows=null) {
                     // though, namely a brand new aggregate function named
                     // in a HAVING clase. It gets evaluated here.
                     const fn = AGGREGATE_FUNCTIONS[fnName];
-                    return fn(aggregateValues(this.evaluate, row['group'], node.children[0]));
+                    return fn(aggregateValues(this, row['group'], node.children[0]));
                 }
                 return;
             }
@@ -196,14 +197,15 @@ function evaluate (row, node, rows=null) {
 /**
  * Creates a row evaluator (suitable for use in .map() or .filter())
  * which turns SymbolErrors into nulls
+ * @param {QueryContext} context
  * @param {Node} node
  * @param {ResultRow[]} rows
  * @returns {(row: ResultRow) => any}
  */
-function getRowEvaluator(evaluator, node, rows=null) {
+function getRowEvaluator(context, node, rows=null) {
     return row => {
         try {
-            return evaluator(row, node, rows);
+            return context.evaluate(row, node, rows);
         }
         catch (e) {
             if (e instanceof SymbolError) {
@@ -254,19 +256,20 @@ function comparator (a, b) {
 
 /**
  * Map rows to values following the rules for aggregate functions.
+ * @param {QueryContext} context
  * @param {ResultRow[]} rows
  * @param {Node} expr
  * @param {boolean} distinct
  * @returns {any[]}
  */
-function aggregateValues (evaluator, rows, expr, distinct = false) {
+function aggregateValues (context, rows, expr, distinct = false) {
   // COUNT(*) includes all rows, NULLS and all
   // we don't need to evaluate anything and can just bail early
   if (expr.id === "*") {
       return rows.map(r => true);
   }
 
-  let values = rows.map(getRowEvaluator(evaluator, expr, rows));
+  let values = rows.map(getRowEvaluator(context, expr, rows));
 
   // All aggregate functions ignore null except COUNT(*)
   // We'll use our convenient 'IS NOT NULL' function to do the

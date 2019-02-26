@@ -16,16 +16,16 @@ module.exports = {
 
 /**
  * Function to filter rows based on WHERE clause
- * @param {(row: ResultRow, node: Node, rows?: ResultRow[]) =>any} evaluate
+ * @param {QueryContext} context
  * @param {ResultRow[]} rows
  * @param {Node} condition
  * @return {ResultRow[]}
  */
-function filterRows (evaluate, rows, condition, strict = true) {
+function filterRows (context, rows, condition, strict = true) {
     if (condition) {
         return rows.filter(r => {
             try {
-                return evaluate(r, condition, rows);
+                return context.evaluate(r, condition, rows);
             } catch (e) {
                 if (e instanceof SymbolError) {
                     // If we got a symbol error it means we don't have enough

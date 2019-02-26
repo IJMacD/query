@@ -51,13 +51,19 @@ querySuggest.addEventListener("click", e => {
     }
 });
 
-if (location.search) {
-    const searchParams = new URLSearchParams(location.search);
-    if (searchParams.has("q")) {
-        input.value = searchParams.get("q");
-        sendQuery();
+window.addEventListener("hashchange", handleHash);
+
+function handleHash () {
+    if (location.hash) {
+        const searchParams = new URLSearchParams(location.hash.substr(1));
+        if (searchParams.has("q")) {
+            input.value = searchParams.get("q");
+            sendQuery();
+        }
     }
 }
+
+handleHash();
 input.focus();
 
 function sendQuery () {
@@ -65,6 +71,8 @@ function sendQuery () {
     output.innerHTML = "";
     input.disabled = true;
     const start = Date.now();
+    location.hash = "#q=" + encodeURIComponent(input.value);
+    document.title = "Query: " + input.value;
     query(input.value)
         .then(data => {
             const duration = (Date.now() - start) / 1000;

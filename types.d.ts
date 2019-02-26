@@ -46,12 +46,17 @@ export declare interface QueryContext {
 
   subqueries: { [name: string]: any[] };
   CTEs: { [name: string]: any[] };
+  views: { [name: string]: string };
+
+  schema: Schema;
+  providers: { [name: string]: Schema };
   userFunctions: { [name: string]: () => any }
-  options: any;
+
+  evaluate: (row: ResultRow, node: Node, rows?: ResultRow[]) => any;
 
   resolveConstant: (path: string) => string|number|boolean|Date;
   resolvePath: (data: any, path: string) => any;
-  resolveValue: (row: ResultRow, col: string) => any;
+  resolveValue: (row: ResultRow, col: string, rows?: ResultRow[]) => any;
 
   findTable: (name: string) => ParsedTable;
   findWhere: (symbol: string, operator?: string|string[]) => string|number;

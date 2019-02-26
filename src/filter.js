@@ -8,6 +8,7 @@ module.exports = {
 
 /**
  * @typedef {import('../types')} Query
+ * @typedef {import('../types').QueryContext} QueryContext
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ResultRow} ResultRow
  * @typedef {import('../types').ParsedTable} ParsedTable
@@ -15,16 +16,16 @@ module.exports = {
 
 /**
  * Function to filter rows based on WHERE clause
- * @param {Query} query
+ * @param {(row: ResultRow, node: Node, rows?: ResultRow[]) =>any} evaluate
  * @param {ResultRow[]} rows
  * @param {Node} condition
  * @return {ResultRow[]}
  */
-function filterRows (query, rows, condition, strict = true) {
+function filterRows (evaluate, rows, condition, strict = true) {
     if (condition) {
         return rows.filter(r => {
             try {
-                return query.evaluate(r, condition, rows);
+                return evaluate(r, condition, rows);
             } catch (e) {
                 if (e instanceof SymbolError) {
                     // If we got a symbol error it means we don't have enough

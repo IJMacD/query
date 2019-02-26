@@ -1,7 +1,6 @@
 const { scalar } = require('./util');
 const { getRows, processColumns, populateValues } = require('./process');
-const { setJoin, setJoinPredicate, getRowData, setRowData } = require('./joins');
-const { resolveConstant, resolvePath, setTableAliases } = require('./resolve');
+const { setTableAliases } = require('./resolve');
 const { filterRows } = require('./filter');
 const { groupRows, populateAggregates } = require ('./aggregates');
 const { sortRows } = require('./sort');
@@ -11,6 +10,7 @@ const { getSubqueries, getCTEsMap } = require('./subquery');
 const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('./prepare');
 const evaluateValues = require('./evaluate-values');
 const { applyLimit } = require('./limit');
+const { getQueryContext } = require('./context');
 
 module.exports = evaluateQuery;
 
@@ -27,18 +27,17 @@ module.exports = evaluateQuery;
 
 
 /**
- * @this {Query}
  * @param {Node} statementNode
+ * @param {{ [name: string]: Schema }} providers
+ * @param {{ [name: string]: string }} views
  */
-async function evaluateQuery (statementNode) {
+async function evaluateQuery (statementNode, providers, views) {
 
     // TODO: Only uses first provider
-    const key = Object.keys(this.providers)[0];
+    const key = Object.keys(providers)[0];
     /** @type {Schema} */
-    const options = this.providers[key] || {};
-    options.name = key;
-
-    const { userFunctions = {} } = options;
+    const schema = providers[key] || {};
+    schema.name = key;
 
     const output_buffer = [];
     const output = row => output_buffer.push(row);
@@ -53,13 +52,15 @@ async function evaluateQuery (statementNode) {
     const select = query.select;
     const rawCols = select;
 
-    const subqueries = await getSubqueries(evaluateQuery.bind(this), query.from);
+    const eQ = sN => evaluateQuery(sN, providers, views);
+
+    const subqueries = await getSubqueries(eQ, query.from);
     /** @type {ParsedTable[]} */
     const tables = nodesToTables(query.from);
     /** @type {boolean} */
     const analyse = query.explain && (query.explain.id === "ANALYSE" || query.explain.id === "ANALYZE");
     /** @type {{ [name: string]: any[] }} */
-    const CTEs = query.with ? await getCTEsMap(evaluateQuery.bind(this), query.with) : {};
+    const CTEs = query.with ? await getCTEsMap(eQ, query.with) : {};
     /** @type {{ [name: string]: WindowSpec }} */
     const windows = query.window ? getWindowsMap(query.window) : {};
 
@@ -69,40 +70,20 @@ async function evaluateQuery (statementNode) {
     const colAlias = {};
 
     /** @type {QueryContext} */
-    const context = {
-        cols: colNodes,
+    const context = getQueryContext({
+        colNodes,
         colAlias,
         tables,
-
-        where: query.where,
-        having: query.having,
-        orderBy: query['order by'],
-        groupBy: query['group by'],
+        query,
         windows,
-
-        resolveConstant,
-        resolvePath,
-        resolveValue: this.resolveValue.bind(this),
-
-        findTable: this.findTable.bind(this),
-        findWhere: this.findWhere.bind(this),
-
-        setJoin,
-        setJoinPredicate,
-
-        getRowData,
-        setRowData,
-
         subqueries,
         CTEs,
-        userFunctions,
+        schema,
+        providers,
+        views,
+    });
 
-        options,
-    };
-
-    this.context = context;
-
-    const evaluate = this.evaluate.bind(this);
+    const evaluate = context.evaluate;
 
     /** @type {ResultRow[]} */
     let rows;
@@ -117,7 +98,7 @@ async function evaluateQuery (statementNode) {
             []
         ];
     } else {
-        rows = await getRows(this);
+        rows = await getRows(context);
     }
 
     /*************
@@ -134,7 +115,7 @@ async function evaluateQuery (statementNode) {
 
     // One last filter, this time strict because there shouldn't be
     // anything slipping through since we have all the data now.
-    rows = filterRows(this, rows, query.where);
+    rows = filterRows(evaluate, rows, query.where);
 
     /******************
      * Columns
@@ -164,7 +145,7 @@ async function evaluateQuery (statementNode) {
      * query.Having Filtering
      ******************/
     if (query.having) {
-        rows = filterRows(this, rows, query.having);
+        rows = filterRows(evaluate, rows, query.having);
     }
 
     /*******************

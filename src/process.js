@@ -22,15 +22,13 @@ const { filterRows } = require('./filter');
 const { setAnalysis } = require('./explain');
 const { getTableAliasMap, PendingValue } = require('./resolve');
 const { scalar, queryResultToObjectArray } = require('./util');
-const { getEvaluator, evaluateConstantExpression, SymbolError } = require('./evaluate');
+const { evaluateConstantExpression, SymbolError } = require('./evaluate');
 
 /**
- * @param {Query} query
+ * @param {QueryContext} context
  */
-async function getRows(query) {
-    /** @type {QueryContext} */
-    const ctx = query.context;
-    const { tables, options: { callbacks }, where } = ctx;
+async function getRows(context) {
+    const { tables, schema: { callbacks }, where } = context;
     let rows;
 
     for (let table of tables) {
@@ -43,7 +41,7 @@ async function getRows(query) {
             /** @type {Array} */
             let results;
 
-            results = await getPrimaryResults(query, table);
+            results = await getPrimaryResults(context, table);
 
             if (!results) {
                 throw Error("Couldn't get Primary Results");
@@ -71,7 +69,7 @@ async function getRows(query) {
         }
         else {
             if (callbacks.beforeJoin) {
-                await callbacks.beforeJoin.call(ctx, table, rows);
+                await callbacks.beforeJoin.call(context, table, rows);
             }
 
             startupTime = Date.now() - start;
@@ -81,7 +79,7 @@ async function getRows(query) {
             if (!findResult) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
-                const results = await getPrimaryResults(query, table);
+                const results = await getPrimaryResults(context, table);
 
                 table.explain += " cross-join";
 
@@ -90,18 +88,18 @@ async function getRows(query) {
                 }
             }
 
-            rows = applyJoin(query, table, rows);
+            rows = applyJoin(context, table, rows);
         }
 
         const initialCount = rows.length;
 
         // Filter out any rows we can early to avoid extra processing
-        rows = filterRows(query, rows, where, false);
+        rows = filterRows(context.evaluate, rows, where, false);
 
         table.rowCount = rows.length;
 
         if (callbacks.afterJoin) {
-            await callbacks.afterJoin.call(ctx, table, rows);
+            await callbacks.afterJoin.call(context, table, rows);
         }
 
         const totalTime = Date.now() - start;
@@ -189,13 +187,12 @@ function processColumns ({ tables, colVars: { colNodes, colHeaders, colAlias } }
 }
 
 /**
- * @param {Query} query
+ * @param {QueryContext} context
  * @param {ParsedTable} table
  * @returns {Promise<any[]>}
  */
-async function getPrimaryResults(query, table) {
-    const { views, context } = query;
-    const { subqueries, CTEs, options: { callbacks } } = context;
+async function getPrimaryResults(context, table) {
+    const { views, subqueries, CTEs, schema: { callbacks } } = context;
 
     if (table.name in subqueries) {
         return subqueries[table.name];
@@ -206,12 +203,16 @@ async function getPrimaryResults(query, table) {
     }
 
     if (table.name in views) {
+        // Effectively query.clone() or new Query(oldContext) etc.
+        const query = new Query();
+        query.addProvider(context.schema);
+
         return queryResultToObjectArray(await query.run(views[table.name]));
     }
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
     if (infoMatch) {
-        return await informationSchema(query, infoMatch[1]);
+        return await informationSchema(context, infoMatch[1]);
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {

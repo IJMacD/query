@@ -1,7 +1,4 @@
 const Parser = require('./parser');
-const { valueResolver } = require('./resolve');
-const { getEvaluator } = require('./evaluate');
-const { traverseWhereTree } = require('./filter');
 const persist = require('./persist');
 const { intersectResults, exceptResults, unionResults, unionAllResults } = require('./compound');
 const evaluateQuery = require('./evaluate-query');
@@ -12,9 +9,6 @@ class Query {
     constructor () {
         /** @type {{ [name: string]: import('../types').Schema }} */
         this.providers = {};
-
-        /** @type {import('../types').QueryContext} */
-        this.context = null;
 
         /** @type {import('../types').Schema} */
         this.schema = null;
@@ -109,7 +103,7 @@ class Query {
 
         const parsedQuery = Parser.parse(query);
 
-        return await evaluateQuery.call(this, parsedQuery);
+        return await evaluateQuery(parsedQuery, this.providers, this.views);
     }
 
     /**
@@ -118,33 +112,8 @@ class Query {
      * @returns {Promise<any[][][]>}
      */
     runQueries (queries) {
-        return Promise.all(queries.map(q => this.run(q)));
-    }
-
-    evaluate (row, node, rows=null) {
-        const evaluator = getEvaluator(this.context);
-        return evaluator(row, node, rows);
-    }
-
-    resolveValue (row, col, rows=null) {
-        return valueResolver(this, row, col, rows);
-    }
-
-    findTable (name) {
-        return this.context.tables.find(t => t.name === name && t.join !== undefined);
-    }
-
-    /**
-     * @param {string} symbol
-     * @param {string|string[]} [operator]
-     */
-    findWhere (symbol, operator="=") {
-        if (!this.context.where) {
-            return; // undefined
-        }
-
-        return traverseWhereTree(this.context.where, symbol, operator);
-    }
+      return Promise.all(queries.map(q => this.run(q)));
+  }
 }
 
 module.exports = Query;

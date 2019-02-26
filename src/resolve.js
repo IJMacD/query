@@ -15,6 +15,7 @@ const { getRowData } = require('./joins');
 
 /**
  * @typedef {import('../types')} Query
+ * @typedef {import('../types').QueryContext} QueryContext
  * @typedef {import('../types').Node} Node
  * @typedef {import('../types').ResultRow} ResultRow
  * @typedef {import('../types').ParsedTable} ParsedTable
@@ -70,13 +71,13 @@ function resolveConstant (str) {
 
 /**
  * Resolve a col into a concrete value (constant or from object)
- * @param {Query} query
+ * @this {QueryContext}
  * @param {ResultRow} row
  * @param {string} col
  * @param {ResultRow[]} [rows]
  */
-function valueResolver (query, row, col, rows=null) {
-    const { tables, colAlias, cols } = query.context;
+function valueResolver (row, col, rows=null) {
+    const { tables, colAlias, cols } = this;
 
     // Check for constant values first
     const constant = resolveConstant(col);
@@ -100,7 +101,7 @@ function valueResolver (query, row, col, rows=null) {
         // Let's see if we can be helpful and fill it in now.
         if (typeof row[i] === "undefined") {
             row[i] = PendingValue;
-            row[i] = query.evaluate(row, cols[i], rows);
+            row[i] = this.evaluate(row, cols[i], rows);
         }
 
         if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {

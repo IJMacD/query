@@ -5,20 +5,23 @@ const {
   TABLE_VALUED_FUNCTIONS
 } = require('./const');
 
+const Query = require('./query');
+
 module.exports = {
   informationSchema,
 };
 
 /** @typedef {import('../types')} Query */
+/** @typedef {import('../types').QueryContext} QueryContext */
 
 /**
  *
- * @param {Query} query
+ * @param {QueryContext} context
  * @param {*} schema
  */
-async function informationSchema(query, schema) {
+async function informationSchema(context, schema) {
     if (schema in infoTables) {
-        return await infoTables[schema](query);
+        return await infoTables[schema](context);
     }
 
     throw new Error(`Unkown information_schema view: ${schema}`);
@@ -26,7 +29,7 @@ async function informationSchema(query, schema) {
 
 
 const infoTables = {
-    tables ({ context: { options: schema, views } }) {
+    tables ({ schema, views }) {
         const { callbacks } = schema;
         const results = [];
         let table_type = "BASE TABLE";
@@ -59,15 +62,14 @@ const infoTables = {
 
     /**
      *
-     * @param {Query} query
+     * @param {QueryContext} context
      */
-    async columns (query) {
-        const { context, views } = query;
-        const { options: schema } = context;
+    async columns (context) {
+        const { views, schema } = context;
         const { callbacks } = schema;
 
         const results = [];
-        const whereName = query.findWhere("table_name");
+        const whereName = context.findWhere("table_name");
 
         if (typeof callbacks.getTables === "function" &&
             typeof callbacks.getColumns === "function") {
@@ -89,6 +91,11 @@ const infoTables = {
 
         for (const table_name in views) {
             if (!whereName || table_name === whereName) {
+                const query = new Query();
+                query.addProvider(context.schema);
+                // TODO: views need scope
+                // i.e. what providers were available wehn the were created?
+                // should we have a query.clone() etc.?
                 const rows = await query.run(views[table_name]);
                 const headers = rows[0];
                 for (let i = 0; i < headers.length; i++) {
@@ -106,7 +113,7 @@ const infoTables = {
         return results;
     },
 
-    views ({ context: { options: schema, views } }) {
+    views ({ schema, views }) {
         const results = [];
 
         for (const table_name in views) {
@@ -120,7 +127,7 @@ const infoTables = {
         return results;
     },
 
-    routines ({ context: { options, options: { name: schema_name, userFunctions } } }) {
+    routines ({ schema: { name: schema_name, userFunctions } }) {
         const results = [];
 
         function formatRoutine(routine_name, fn, data_type = null, routine_schema="system") {
@@ -162,7 +169,7 @@ const infoTables = {
         return results;
     },
 
-    routine_columns ({ context: { findWhere, options: schema } }) {
+    routine_columns ({ findWhere, schema }) {
         const results = [];
         const whereName = findWhere("table_name");
 

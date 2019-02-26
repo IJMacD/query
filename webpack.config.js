@@ -5,7 +5,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 
 module.exports = [{
-    entry: [ "@babel/polyfill", "./src/query.js" ],
+    entry: [ "@babel/polyfill", "./frontend/demo-query.js" ],
     output: {
         library: "query",
         path: path.resolve(__dirname, 'dist'),

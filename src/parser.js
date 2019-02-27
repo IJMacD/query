@@ -501,6 +501,13 @@ function parseFromTokenList (tokenList, source="") {
                 return out;
             case TOKEN_TYPES.BRACKET:
                 next();
+
+                if (peek(TOKEN_TYPES.KEYWORD)) {
+                    const stmt = descendStatement();
+                    expect(TOKEN_TYPES.BRACKET);
+                    return stmt;
+                }
+
                 out = { type: NODE_TYPES.LIST, id: null, children: [] };
 
                 while(isList()) {

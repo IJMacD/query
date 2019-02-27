@@ -1,3 +1,5 @@
+module.exports = evaluateQuery;
+
 const { scalar } = require('./util');
 const { getRows, processColumns, populateValues } = require('./process');
 const { setTableAliases } = require('./resolve');
@@ -11,8 +13,6 @@ const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('./prepare')
 const evaluateValues = require('./evaluate-values');
 const { applyLimit } = require('./limit');
 const { getQueryContext } = require('./context');
-
-module.exports = evaluateQuery;
 
 /**
  * @typedef {import('../types')} Query
@@ -29,6 +29,7 @@ module.exports = evaluateQuery;
 /**
  * @this {QueryContext}
  * @param {Node} statementNode
+ * @return {Promise<any[]>}
  */
 async function evaluateQuery (statementNode) {
     const { providers, views } = this;
@@ -118,7 +119,7 @@ async function evaluateQuery (statementNode) {
     /*****************
      * Column Values
      *****************/
-    populateValues(context, context.cols, rows);
+    await populateValues(context, context.cols, rows);
 
     /*************
      * Grouping

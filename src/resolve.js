@@ -1,17 +1,17 @@
-const { isValidDate } = require('./util');
-
 const PendingValue = Symbol("Pending Value");
 
 module.exports = {
-  PendingValue,
-  resolveConstant,
-  resolvePath,
-  valueResolver,
-  setTableAliases,
-  getTableAliasMap,
+    PendingValue,
+    resolveConstant,
+    resolvePath,
+    valueResolver,
+    setTableAliases,
+    getTableAliasMap,
 };
+const { isValidDate } = require('./util');
 
 const { getRowData } = require('./joins');
+const { populateValue } = require('./process');
 
 /**
  * @typedef {import('../types')} Query
@@ -96,12 +96,21 @@ function valueResolver (row, col, rows=null) {
     if (typeof colAlias[col] !== "undefined") {
         const i = colAlias[col];
 
-        // We've struck upon an alias but the value hasn't been
+        // We've struck upon an alias but perhaps the value hasn't been
         // evaluated yet.
-        // Let's see if we can be helpful and fill it in now.
+        // Let's see if we can be helpful and fill it in now if needed.
+        //
+        // Note: the row value must be exactly undefined, PendingValue is not good enough
         if (typeof row[i] === "undefined") {
-            row[i] = PendingValue;
-            row[i] = this.evaluate(row, cols[i], rows);
+            // await populateValue(this, row, i, cols[i], rows);
+
+            /*
+                Without await we have to evaluate the columns in the natural
+                order they depend on each other.
+                i.e. they have to be specified in the right order for us in the
+                original query
+            */
+            populateValue(this, row, i, cols[i], rows);
         }
 
         if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {

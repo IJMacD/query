@@ -3,6 +3,7 @@ module.exports = {
   getPrimaryResults,
   processColumns,
   populateValues,
+  populateValue,
 };
 
 /**
@@ -23,6 +24,7 @@ const { setAnalysis } = require('./explain');
 const { getTableAliasMap, PendingValue } = require('./resolve');
 const { scalar, queryResultToObjectArray } = require('./util');
 const { evaluateConstantExpression, SymbolError } = require('./evaluate');
+const evaluateStatement = require('./evaluate-query');
 
 /**
  * @this {Query}
@@ -232,39 +234,52 @@ async function getPrimaryResults(context, table) {
  * @param {Node[]} cols
  * @param {ResultRow[]} rows
  */
-function populateValues (context, cols, rows) {
+async function populateValues (context, cols, rows) {
     for(const row of rows) {
         // @ts-ignore
         for(const [i, node] of cols.entries()) {
+            await populateValue(context, row, i, node, rows);
+        }
+    }
+}
 
-            // Check to see if column's already been filled in
-            if (typeof row[i] !== "undefined" && row[i] !== PendingValue) {
-                continue;
-            }
+async function populateValue (context, row, colNum, node, rows) {
+    // Check to see if column's already been filled in
+    if (typeof row[colNum] !== "undefined" && row[colNum] !== PendingValue) {
+        return;
+    }
 
-            if (node === null) {
-                // This occurs when there were no rows to extract poperties from as columns
-                //  e.g. Tutor.*
-                row[i] = null;
-                continue;
-            }
+    if (node === null) {
+        // This occurs when there were no rows to extract poperties from as columns
+        //  e.g. Tutor.*
+        row[colNum] = null;
+        return;
+    }
 
-            if (node.id === "ROWID") {
-                row[i] = row['ROWID'];
-                continue;
-            }
+    if (node.id === "ROWID") {
+        row[colNum] = row['ROWID'];
+        return;
+    }
 
-            try {
-                // Use PendingValue flag to avoid infinite recursion
-                row[i] = PendingValue;
-                row[i] = context.evaluate(row, node, rows);
-            } catch (e) {
-                if (e instanceof SymbolError) {
-                    row[i] = null;
-                } else {
-                    throw e;
-                }
-            }
+    if (node.type === NODE_TYPES.STATEMENT) {
+        const results = await evaluateStatement.call(context, node);
+
+        if (results && results.length >= 2) {
+            row[colNum] = results[1][0];
+        }
+
+        return;
+    }
+
+    try {
+        // Use PendingValue flag to avoid infinite recursion
+        row[colNum] = PendingValue;
+        row[colNum] = context.evaluate(row, node, rows);
+    } catch (e) {
+        if (e instanceof SymbolError) {
+            row[colNum] = null;
+        } else {
+            throw e;
         }
     }
 }

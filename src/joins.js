@@ -1,15 +1,15 @@
+module.exports = {
+    findJoin,
+    applyJoin,
+    setJoin,
+    setJoinPredicate,
+    getRowData,
+    setRowData,
+};
+
 const { parseExpression } = require('./parser');
 
 const { filterRows } = require('./filter');
-
-module.exports = {
-  findJoin,
-  applyJoin,
-  setJoin,
-  setJoinPredicate,
-  getRowData,
-  setRowData,
-};
 
 const { resolvePath } = require('./resolve');
 

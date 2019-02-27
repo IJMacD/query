@@ -140,6 +140,9 @@ const TABLE_VALUED_FUNCTIONS = {
             Array(count).fill(0).map((n,i) => ({ value: start + i * step })) :
             Array(count).fill(0).map((n,i) => ({ value: start - i * step }));
     },
+    LOAD (url) {
+        return fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.statusText));
+    },
 };
 
 /** @typedef {import('./query').ResultRow} ResultRow */

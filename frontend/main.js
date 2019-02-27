@@ -14,6 +14,8 @@ let queryHistory = loadHistory();
  */
 const OBJECT_IMAGE = false;
 
+const HTML_ESCAPING = true;
+
 queryForm.addEventListener("submit", e => {
     e.preventDefault();
     sendQuery();
@@ -131,35 +133,49 @@ function formatCell ({ cell }) {
         return `<span class="null"></span>`;
     }
 
-    cell = String(cell);
+    if (cell instanceof Date) {
+        return formatDate(cell);
+    }
+
+    let str = String(cell);
+
+    if (HTML_ESCAPING && str.includes("<")) {
+        str = escapeHtml(str);
+    }
 
     // Special Formatting for colour
-    if (/^#[0-9a-f]{6}$/i.test(cell)) {
-        return `<div style="background-color: ${cell}; height: 20px; width: 20px; margin: 0 auto;" title="${cell}"></div>`;
+    if (/^#[0-9a-f]{6}$/i.test(str)) {
+        return `<div style="background-color: ${str}; height: 20px; width: 20px; margin: 0 auto;" title="${str}"></div>`;
     }
 
     // Special formatting for date
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/.test(cell)) {
-        const d = new Date(cell);
-        if (d.getHours() === 0 && d.getMinutes() === 0) {
-            return d.toLocaleDateString(navigator.language);
-        }
-        return d.toLocaleString(navigator.language);
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const d = new Date(str);
+        return formatDate(d);
     }
 
-    // Special formatting for urls and images
-    cell = cell.replace(/https?:\/\/[^,]+/g, url => {
-        let content = url;
-        if (/\.(jpe?g|gif|png|webp)$/i.test(url)) {
-            content = OBJECT_IMAGE ? `<object data="${url}" height="64"></object>` : `<img src="${url}" height="64" />`;
-        }
-        return `<a href="${url}" target="_blank">${content}</a>`;
-    });
+    if (!str.includes("<")) {
+        // Special formatting for urls and images
+        str = str.replace(/https?:\/\/[^,'>" &]+/g, url => {
+            let content = url;
+            if (/\.(jpe?g|gif|png|webp)$/i.test(url)) {
+                content = OBJECT_IMAGE ? `<object data="${url}" height="64"></object>` : `<img src="${url}" height="64" />`;
+            }
+            return `<a href="${url}" target="_blank">${content}</a>`;
+        });
 
-    // Special formatting for email addresses
-    cell = cell.replace(/[^@,\s]+@[^@,\s]+\.[^@,\s]+/g, email => `<a href="mailto:${email}">${email}</a>`);
+        // Special formatting for email addresses
+        str = str.replace(/[^@,\s]+@[^@,\s]+\.[^@,\s]+/g, email => `<a href="mailto:${email}">${email}</a>`);
+    }
 
-    return cell;
+    return str;
+}
+
+function formatDate (d) {
+    if (d.getHours() === 0 && d.getMinutes() === 0) {
+        return d.toLocaleDateString(navigator.language);
+    }
+    return d.toLocaleString(navigator.language);
 }
 
 /**
@@ -230,4 +246,16 @@ function loadHistory () {
         } catch (e) { }
     }
     return [];
+}
+
+function escapeHtml(text) {
+    var map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }

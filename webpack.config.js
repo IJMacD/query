@@ -1,8 +1,6 @@
 const path = require('path');
 const webpack = require('webpack');
-const Dotenv = require('dotenv-webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin')
-
 
 module.exports = [{
     entry: [ "@babel/polyfill", "./frontend/demo-query.js" ],
@@ -25,7 +23,6 @@ module.exports = [{
     plugins: [
       // Ignore all locale files of moment.js
       new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
-      new Dotenv(),
       new webpack.DefinePlugin({
             'process.env': {
                 APP_ENV: JSON.stringify("browser"),

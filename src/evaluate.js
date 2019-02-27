@@ -38,8 +38,11 @@ module.exports = {
 * @param {Node} node
 * @param {ResultRow[]} [rows]
 */
-function evaluate (row, node, rows=null) {
+async function evaluate (row, node, rows=null) {
     switch (node.type) {
+        case NODE_TYPES.STATEMENT: {
+            return await evaluateQuery.call(this.query, node);
+        }
         case NODE_TYPES.FUNCTION_CALL: {
             const fnName = node.id;
 
@@ -49,8 +52,8 @@ function evaluate (row, node, rows=null) {
                 const window = typeof node.window === "string" ? this.windows[node.window] : node.window;
 
                 if (window.partition) {
-                    const partitionVal = this.evaluate(row, window.partition, rows);
-                    group = rows.filter(r => OPERATORS['='](this.evaluate(r, window.partition, rows), partitionVal));
+                    const partitionVal = await this.evaluate(row, window.partition, rows);
+                    group = rows.filter(ERRRRRR async r => OPERATORS['='](await this.evaluate(r, window.partition, rows), partitionVal));
                 } else {
                     group = [ ...rows ];
                 }
@@ -72,12 +75,12 @@ function evaluate (row, node, rows=null) {
                         group = group.slice(start, index + window.following + 1);
 
                     } else if (window.frameUnit === "range") {
-                        const currentVal = this.evaluate(row, window.order, rows);
+                        const currentVal = await this.evaluate(row, window.order, rows);
                         const min = currentVal - window.preceding;
                         const max = currentVal + window.following;
 
-                        group = group.filter(r => {
-                            const v = this.evaluate(r, window.order, rows);
+                        group = group.filter(ERRRRRRR async r => {
+                            const v = await this.evaluate(r, window.order, rows);
                             return min <= v && v <= max;
                         });
                     }

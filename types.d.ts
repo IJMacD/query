@@ -55,6 +55,12 @@ export declare interface QueryContext {
   providers: { [name: string]: Schema };
   userFunctions: { [name: string]: () => any }
 
+  outer?: {
+    context: QueryContext;
+    row: ResultRow;
+    rows: ResultRow[];
+  }
+
   evaluate: (row: ResultRow, node: Node, rows?: ResultRow[]) => any;
 
   resolveConstant: (path: string) => string|number|boolean|Date;

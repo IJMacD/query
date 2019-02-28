@@ -103,7 +103,7 @@ class Query {
 
         const parsedQuery = Parser.parse(query);
 
-        return await evaluateQuery.call(this, parsedQuery);
+        return await evaluateQuery(this, parsedQuery);
     }
 
     /**

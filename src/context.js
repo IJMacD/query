@@ -21,22 +21,24 @@ module.exports = {
 
 
 /**
- * @this {Query}
+ * @param {Query} query
+ * @param {*} options
  * @returns {QueryContext}
  */
-function getQueryContext({ tables, query, windows, subqueries, CTEs, schema, views, providers, outer }) {
+function getQueryContext(query, { tables, clauses, windows, subqueries, CTEs, schema, views, providers, outer }) {
+    /** @type {QueryContext} */
     const context = {
-        query: this,
+        query,
 
         cols: [],
         colHeaders: [],
         colAlias: {},
         tables,
 
-        where: query.where,
-        having: query.having,
-        orderBy: query['order by'],
-        groupBy: query['group by'],
+        where: clauses.where,
+        having: clauses.having,
+        orderBy: clauses['order by'],
+        groupBy: clauses['group by'],
         windows,
 
         evaluate: null,

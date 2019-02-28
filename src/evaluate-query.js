@@ -27,11 +27,12 @@ const { getQueryContext } = require('./context');
 
 
 /**
- * @this {QueryContext}
+ * @param {Query} query
  * @param {Node} statementNode
  * @return {Promise<any[]>}
  */
-async function evaluateQuery (statementNode, outer = null) {
+async function evaluateQuery (query, statementNode, outer = null) {
+    const { providers, views } = query;
 
     // TODO: Only uses first provider
     const key = Object.keys(providers)[0];
@@ -42,32 +43,30 @@ async function evaluateQuery (statementNode, outer = null) {
     const output_buffer = [];
     const output = row => output_buffer.push(row);
 
-    const query = nodeToQueryObject(statementNode);
+    const clauses = nodeToQueryObject(statementNode);
 
-    if (query.values) {
+    if (clauses.values) {
         // VALUES clause trumps everything else
-        return evaluateValues(query.values);
+        return evaluateValues(clauses.values);
     }
 
-    const select = query.select;
+    const select = clauses.select;
     const rawCols = select;
 
-    const eQ = evaluateQuery.bind(this);
-
-    const subqueries = await getSubqueries(eQ, query.from);
+    const subqueries = await getSubqueries(query, clauses.from);
     /** @type {ParsedTable[]} */
-    const tables = nodesToTables(query.from);
+    const tables = nodesToTables(clauses.from);
     /** @type {boolean} */
-    const analyse = query.explain && (query.explain.id === "ANALYSE" || query.explain.id === "ANALYZE");
+    const analyse = clauses.explain && (clauses.explain.id === "ANALYSE" || clauses.explain.id === "ANALYZE");
     /** @type {{ [name: string]: any[] }} */
-    const CTEs = query.with ? await getCTEsMap(eQ, query.with) : {};
+    const CTEs = clauses.with ? await getCTEsMap(query, clauses.with) : {};
     /** @type {{ [name: string]: WindowSpec }} */
-    const windows = query.window ? getWindowsMap(query.window) : {};
+    const windows = clauses.window ? getWindowsMap(clauses.window) : {};
 
     /** @type {QueryContext} */
-    const context = getQueryContext.call(this, {
+    const context = getQueryContext(query, {
         tables,
-        query,
+        clauses,
         windows,
         subqueries,
         CTEs,
@@ -92,14 +91,14 @@ async function evaluateQuery (statementNode, outer = null) {
             []
         ];
     } else {
-        rows = await getRows.call(this, context);
+        rows = await getRows(context);
     }
 
     /*************
      * EXPLAIN
      ************/
 
-    if (typeof query.explain !== "undefined") {
+    if (typeof clauses.explain !== "undefined") {
         return explain(tables, analyse);
     }
 
@@ -109,7 +108,7 @@ async function evaluateQuery (statementNode, outer = null) {
 
     // One last filter, this time strict because there shouldn't be
     // anything slipping through since we have all the data now.
-    rows = filterRows(context, rows, query.where);
+    rows = filterRows(context, rows, clauses.where);
 
     /******************
      * Columns
@@ -124,21 +123,21 @@ async function evaluateQuery (statementNode, outer = null) {
     /*************
      * Grouping
      *************/
-    if (query['group by']) {
-        rows = groupRows(context, rows, query['group by']);
+    if (clauses['group by']) {
+        rows = groupRows(context, rows, clauses['group by']);
     }
 
     /**********************
      * Aggregate Functions
      *********************/
     // Now see if there are any aggregate functions to apply
-    rows = populateAggregates(context, context.cols, rows, query['group by']);
+    rows = populateAggregates(context, context.cols, rows, clauses['group by']);
 
     /*******************
      * query.Having Filtering
      ******************/
-    if (query.having) {
-        rows = filterRows(context, rows, query.having);
+    if (clauses.having) {
+        rows = filterRows(context, rows, clauses.having);
     }
 
     /*******************
@@ -151,15 +150,15 @@ async function evaluateQuery (statementNode, outer = null) {
     /****************
      * Sorting
      ***************/
-    if (query['order by']) {
+    if (clauses['order by']) {
         // Parse the orderBy clause into an array of objects
-        rows = sortRows(evaluate, rows, query['order by']);
+        rows = sortRows(evaluate, rows, clauses['order by']);
     }
 
     /******************
      * Limit and Offset
      ******************/
-    rows = applyLimit(rows, query.limit, query.offset);
+    rows = applyLimit(rows, clauses.limit, clauses.offset);
 
     /*****************
      * Output

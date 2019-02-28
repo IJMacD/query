@@ -27,12 +27,11 @@ const { evaluateConstantExpression, SymbolError } = require('./evaluate');
 const evaluateStatement = require('./evaluate-query');
 
 /**
- * @this {Query}
  * @param {QueryContext} context
  */
 async function getRows(context) {
-    const { schema: { callbacks } } = this;
-    const { tables, where } = context;
+    const { tables, where, query } = context;
+    const { schema: { callbacks } } = query;
     let rows;
 
     for (let table of tables) {
@@ -45,7 +44,7 @@ async function getRows(context) {
             /** @type {Array} */
             let results;
 
-            results = await getPrimaryResults.call(this, context, table);
+            results = await getPrimaryResults(context, table);
 
             if (!results) {
                 throw Error("Couldn't get Primary Results");
@@ -83,7 +82,7 @@ async function getRows(context) {
             if (!findResult) {
                 // All attempts at joining failed, intead we're going to do a
                 // CROSS JOIN!
-                const results = await getPrimaryResults.call(this, context, table);
+                const results = await getPrimaryResults(context, table);
 
                 table.explain += " cross-join";
 
@@ -114,7 +113,6 @@ async function getRows(context) {
 }
 
 /**
- *
  * @param {QueryContext} context
  * @param {ResultRow[]} rows
  */
@@ -192,7 +190,6 @@ function processColumns (context, rawCols, rows) {
 }
 
 /**
- * @this {Query}
  * @param {QueryContext} context
  * @param {ParsedTable} table
  * @returns {Promise<any[]>}
@@ -209,12 +206,12 @@ async function getPrimaryResults(context, table) {
     }
 
     if (table.name in views) {
-        return queryResultToObjectArray(await this.run(views[table.name]));
+        return queryResultToObjectArray(await context.query.run(views[table.name]));
     }
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
     if (infoMatch) {
-        return await informationSchema.call(this, context, infoMatch[1]);
+        return await informationSchema(context, infoMatch[1]);
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {
@@ -270,7 +267,7 @@ async function populateValue (context, row, colNum, node, rows) {
     if (node.type === NODE_TYPES.STATEMENT) {
         // We need to pass in the outer query context so that any symbols
         // the inner query doesn't understand can be handled by our resolver
-        const results = await evaluateStatement.call(context, node, { context, row, rows });
+        const results = await evaluateStatement(context.query, node, { context, row, rows });
 
         if (results && results.length >= 2) {
             row[colNum] = results[1][0];

@@ -4,12 +4,12 @@ module.exports = {
     PendingValue,
     resolveConstant,
     resolvePath,
-    valueResolver,
+    resolveValue,
     setTableAliases,
     getTableAliasMap,
 };
 const { isValidDate } = require('./util');
-
+const { SymbolError } = require('./evaluate');
 const { getRowData } = require('./joins');
 const { populateValue } = require('./process');
 
@@ -76,7 +76,7 @@ function resolveConstant (str) {
  * @param {string} col
  * @param {ResultRow[]} [rows]
  */
-function valueResolver (row, col, rows=null) {
+function resolveValue (row, col, rows=null) {
     const { tables, colAlias, cols } = this;
 
     // Check for constant values first
@@ -102,7 +102,7 @@ function valueResolver (row, col, rows=null) {
         //
         // Note: the row value must be exactly undefined, PendingValue is not good enough
         if (typeof row[i] === "undefined") {
-            // await populateValue(this, row, i, cols[i], rows);
+            // await populateValue.call(this, row, i, cols[i], rows);
 
             /*
                 Without await we have to evaluate the columns in the natural
@@ -133,13 +133,13 @@ function valueResolver (row, col, rows=null) {
         if (head in tableAlias) {
             const t = tableAlias[head];
 
-            // resolveValue() is called when searching for a join
-            // if we're at that stage getRowData(row, t) will be
-            // empty so we need to return undefined.
             const data = getRowData(row, t);
 
+            // resolveValue() is called when searching for a join
+            // if we're at that stage getRowData(row, t) will be
+            // empty so we need to throw a SymbolError.
             if (typeof data === "undefined") {
-                return void 0;
+                throw new SymbolError("[Pre-Join] Unable to resolve symbol: " + col);
             }
 
             return resolvePath(data, tail);
@@ -186,7 +186,20 @@ function valueResolver (row, col, rows=null) {
         }
     }
 
-    return; // undefined
+    /*
+     * If we've got this far we've exhausted our own context but maybe
+     * we're actually being evaluated inside an outer context?
+     * This is our last shot.
+     */
+    if (this.outer) {
+        const val = this.outer.context.resolveValue(this.outer.row, col, this.outer.rows);
+
+        if (typeof val !== "undefined") {
+            return val;
+        }
+    }
+
+    throw new SymbolError("Unable to resolve symbol: " + col);
 }
 
 /**

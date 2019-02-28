@@ -1,6 +1,6 @@
 const { setJoin, setJoinPredicate, getRowData, setRowData } = require('./joins');
 const { resolveConstant, resolvePath } = require('./resolve');
-const { valueResolver } = require('./resolve');
+const { resolveValue } = require('./resolve');
 const { evaluate } = require('./evaluate');
 const { traverseWhereTree } = require('./filter');
 
@@ -24,7 +24,7 @@ module.exports = {
  * @this {Query}
  * @returns {QueryContext}
  */
-function getQueryContext({ tables, query, windows, subqueries, CTEs, schema, views, providers }) {
+function getQueryContext({ tables, query, windows, subqueries, CTEs, schema, views, providers, outer }) {
     const context = {
         query: this,
 
@@ -60,10 +60,12 @@ function getQueryContext({ tables, query, windows, subqueries, CTEs, schema, vie
         schema,
         providers,
         userFunctions: schema.userFunctions || {},
+
+        outer,
     };
 
     context.evaluate = evaluate.bind(context);
-    context.resolveValue = valueResolver.bind(context);
+    context.resolveValue = resolveValue.bind(context);
     context.findTable = findTable.bind(context);
     context.findWhere = findWhere.bind(context);
 

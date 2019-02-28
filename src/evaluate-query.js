@@ -31,8 +31,7 @@ const { getQueryContext } = require('./context');
  * @param {Node} statementNode
  * @return {Promise<any[]>}
  */
-async function evaluateQuery (statementNode) {
-    const { providers, views } = this;
+async function evaluateQuery (statementNode, outer = null) {
 
     // TODO: Only uses first provider
     const key = Object.keys(providers)[0];
@@ -75,6 +74,7 @@ async function evaluateQuery (statementNode) {
         schema,
         providers,
         views,
+        outer,
     });
 
     const evaluate = context.evaluate;

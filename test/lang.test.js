@@ -574,6 +574,42 @@ describe("Subqueries", () => {
             expect(r[2][5]).toBe(1);
         });
     });
+
+    test("As Single column value", () => {
+        return demoQuery("FROM Test AS t SELECT n AS m,(FROM Test)").then(r => {
+            expect(r).toEqual([
+                ["m","Col 2"],
+                [0, 0],
+                [1, 0],
+                [2, 0],
+                [3, 0],
+                [4, 0],
+                [5, 0],
+                [6, 0],
+                [7, 0],
+                [8, 0],
+                [9, 0],
+            ]);
+        });
+    });
+
+    test("As Single column value using outer context", () => {
+        return demoQuery("FROM Test AS t SELECT n AS m,(FROM Test WHERE n > m)").then(r => {
+            expect(r).toEqual([
+                ["m","Col 2"],
+                [0, 1],
+                [1, 2],
+                [2, 3],
+                [3, 4],
+                [4, 5],
+                [5, 6],
+                [6, 7],
+                [7, 8],
+                [8, 9],
+                [9, null],
+            ]);
+        });
+    });
 });
 
 describe("Common Table Expression", () => {

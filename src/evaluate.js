@@ -140,14 +140,7 @@ function evaluate (row, node, rows=null) {
 
         }
         case NODE_TYPES.SYMBOL: {
-            const val = this.resolveValue(row, String(node.id), rows);
-
-            if (typeof val === "undefined") {
-                // We must throw a SymbolError so that e.g. filterRows() can catch it
-                throw new SymbolError("Unable to resolve symbol: " + node.id);
-            }
-
-            return val;
+            return this.resolveValue(row, String(node.id), rows);
         }
         case NODE_TYPES.STRING: {
             // We need to check for date here and convert if necessary

@@ -176,7 +176,7 @@ function processColumns (context, rawCols, rows) {
             }
         } else {
             cols.push(node);
-            colHeaders.push(node.alias || node.source);
+            colHeaders.push(node.alias || node.source || `Col ${cols.length}`);
 
             if (node.alias && typeof colAlias[node.alias] !== "undefined") {
                 throw new Error("Alias already in use: " + node.alias);
@@ -229,7 +229,6 @@ async function getPrimaryResults(context, table) {
 }
 
 /**
- *
  * @param {QueryContext} context
  * @param {Node[]} cols
  * @param {ResultRow[]} rows
@@ -243,6 +242,13 @@ async function populateValues (context, cols, rows) {
     }
 }
 
+/**
+ * @param {QueryContext} context
+ * @param {ResultRow} row
+ * @param {number} colNum
+ * @param {Node} node
+ * @param {ResultRow[]} rows
+ */
 async function populateValue (context, row, colNum, node, rows) {
     // Check to see if column's already been filled in
     if (typeof row[colNum] !== "undefined" && row[colNum] !== PendingValue) {
@@ -262,10 +268,14 @@ async function populateValue (context, row, colNum, node, rows) {
     }
 
     if (node.type === NODE_TYPES.STATEMENT) {
-        const results = await evaluateStatement.call(context, node);
+        // We need to pass in the outer query context so that any symbols
+        // the inner query doesn't understand can be handled by our resolver
+        const results = await evaluateStatement.call(context, node, { context, row, rows });
 
         if (results && results.length >= 2) {
             row[colNum] = results[1][0];
+        } else {
+            row[colNum] = null;
         }
 
         return;

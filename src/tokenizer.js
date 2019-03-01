@@ -104,14 +104,27 @@ module.exports = {
                     continue;
                 }
 
-                m = /^([<>+=!*\/|%-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b|BETWEEN)/i.exec(ss);
+                // Remember hyphen '-' must be at end of character class
+                m = /^([<>+=!*\/|%?-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b|BETWEEN)/i.exec(ss);
                 if (m) {
-                    out.push({ type: TOKEN_TYPES.OPERATOR, value: m[1], start: i });
-                    i += m[1].length;
+                    let type = TOKEN_TYPES.OPERATOR;
+
+                    if (m[0] === "*" &&
+                        // SELECT *; COUNT(*) etc.
+                        (prevToken().type === TOKEN_TYPES.KEYWORD ||
+                        (prevToken().type === TOKEN_TYPES.BRACKET && prevToken().value === "(") ||
+                        prevToken().type === TOKEN_TYPES.COMMA)
+                    ) {
+                        type = TOKEN_TYPES.NAME;
+                    }
+
+                    out.push({ type, value: m[0], start: i });
+                    i += m[0].length;
                     continue;
                 }
 
-                m = /^([a-z_][a-z0-9_\.\*]*)/i.exec(ss); // Asterisk as in: COUNT(*)
+                m = /^([a-z_][a-z0-9_\.\*]*)/i.exec(ss);
+                //                      ^ Asterisk as in: Table.*
                 if (m) {
                     out.push({ type: TOKEN_TYPES.NAME, value: m[0], start: i });
                     i += m[0].length;

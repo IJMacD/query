@@ -63,6 +63,12 @@ describe("Constants", () => {
             expect(r[1][0]).toBe(false);
         });
     });
+
+    test("Null", () => {
+        return runQuery("SELECT null").then(r => {
+            expect(r[1][0]).toBe(null);
+        });
+    });
 });
 
 describe("Maths", () => {
@@ -164,6 +170,17 @@ describe("Strings", () => {
         });
     });
 });
+
+test("Coalesce operator (??)", () => {
+    return Promise.all([
+        runQuery("SELECT null ?? null ?? 'hello' ?? 42").then(r => {
+            expect(r[1][0]).toBe("hello");
+        }),
+        runQuery("SELECT null ?? null ?? 0 ?? 42").then(r => {
+            expect(r[1][0]).toBe(0);
+        }),
+    ]);
+})
 
 describe("Nested Functions", () => {
     test("Function -> Expression", () => {
@@ -475,6 +492,22 @@ describe("Operator Precedence", () => {
                 expect(r.length - 1).toBe(1);
                 expect(r[1][0]).toBe(false);
             })
+        ]);
+    });
+
+    test("?? ||", () => {
+        return Promise.all([
+            demoQuery("SELECT '' ?? 0 || 1").then(r => {
+                expect(r[1][0]).toBe("01");
+            }),
+        ]);
+    });
+
+    test("|| ??", () => {
+        return Promise.all([
+            demoQuery("SELECT 'oooooo' || null ?? 'hhh'").then(r => {
+                expect(r[1][0]).toBe("oooooohhh");
+            }),
         ]);
     });
 })

@@ -468,18 +468,6 @@ function parseFromTokenList (tokenList, source="") {
                 next();
                 out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [], source: "" };
 
-                if (t.value === "*") {
-                    next_token = current();
-                    if (!next_token ||
-                        next_token.type === TOKEN_TYPES.COMMA ||
-                        next_token.type === TOKEN_TYPES.KEYWORD ||
-                        next_token.type === TOKEN_TYPES.BRACKET)
-                    {
-                        // This is not an operator i.e. `SELECT *`
-                        return { type: NODE_TYPES.SYMBOL, id: "*", source: "*" };
-                    }
-                }
-
                 // Unary operators
 
                 // Unary prefix
@@ -718,12 +706,16 @@ function getPrecedence (node) {
         case "REGEXP":
         case "NOT REGEXP":
             return 20;
+        case "||":
+            return 25;
         case "+":
         case "-":
             return 30;
         case "*":
         case "/":
             return 40;
+        case "??":
+            return 50;
         default:
             return 100;
     }

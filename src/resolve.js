@@ -155,8 +155,13 @@ function resolveValue (row, col, rows=null) {
     for (const table of tables) {
         const data = getRowData(row, table);
 
-        if (typeof data === "undefined" || data === null) {
+        if (typeof data === "undefined") {
             continue;
+        }
+
+        // i.e. LEFT JOIN where right table is NULL
+        if (data === null) {
+            return null;
         }
 
         const val = resolvePath(data, col);

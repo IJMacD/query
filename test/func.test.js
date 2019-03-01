@@ -229,6 +229,12 @@ describe("Value Functions", () => {
       });
     });
   });
+
+  test("COALESCE", () => {
+    return demoQuery("SELECT COALESCE(null, null, 'hey', 21)").then(r => {
+      expect(r[1][0]).toBe('hey');
+    });
+  })
 });
 
 describe("Table Valued Functions", function() {

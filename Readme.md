@@ -31,9 +31,10 @@ LOAD is also a table valued function to load data from an arbritrary url.
 
 `FROM LOAD('https://api.github.com/users/IJMacD/repos'), Owner` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('https%3A%2F%2Fapi.github.com%2Fusers%2FIJMacD%2Frepos')%2C%20Owner)
 
-`FROM LOAD('http://www.reddit.com/r/javascript.json'), data.children AS c, c.data AS d` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('http%3A%2F%2Fwww.reddit.com%2Fr%2Fjavascript.json')%2C%20data.children%20AS%20c%2C%20c.data%20AS%20d)
+`FROM LOAD('http://www.reddit.com/r/javascript.json'), data.children AS c, c.data AS d` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('https%3A%2F%2Fwww.reddit.com%2Fr%2Fjavascript.json')%2C%20data.children%20AS%20c%2C%20c.data%20AS%20d)
 
 `FROM LOAD('http://dummy.restapiexample.com/api/v1/employees')` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('http%3A%2F%2Fdummy.restapiexample.com%2Fapi%2Fv1%2Femployees'))
+(You might need to "allow unsecure scripts" because restapiexample.com doesn't support https)
 
 CTEs are supported.
 

@@ -156,7 +156,7 @@ function formatCell ({ cell }) {
 
     if (!str.includes("<")) {
         // Special formatting for urls and images
-        str = str.replace(/https?:\/\/[^,'>" &]+/g, url => {
+        str = str.replace(/https?:\/\/[^,'>" &()[\]]+/g, url => {
             let content = url;
             if (/\.(jpe?g|gif|png|webp)$/i.test(url)) {
                 content = OBJECT_IMAGE ? `<object data="${url}" height="64"></object>` : `<img src="${url}" height="64" />`;

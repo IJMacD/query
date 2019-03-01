@@ -89,13 +89,16 @@ function VAR_SUM (a) {
     return AGGREGATE_FUNCTIONS.SUM(a.map(v => Math.pow(v - mean, 2)));
 }
 
+const isStrictNull = a => typeof a === "undefined" || a === null || Number.isNaN(a) || isNullDate(a);
+const isNull = a => a === "" || isStrictNull(a);
+
 const OPERATORS = {
     '+': (a,b) => +a + +b,
     '-': (a,b) => +a - +b,
     '*': (a,b) => +a * +b,
     '/': (a,b) => +a / +b,
     /** Concatenate */
-    '||': (a,b) => `${a}${b}`,
+    '||': (a,b) => isStrictNull(a) || isStrictNull(b) ? null : `${a}${b}`,
     /** Compares two values to see if they are equal by collation rules */
     '=' (a,b) {
         if (typeof a !== typeof b) return false;
@@ -114,8 +117,8 @@ const OPERATORS = {
     '>=': (a,b) => a >= b,
     '%': (a,b) => a % b,
     'NOT': a => !a,
-    'IS NULL': a => typeof a === "undefined" || a === null || a === "" || Number.isNaN(a) || isNullDate(a),
-    'IS NOT NULL': a => !OPERATORS['IS NULL'](a),
+    'IS NULL': isNull,
+    'IS NOT NULL': a => !isNull(a),
     'LIKE': (a,b) => new RegExp("^" + b.replace(/\?/g, ".").replace(/%/g, ".*") + "$").test(a),
     'NOT LIKE': (a,b) => !OPERATORS['LIKE'](a, b),
     'REGEXP': (a,b) => new RegExp(b, "i").test(a),

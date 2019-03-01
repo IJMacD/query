@@ -38,19 +38,20 @@ async function getRows(context) {
         const start = Date.now();
         let startupTime;
 
-        table.join = table.alias || table.name;
-
         if (!rows) {
             /** @type {Array} */
             let results;
 
             results = await getPrimaryResults(context, table);
+            startupTime = Date.now() - start;
 
             if (!results) {
                 throw Error("Couldn't get Primary Results");
             }
 
-            startupTime = Date.now() - start;
+            if (!Array.isArray(results)) {
+                results = [ results ];
+            }
 
             // console.log(`Initial data set: ${results.length} items`);
 
@@ -60,9 +61,8 @@ async function getRows(context) {
                 const row = [];
 
                 // Set inital data object
-                row.data = {
-                    [table.join]: r,
-                };
+                row.data = {};
+                setRowData(row, table, r);
 
                 // Define a ROWID
                 Object.defineProperty(row, 'ROWID', { value: String(i), writable: true });
@@ -165,7 +165,7 @@ function processColumns (context, rawCols, rows) {
                 // only add "primitive" columns
                 let newCols = Object.keys(tableObj).filter(k => typeof scalar(tableObj[k]) !== "undefined");
 
-                cols.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.join}.${c}` })));
+                cols.push(...newCols.map(c => ({ type: NODE_TYPES.SYMBOL, id: `${table.alias}.${c}` })));
 
                 if (tables.length > 1) {
                     newCols = newCols.map(c => `${table.alias || table.name}.${c}`);

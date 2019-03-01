@@ -63,17 +63,17 @@ function nodesToTables (nodes) {
         }
 
         const name = String(node.id);
-        const using = name; // ast.using
 
         return {
             name,
             alias: node.alias,
-            join: using,
+            join: node.using,
             predicate: node.predicate,
             inner: node.inner,
             params: node.children,
             explain: "",
-            rowCount: 0
+            rowCount: 0,
+            symbol: Symbol(`Table ${node.alias || name}`),
         };
     });
 }

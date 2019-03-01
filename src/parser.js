@@ -208,9 +208,8 @@ function parseFromTokenList (tokenList, source="") {
 
                     } else if (suspect(TOKEN_TYPES.KEYWORD, "USING")) {
                         const name = expect(TOKEN_TYPES.NAME);
-                        child.predicate = { type: NODE_TYPES.SYMBOL, id: name.value };
-                        child.source += ` USING ${child.predicate.source}`;
-
+                        child.using = name.value;
+                        child.source += ` USING ${name.value}`;
                     }
 
                     if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {

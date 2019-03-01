@@ -118,11 +118,6 @@ function resolveValue (row, col, rows=null) {
         }
     }
 
-    // All methods after this require row data
-    if (!row['data']) {
-        throw Error("Resolve Value Error: No row data");
-    }
-
     const tableAlias = getTableAliasMap(tables);
 
     let head = col;
@@ -152,28 +147,13 @@ function resolveValue (row, col, rows=null) {
             return resolvePath(getRowData(row, t), tail);
         }
 
-        if (head in row['data']) {
-            return resolvePath(row['data'][head], tail);
-        }
-
-        for (let join in row['data']) {
-            const joinedName = `${join}.${head}`;
-            if (joinedName in row['data']) {
-                return resolvePath(row['data'][joinedName], tail);
-            }
-        }
-
         head = head.substr(0, head.lastIndexOf("."));
         tail = col.substr(head.length + 1);
     }
 
     // We will try each of the tables in turn
-    for (const { join } of tables) {
-        if (typeof join === "undefined") {
-            continue;
-        }
-
-        const data = row.data[join];
+    for (const table of tables) {
+        const data = getRowData(row, table);
 
         if (typeof data === "undefined" || data === null) {
             continue;
@@ -213,9 +193,7 @@ function resolvePath(data, path) {
       return null;
       // throw new Error("Trying to resolve a path on a null object: " + path)
   }
-  if (process.env.NODE_ENV !== "production" && typeof data['ROWID'] !== "undefined") {
-      console.error("It looks like you passed a row to resolvePath");
-  }
+
   if (typeof path === "undefined") {
       return data;
       // throw new Error("No path provided");
@@ -236,6 +214,7 @@ function resolvePath(data, path) {
           break;
       }
   }
+
   if (val !== null && typeof val !== "undefined") {
       return val;
   }
@@ -258,7 +237,6 @@ function setTableAliases (tables) {
           n = `${t.alias || t.name}_${i++}`;
       }
       t.alias = n;
-      t.join = n;
       tableAlias[n] = t;
   }
 }

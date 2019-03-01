@@ -8,6 +8,7 @@ export declare interface Node {
   type: number;
   id: string | number;
   alias?: string;
+  using?: string;
   inner?: boolean;
   predicate?: Node;
   children?: Node[];
@@ -93,7 +94,7 @@ export declare interface QueryCallbacks {
 
 export declare interface ParsedTable {
   name: string;
-  join?: string;
+  join?: string|[ParsedTable, string];
   predicate?: Node;
   alias?: string;
   params?: Node[];
@@ -101,6 +102,7 @@ export declare interface ParsedTable {
   explain?: string;
   rowCount?: number;
   analyse?: any;
+  symbol: Symbol;
 }
 
 import Query from './src/query';

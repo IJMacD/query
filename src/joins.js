@@ -35,7 +35,7 @@ const { resolvePath } = require('./resolve');
  * @returns {boolean}
  */
 function findJoin (tables, table, rows) {
-    if (table.join) {
+    if (Array.isArray(table.join)) {
         // If we have an explicit join, check it first.
 
         // First check of explicit join check is in data object.
@@ -56,6 +56,17 @@ function findJoin (tables, table, rows) {
         if (table.predicate) {
             return false;
         }
+    } else if (table.join) {
+        const t = table.join;
+
+        for (const r of rows) {
+            const path = findPath(tables, r, t);
+
+            if (typeof path !== "undefined"){
+                table.join = path;
+                return true;
+            }
+        }
     }
 
     // AUTO JOIN! (natural join, comma join, implicit join?)
@@ -66,7 +77,7 @@ function findJoin (tables, table, rows) {
         const path = findPath(tables, r, t);
 
         if (typeof path !== "undefined"){
-            table.join = path.length === 0 ? t : `${path}.${t}`;
+            table.join = path;
             return true;
         }
     }
@@ -81,12 +92,12 @@ function findJoin (tables, table, rows) {
         const join = findPath(tables, r, ts);
 
         if (typeof join !== "undefined") {
-            const data = r['data'][join];
+            const data = getRowData(r, table);
 
             const array = resolvePath(data, ts);
 
             if (Array.isArray(array)) {
-                table.join = join.length === 0 ? ts : `${join}.${ts}`;
+                table.join = join;
                 return true;
             }
 
@@ -118,7 +129,13 @@ function applyJoin (context, table, rows) {
         // Check to make sure we have data object saved,
         // if not fill in the data object of each row now
         if (typeof getRowData(row, table) === "undefined") {
-            setRowData(row, table, context.resolveValue(row, table.join));
+            if (Array.isArray(table.join)) {
+                const joinData = getRowData(row, table.join[0]);
+                const data = resolvePath(joinData, table.join[1]);
+                setRowData(row, table, data);
+            } else {
+                throw Error("Join has not been prepared");
+            }
         }
 
         const data = getRowData(row, table);
@@ -140,7 +157,7 @@ function applyJoin (context, table, rows) {
                 if (!table.inner) {
                     // Update the ROWID to indicate there was no row in this particular table
                     row['ROWID'] += ".-1";
-                    row['data'] = { ...row['data'], [table.join]: undefined }
+                    setRowData(row, table, null);
 
                     newRows.push(row);
                 }
@@ -150,8 +167,8 @@ function applyJoin (context, table, rows) {
 
             data.forEach((sr, si) => {
                 // Clone the row
-                const newRow = [ ...row ];
-                newRow['data'] = { ...row['data'], [table.join]: sr };
+                const newRow = cloneRow(row);
+                setRowData(newRow, table, sr);
 
                 // Set the ROWID again, this time including the subquery id too
                 Object.defineProperty(newRow, 'ROWID', { value: `${row['ROWID']}.${si}`, writable: true });
@@ -178,7 +195,7 @@ function applyJoin (context, table, rows) {
 }
 
 function setJoin (table, targetTable) {
-    table.join = `${targetTable.join}.${table.name}`;
+    table.join = [targetTable, table.name];
 }
 
 /**
@@ -189,12 +206,31 @@ function setJoinPredicate (table, predicate) {
     table.predicate = parseExpression(predicate);
 }
 
+/**
+ *
+ * @param {ResultRow} row
+ * @param {ParsedTable} table
+ */
 function getRowData (row, table) {
-  return row['data'][table.join];
+  // @ts-ignore
+  return row['data'][table.symbol];
 }
 
+
+/**
+ *
+ * @param {ResultRow} row
+ * @param {ParsedTable} table
+ */
 function setRowData (row, table, data) {
-  row['data'][table.join] = data;
+  // @ts-ignore
+  row['data'][table.symbol] = data;
+}
+
+function cloneRow(row) {
+    const newRow = [...row];
+    newRow['data'] = { ...row['data'] };
+    return newRow;
 }
 
 /**
@@ -204,25 +240,35 @@ function setRowData (row, table, data) {
  * @param {ParsedTable[]} tables
  * @param {ResultRow} row
  * @param {string} name
- * @returns {string}
+ * @returns {[ParsedTable,string]}
  */
 function findPath (tables, row, name) {
-  for (const { join } of tables) {
-      if (typeof join === "undefined") {
-          continue;
-      }
+    for (const table of tables) {
 
-      const data = row.data[join];
+        const data = getRowData(row, table);
 
-      if (typeof data === "undefined" || data === null) {
-          // Could be missing data because of a LEFT JOIN on null row
-          continue;
-      }
+        if (typeof data === "undefined" || data === null) {
+            // Could be missing data because of a LEFT JOIN on null row
+            continue;
+        }
 
-      // Check if the parent object has a property matching
-      // the secondary table i.e. Tutor => result.tutor
-      if (typeof resolvePath(data, name) !== "undefined") {
-          return join;
-      }
-  }
+        // Check if the parent object has a property matching
+        // the secondary table i.e. Tutor => result.tutor
+        if (typeof resolvePath(data, name) !== "undefined") {
+            return [table,name];
+        }
+
+        if (name.includes(".")) {
+            const head = name.substr(0, name.indexOf("."));
+            const tail = name.substr(name.indexOf(".") + 1);
+
+            if (head === table.alias) {
+                if (typeof resolvePath(data, tail) !== "undefined") {
+                    return [table,tail];
+                } else {
+                    throw Error("It looks like you tried to join on a table alias but the property wasn't found");
+                }
+            }
+        }
+    }
 }

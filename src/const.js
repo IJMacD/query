@@ -125,8 +125,8 @@ const OPERATORS = {
     'NOT LIKE': (a,b) => !OPERATORS['LIKE'](a, b),
     'REGEXP': (a,b) => new RegExp(b, "i").test(a),
     'NOT REGEXP': (a,b) => !OPERATORS['REGEXP'](a, b),
-    'AND': (a,b) => a && b,
-    'OR': (a,b) => a || b,
+    'AND': (a,b) => Boolean(a && b),
+    'OR': (a,b) => Boolean(a || b),
     'IN': (v, a) => a.includes(v),
     'NOT IN': (v, a) => !OPERATORS['IN'](v, a),
 };

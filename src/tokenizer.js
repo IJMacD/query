@@ -105,7 +105,7 @@ module.exports = {
                 }
 
                 // Remember hyphen '-' must be at end of character class
-                m = /^([<>+=!*\/|%?-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b|BETWEEN)/i.exec(ss);
+                m = /^([<>+=!*\/|%?-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b|OR\b|BETWEEN\b)/i.exec(ss);
                 if (m) {
                     let type = TOKEN_TYPES.OPERATOR;
 

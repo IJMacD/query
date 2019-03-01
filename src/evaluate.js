@@ -161,6 +161,15 @@ function evaluate (row, node, rows=null) {
             return String(node.id);
         }
         case NODE_TYPES.OPERATOR: {
+            // Special treatment for AND and OR because we don't need to evaluate all
+            // operands beforehand
+            if (node.id === "AND") {
+                return Boolean(this.evaluate(row, node.children[0], rows) && this.evaluate(row, node.children[1], rows));
+            }
+            if (node.id === "OR") {
+                return Boolean(this.evaluate(row, node.children[0], rows) || this.evaluate(row, node.children[1], rows));
+            }
+
             const op = OPERATORS[node.id];
 
             if (!op) {

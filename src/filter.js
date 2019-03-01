@@ -23,22 +23,34 @@ module.exports = {
  */
 function filterRows (context, rows, condition, strict = true) {
     if (condition) {
-        return rows.filter(r => {
-            try {
-                return context.evaluate(r, condition, rows);
-            } catch (e) {
-                if (e instanceof SymbolError) {
-                    // If we got a symbol error it means we don't have enough
-                    // symbols yet. If we're not strict we need to return true
-                    // to carry on. If we are strict then the row fails.
-                    return !strict;
-                } else {
-                    throw e;
-                }
-            }
-        });
+        return rows.filter(r => filterRow(context, r, condition, rows, strict));
     }
     return rows;
+}
+
+function filterRow(context, row, condition, rows, strict) {
+    // Optimisation.
+    // If we're not in strict mode we can return a fail earlier if either
+    // side of an AND operator returns exactly false rather than optimistically
+    // catching SymbolErrors and returning true
+    if (!strict && condition.type === NODE_TYPES.OPERATOR && condition.id === "AND") {
+        return filterRow(context, row, condition.children[0], rows, false) && filterRow(context, row, condition.children[1], rows, false);
+    }
+
+    try {
+        return context.evaluate(row, condition, rows);
+    }
+    catch (e) {
+        if (e instanceof SymbolError) {
+            // If we got a symbol error it means we don't have enough
+            // symbols yet. If we're not strict we need to return true
+            // to carry on. If we are strict then the row fails.
+            return !strict;
+        }
+        else {
+            throw e;
+        }
+    }
 }
 
 /**

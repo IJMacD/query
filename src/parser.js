@@ -691,6 +691,8 @@ function getPrecedence (node) {
     switch (node.id) {
         case "AND":
             return 10;
+        case "OR":
+            return 15;
         case ">":
         case "<":
         case "=":

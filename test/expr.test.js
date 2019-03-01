@@ -302,6 +302,31 @@ describe("Logic Operators", () => {
             })
         ]);
     });
+
+    test("AND", () => {
+        return Promise.all([
+            runQuery("SELECT 1 AND 1").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            runQuery("SELECT 1 AND 0").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+        ]);
+    });
+
+    test("OR", () => {
+        return Promise.all([
+            runQuery("SELECT 1 OR 1").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            runQuery("SELECT 1 OR 0").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            runQuery("SELECT 0 OR 0").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+        ]);
+    });
 });
 
 describe("Operator Precedence", () => {
@@ -342,6 +367,24 @@ describe("Operator Precedence", () => {
             expect(r.length - 1).toBe(4);
             expect(r[1][0]).toBe(6);
             expect(r[1][1]).toBe(3);
+        });
+    });
+
+    test("AND OR", () => {
+        return demoQuery("FROM Test WHERE n AND n2 OR n3").then(r => {
+            expect(r.length - 1).toBe(8);
+            expect(r[1][0]).toBe(2);
+            expect(r[1][1]).toBe(1);
+            expect(r[1][2]).toBe(0);
+        });
+    });
+
+    test("OR AND", () => {
+        return demoQuery("FROM Test WHERE n OR n2 AND n3").then(r => {
+            expect(r.length - 1).toBe(7);
+            expect(r[1][0]).toBe(3);
+            expect(r[1][1]).toBe(1);
+            expect(r[1][2]).toBe(1);
         });
     });
 

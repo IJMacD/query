@@ -645,17 +645,22 @@ function appendChild (parent, node) {
     {
         const prev = lastChild(parent);
 
-        if (prev && prev.type === NODE_TYPES.OPERATOR &&
+        if (prev && prev.type === NODE_TYPES.OPERATOR) {
+            // Special special treatment for BETWEEN since there are 3 operands
+            if (prev.id === "BETWEEN" && node.id === "AND") {
+                prev.children[2] = node.children[1];
+                return prev;
+            }
             // Apply operator precedence
-            getPrecedence(prev) < getPrecedence(node)
-        ) {
-            // Current and Prev nodes are both operators but the previous
-            // one outranks the current node so we'll add the current node
-            // as a child of the previous one.
-            appendChild(prev, node);
+            else if (getPrecedence(prev) < getPrecedence(node)) {
+                // Current and Prev nodes are both operators but the previous
+                // one outranks the current node so we'll add the current node
+                // as a child of the previous one.
+                appendChild(prev, node);
 
-            // And we're done.
-            return node;
+                // And we're done.
+                return node;
+            }
         }
 
         // The previous node wasn't an operator or is an operator but
@@ -689,6 +694,8 @@ function lastChild (node) {
  */
 function getPrecedence (node) {
     switch (node.id) {
+        case "BETWEEN":
+            return 5;
         case "AND":
             return 10;
         case "OR":

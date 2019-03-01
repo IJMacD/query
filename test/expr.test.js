@@ -327,6 +327,17 @@ describe("Logic Operators", () => {
             }),
         ]);
     });
+
+    test("BETWEEN AND", () => {
+        return Promise.all([
+            runQuery("SELECT 5 BETWEEN 1 AND 10").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            runQuery("SELECT 15 BETWEEN 1 AND 10").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+        ]);
+    });
 });
 
 describe("Operator Precedence", () => {
@@ -550,6 +561,17 @@ describe("Operator Precedence", () => {
         return Promise.all([
             demoQuery("SELECT 'oooooo' || null ?? 'hhh'").then(r => {
                 expect(r[1][0]).toBe("oooooohhh");
+            }),
+        ]);
+    });
+
+    test("BETWEEN -+-", () => {
+        return Promise.all([
+            demoQuery("SELECT 5 - 2 BETWEEN 1 + 1 AND 10 - 5").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 7 - 2 BETWEEN 1 + 1 AND 10 - 5").then(r => {
+                expect(r[1][0]).toBe(false);
             }),
         ]);
     });

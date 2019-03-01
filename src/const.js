@@ -129,6 +129,7 @@ const OPERATORS = {
     'OR': (a,b) => Boolean(a || b),
     'IN': (v, a) => a.includes(v),
     'NOT IN': (v, a) => !OPERATORS['IN'](v, a),
+    'BETWEEN': (x, a, b) => a <= x && x < b,
 };
 
 const TABLE_VALUED_FUNCTIONS = {

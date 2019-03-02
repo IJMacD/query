@@ -56,7 +56,7 @@ querySuggest.addEventListener("click", e => {
 window.addEventListener("hashchange", handleHash);
 
 function handleHash () {
-    if (location.hash) {
+    if (location.hash && !input.disabled) {
         const searchParams = new URLSearchParams(location.hash.substr(1));
         if (searchParams.has("q")) {
             input.value = searchParams.get("q");

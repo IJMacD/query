@@ -7,13 +7,21 @@
         <title>Query</title>
     </head>
     <body>
-        <div style="display: flex; flex-direction: column; height: 100%;">
-            <form id="query-form">
-                <input type="text" id="input" name="q">
-                <button class="query" type="submit">Query</button>
-            </form>
-            <ol id="query-suggest"></ol>
-            <div id="output"></div>
+        <div style="display: flex; height: 100%;">
+            <div id="explorer">
+            <h2>Tables</h2>
+            <ul id="explorer-table-list"></ul>
+            <h2>Functions</h2>
+            <ul id="explorer-function-list"></ul>
+            </div>
+            <div style="display: flex; flex-direction: column; height: 100%; flex: 1;">
+                <form id="query-form">
+                    <input type="text" id="input" name="q">
+                    <button class="query" type="submit">Query</button>
+                </form>
+                <ol id="query-suggest"></ol>
+                <div id="output"></div>
+            </div>
         </div>
         <script src="query.js"></script>
         <script src="main.js"></script>

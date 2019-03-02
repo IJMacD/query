@@ -16,6 +16,10 @@ const OBJECT_IMAGE = false;
 
 const HTML_ESCAPING = true;
 
+handleHash();
+input.focus();
+populateExplorer();
+
 queryForm.addEventListener("submit", e => {
     e.preventDefault();
     sendQuery();
@@ -65,8 +69,45 @@ function handleHash () {
     }
 }
 
-handleHash();
-input.focus();
+function populateExplorer () {
+    const explorer = document.getElementById('explorer');
+    explorer.addEventListener("click", e => {
+        if (e.target instanceof HTMLLIElement) {
+            input.value += e.target.textContent;
+        }
+    });
+
+    query(`
+        FROM information_schema.tables
+        SELECT table_schema, table_name, table_type
+        UNION ALL
+        FROM information_schema.routines
+        WHERE data_type = 'table'
+        SELECT null, routine_name, 'table function'
+    `).then(r => {
+        // headers
+        r.shift();
+
+        const out = r.map(t => {
+            const className = t[2] === "table function" ? "table-function" : (t[2].includes("VIEW") ? "view" : "table");
+            return `<li class="${className}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
+        }).join("");
+
+        document.getElementById("explorer-table-list").innerHTML = out;
+    });
+
+    query("FROM information_schema.routines WHERE data_type != 'table'").then(/** @param {any[][]} r */ r => {
+        /** @type {string[]} */
+        const headers = r.shift();
+        const nameCol = headers.indexOf("routine_name");
+
+        const out = r.map(t => {
+            return `<li class="function">${t[nameCol]}</li>`;
+        }).join("");
+
+        document.getElementById("explorer-function-list").innerHTML = out;
+    });
+}
 
 function sendQuery () {
     hideSuggestions();

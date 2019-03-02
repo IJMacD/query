@@ -20,7 +20,7 @@ module.exports = {
  */
 async function informationSchema(context, schema) {
     if (schema in infoTables) {
-        return await infoTables[schema](context);
+        return infoTables[schema](context);
     }
 
     throw new Error(`Unkown information_schema view: ${schema}`);

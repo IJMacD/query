@@ -194,5 +194,5 @@ async function getPlaceholderJSON (path) {
     const url = `${API_ROOT}${path}`;
     // console.log(url);
     const r = await fetch(url);
-    return await r.json();
+    return r.json();
 }

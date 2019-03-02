@@ -91,19 +91,19 @@ async function getRows(context) {
                 }
             }
             else {
-            const findResult = findJoin(tables, table, rows);
+                const findResult = findJoin(tables, table, rows);
 
-            if (!findResult) {
-                // All attempts at joining failed, intead we're going to do a
-                // CROSS JOIN!
-                const results = await getPrimaryResults(context, table);
+                if (!findResult) {
+                    // All attempts at joining failed, intead we're going to do a
+                    // CROSS JOIN!
+                    const results = await getPrimaryResults(context, table);
 
-                table.explain += " cross-join";
+                    table.explain += " cross-join";
 
-                for (const row of rows) {
-                    setRowData(row, table, results);
+                    for (const row of rows) {
+                        setRowData(row, table, results);
+                    }
                 }
-            }
             }
 
             rows = applyJoin(context, table, rows);
@@ -226,7 +226,7 @@ async function getPrimaryResults(context, table) {
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
     if (infoMatch) {
-        return await informationSchema(context, infoMatch[1]);
+        return informationSchema(context, infoMatch[1]);
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {
@@ -237,7 +237,7 @@ async function getPrimaryResults(context, table) {
         throw new Error("PrimaryTable callback not defined");
     }
 
-    return await callbacks.primaryTable.call(context, table) || [];
+    return callbacks.primaryTable.call(context, table) || [];
 }
 
 /**

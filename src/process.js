@@ -23,7 +23,7 @@ const { filterRows } = require('./filter');
 const { setAnalysis } = require('./explain');
 const { getTableAliasMap, PendingValue } = require('./resolve');
 const { scalar, queryResultToObjectArray } = require('./util');
-const { evaluateConstantExpression, SymbolError } = require('./evaluate');
+const { evaluateConstantExpression, SymbolError, isConstantExpression } = require('./evaluate');
 const evaluateStatement = require('./evaluate-query');
 
 /**
@@ -77,6 +77,20 @@ async function getRows(context) {
 
             startupTime = Date.now() - start;
 
+            if (table.name in TABLE_VALUED_FUNCTIONS) {
+                const fn = TABLE_VALUED_FUNCTIONS[table.name];
+                const isConstant = table.params.every(p => isConstantExpression(p));
+
+                // If the function call is purely constant, just evaluate it once
+                const constantResults = isConstant && await fn(...table.params.map(p => evaluateConstantExpression(p)));
+
+                for (const row of rows) {
+                    const results = constantResults || await fn(...table.params.map(p => context.evaluate(row, p, rows)));
+
+                    setRowData(row, table, results);
+                }
+            }
+            else {
             const findResult = findJoin(tables, table, rows);
 
             if (!findResult) {
@@ -89,6 +103,7 @@ async function getRows(context) {
                 for (const row of rows) {
                     setRowData(row, table, results);
                 }
+            }
             }
 
             rows = applyJoin(context, table, rows);

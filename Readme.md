@@ -36,6 +36,10 @@ LOAD is also a table valued function to load data from an arbritrary url.
 `FROM LOAD('http://dummy.restapiexample.com/api/v1/employees')` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('http%3A%2F%2Fdummy.restapiexample.com%2Fapi%2Fv1%2Femployees'))
 (You might need to "allow unsecure scripts" because restapiexample.com doesn't support https)
 
+You can use expressions in table valued functions.
+
+`FROM RANGE(-7,0), LOAD('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=' || DATE(DATEADD(DAY, value))) AS nasa WHERE media_type = 'image' SELECT nasa.*`
+
 CTEs are supported.
 
 `WITH cte AS (FROM Test_2 WHERE c > 'd') FROM Test, cte ON CHAR(n+97) = c` [⯈](https://ijmacd.github.io/query/#q=WITH%20cte%20AS%20(FROM%20Test_2%20WHERE%20c%20%3E%20'd')%20FROM%20Test%2C%20cte%20ON%20CHAR(n%2B98)%20%3D%20c)

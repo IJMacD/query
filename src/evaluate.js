@@ -16,6 +16,7 @@ module.exports = {
     evaluate,
     getRowEvaluator,
     evaluateConstantExpression,
+    isConstantExpression,
     aggregateValues,
     rowSorter,
     comparator,
@@ -283,4 +284,25 @@ function aggregateValues (context, rows, expr, distinct = false) {
   }
 
   return values;
+}
+
+/**
+ * Determines whether or not an expression is purely constant.
+ * @param {Node} expr
+ * @returns {boolean}
+ */
+function isConstantExpression (expr) {
+    if (expr.type === NODE_TYPES.NUMBER ||
+        expr.type === NODE_TYPES.STRING)
+    {
+        return true;
+    }
+
+    if (expr.type === NODE_TYPES.FUNCTION_CALL ||
+        expr.type === NODE_TYPES.OPERATOR)
+    {
+        return expr.children.every(c => isConstantExpression(c));
+    }
+
+    return false;
 }

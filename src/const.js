@@ -147,12 +147,12 @@ const TABLE_VALUED_FUNCTIONS = {
             Array(count).fill(0).map((n,i) => ({ value: start - i * step }));
     },
     LOAD (url) {
-        return fetch(url).then(r => r.ok ? r.json() : Promise.reject(r.statusText));
+        return fetch(url).then(r => r.ok ? r.json() : (console.error(`${r.statusText}: ${url}`), null));
     },
 };
 
-/** @typedef {import('./query').ResultRow} ResultRow */
-/** @typedef {import('./parser').Node} Node */
+/** @typedef {import('../types').ResultRow} ResultRow */
+/** @typedef {import('../types').Node} Node */
 /** @typedef {(index: number, values: number[], rows?: ResultRow[], executor?: (row: ResultRow, node: Node) => any, ...other: any) => any} WindowFunction */
 
 /**

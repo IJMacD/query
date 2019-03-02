@@ -147,6 +147,7 @@ const TABLE_VALUED_FUNCTIONS = {
             Array(count).fill(0).map((n,i) => ({ value: start - i * step }));
     },
     LOAD (url) {
+        console.debug(`fetch(${url})`);
         return fetch(url).then(r => r.ok ? r.json() : (console.error(`${r.statusText}: ${url}`), null));
     },
 };

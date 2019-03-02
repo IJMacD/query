@@ -84,11 +84,11 @@ async function getRows(context) {
                 // If the function call is purely constant, just evaluate it once
                 const constantResults = isConstant && await fn(...table.params.map(p => evaluateConstantExpression(p)));
 
-                for (const row of rows) {
+                await Promise.all(rows.map(async row => {
                     const results = constantResults || await fn(...table.params.map(p => context.evaluate(row, p, rows)));
 
                     setRowData(row, table, results);
-                }
+                }));
             }
             else {
                 const findResult = findJoin(tables, table, rows);

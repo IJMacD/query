@@ -67,6 +67,7 @@ function nodesToTables (nodes) {
         return {
             name,
             alias: node.alias,
+            headers: node.headers,
             join: node.using,
             predicate: node.predicate,
             inner: node.inner,

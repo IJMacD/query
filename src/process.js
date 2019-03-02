@@ -221,7 +221,7 @@ async function getPrimaryResults(context, table) {
     }
 
     if (table.name in views) {
-        return queryResultToObjectArray(await context.query.run(views[table.name]));
+        return queryResultToObjectArray(await context.query.run(views[table.name]), table.headers);
     }
 
     const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);

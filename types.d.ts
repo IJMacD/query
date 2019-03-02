@@ -97,6 +97,7 @@ export declare interface ParsedTable {
   join?: string|[ParsedTable, string];
   predicate?: Node;
   alias?: string;
+  headers?: string[];
   params?: Node[];
   inner?: boolean;
   explain?: string;

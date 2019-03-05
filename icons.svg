@@ -18,7 +18,105 @@
    inkscape:version="0.92.3 (2405546, 2018-03-11)"
    sodipodi:docname="icons.svg">
   <defs
-     id="defs2" />
+     id="defs2">
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Drop Shadow"
+       id="filter1352">
+      <feFlood
+         flood-opacity="0.945098"
+         flood-color="rgb(255,255,255)"
+         result="flood"
+         id="feFlood1342" />
+      <feComposite
+         in="flood"
+         in2="SourceGraphic"
+         operator="in"
+         result="composite1"
+         id="feComposite1344" />
+      <feGaussianBlur
+         in="composite1"
+         stdDeviation="1"
+         result="blur"
+         id="feGaussianBlur1346" />
+      <feOffset
+         dx="2.3"
+         dy="3.64583"
+         result="offset"
+         id="feOffset1348" />
+      <feComposite
+         in="SourceGraphic"
+         in2="offset"
+         operator="over"
+         result="composite2"
+         id="feComposite1350" />
+    </filter>
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Drop Shadow"
+       id="filter4317">
+      <feFlood
+         flood-opacity="0.945098"
+         flood-color="rgb(255,255,255)"
+         result="flood"
+         id="feFlood4307" />
+      <feComposite
+         in="flood"
+         in2="SourceGraphic"
+         operator="in"
+         result="composite1"
+         id="feComposite4309" />
+      <feGaussianBlur
+         in="composite1"
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur4311" />
+      <feOffset
+         dx="1"
+         dy="1"
+         result="offset"
+         id="feOffset4313" />
+      <feComposite
+         in="SourceGraphic"
+         in2="offset"
+         operator="over"
+         result="fbSourceGraphic"
+         id="feComposite4315" />
+      <feColorMatrix
+         result="fbSourceGraphicAlpha"
+         in="fbSourceGraphic"
+         values="0 0 0 -1 0 0 0 0 -1 0 0 0 0 -1 0 0 0 0 1 0"
+         id="feColorMatrix4319" />
+      <feFlood
+         id="feFlood4321"
+         flood-opacity="1"
+         flood-color="rgb(255,255,255)"
+         result="flood"
+         in="fbSourceGraphic" />
+      <feComposite
+         in2="fbSourceGraphic"
+         id="feComposite4323"
+         in="flood"
+         operator="in"
+         result="composite1" />
+      <feGaussianBlur
+         id="feGaussianBlur4325"
+         in="composite1"
+         stdDeviation="2"
+         result="blur" />
+      <feOffset
+         id="feOffset4327"
+         dx="1"
+         dy="1"
+         result="offset" />
+      <feComposite
+         in2="offset"
+         id="feComposite4329"
+         in="fbSourceGraphic"
+         operator="over"
+         result="composite2" />
+    </filter>
+  </defs>
   <sodipodi:namedview
      id="base"
      pagecolor="#ffffff"
@@ -27,8 +125,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.49497475"
-     inkscape:cx="656.33185"
-     inkscape:cy="556.94989"
+     inkscape:cx="101.02869"
+     inkscape:cy="243.19816"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -45,7 +143,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -62,34 +160,34 @@
          height="36.203186"
          width="49.703869"
          id="rect815"
-         style="fill:none;fill-opacity:1;stroke:#013c5d;stroke-width:1;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
+         style="fill:none;fill-opacity:1;stroke:#013c5d;stroke-width:2;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
       <path
          id="rect817"
          transform="scale(0.26458333)"
          d="M 195.71484 231.0918 C 177.51199 231.0918 162.85742 245.74636 162.85742 263.94922 L 162.85742 282.54297 L 350.71484 283.10742 L 350.71484 263.94922 C 350.71484 245.74636 336.06028 231.0918 317.85742 231.0918 L 195.71484 231.0918 z "
-         style="fill:#008000;fill-opacity:1;stroke:#013c5d;stroke-width:3.77952761;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
+         style="fill:#008000;fill-opacity:1;stroke:#013c5d;stroke-width:7.55905522;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
       <path
          inkscape:connector-curvature="0"
          id="path837"
          d="M 43.278274,98.751487 H 93.171131"
-         style="fill:none;stroke:#013c5d;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
+         style="fill:none;stroke:#013c5d;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
       <path
          inkscape:connector-curvature="0"
          id="path839"
          d="M 42.711309,86.845237 H 93.171131"
-         style="fill:none;stroke:#013c5d;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
+         style="fill:none;stroke:#013c5d;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
       <path
          inkscape:connector-curvature="0"
          id="path841"
          d="M 54.995534,74.938987 V 110.46875"
-         style="fill:none;stroke:#013c5d;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
+         style="fill:none;stroke:#013c5d;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
       <path
          inkscape:connector-curvature="0"
          id="path845"
          d="M 67.695542,74.938987 V 110.46875"
-         style="fill:none;stroke:#013c5d;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
+         style="fill:none;stroke:#013c5d;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" />
       <path
-         style="fill:none;stroke:#013c5d;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+         style="fill:none;stroke:#013c5d;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
          d="M 80.924717,74.938987 V 110.46875"
          id="path847"
          inkscape:connector-curvature="0" />
@@ -104,18 +202,23 @@
          xlink:href="#g857"
          y="0"
          x="0" />
-      <circle
-         style="fill:#ffffff;fill-opacity:1;stroke:#013c5d;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         id="path877"
-         cx="151.0015"
-         cy="108.95684"
-         r="10.394345" />
-      <circle
-         r="10.394345"
-         cy="108.95684"
-         cx="172.54613"
-         id="circle879"
-         style="fill:#ffffff;fill-opacity:1;stroke:#013c5d;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <g
+         id="g1356"
+         transform="matrix(1.3134891,0,0,1.3134891,-52.852489,-40.741025)"
+         style="stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none">
+        <circle
+           r="10.394345"
+           cy="108.95684"
+           cx="151.0015"
+           id="path877"
+           style="fill:#ffffff;fill-opacity:1;stroke:#013c5d;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+        <circle
+           style="fill:#ffffff;fill-opacity:1;stroke:#013c5d;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           id="circle879"
+           cx="172.54613"
+           cy="108.95684"
+           r="10.394345" />
+      </g>
     </g>
     <g
        id="g904"
@@ -126,20 +229,20 @@
          x="127.37797"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:50.79999924px;line-height:1.25;font-family:'Cambria Math';-inkscape-font-specification:'Cambria Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
          xml:space="preserve"><tspan
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:50.79999924px;font-family:'Cambria Math';-inkscape-font-specification:'Cambria Math';stroke-width:0.26458332"
+           style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:50.79999924px;font-family:Georgia;-inkscape-font-specification:'Georgia Italic';stroke-width:0.26458332"
            y="165.84227"
            x="127.37797"
            id="tspan892"
            sodipodi:role="line">f</tspan></text>
       <text
          id="text898"
-         y="170.37798"
-         x="141.3631"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:'Cambria Math';-inkscape-font-specification:'Cambria Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+         y="177.32698"
+         x="141.27852"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.59734917px;line-height:1.25;font-family:'Cambria Math';-inkscape-font-specification:'Cambria Math';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.41493371"
          xml:space="preserve"><tspan
-           style="font-size:25.39999962px;stroke-width:0.26458332"
-           y="170.37798"
-           x="141.3631"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:39.83363724px;font-family:Georgia;-inkscape-font-specification:Georgia;stroke-width:0.41493371"
+           y="177.32698"
+           x="141.27852"
            id="tspan896"
            sodipodi:role="line">x</tspan></text>
     </g>
@@ -156,11 +259,12 @@
       <use
          height="100%"
          width="100%"
-         transform="translate(-65.011905,15.875)"
+         transform="matrix(1.2432881,0,0,1.2432881,-104.29083,-37.142715)"
          id="use906"
          xlink:href="#g904"
          y="0"
-         x="0" />
+         x="0"
+         style="filter:url(#filter4317)" />
     </g>
     <g
        id="g918"

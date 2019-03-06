@@ -10,6 +10,16 @@
         "kind": "test",
         "isDefault": true
       }
+    },
+    {
+      "type": "npm",
+      "script": "start",
+      "problemMatcher": []
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "problemMatcher": []
     }
   ]
 }

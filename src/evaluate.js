@@ -6,6 +6,7 @@ const {
     VALUE_FUNCTIONS,
     WINDOW_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
+    TABLE_VALUED_FUNCTIONS,
 } = require('./const');
 
 const { isValidDate } = require('./util');
@@ -139,6 +140,9 @@ function evaluate (row, node, rows=null) {
             const fn = this.userFunctions[fnName] || VALUE_FUNCTIONS[fnName];
 
             if (!fn) {
+                if (fnName in TABLE_VALUED_FUNCTIONS) {
+                    throw new Error(`Tried to call a table-valued-function as a value function: ${fnName}`);
+                }
                 throw new Error(`Tried to call a non-existant function (${fnName})`);
             }
 

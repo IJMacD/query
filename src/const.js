@@ -56,23 +56,35 @@ const VALUE_FUNCTIONS = {
 };
 
 const AGGREGATE_FUNCTIONS = {
+    /** @type {(a: any[]) => number} */
     COUNT: a => a.filter(x => x !== false).length, // Include 0, "", NULL; Exclude false
+    /** @type {(a: number[]) => number} */
     SUM: a => a.reduce((total,val) => total + (+val), 0), // Be sure to coerce into number
+    /** @type {(a: number[]) => number} */
     AVG: a => AGGREGATE_FUNCTIONS.SUM(a) / a.length,
+    /** @type {(a: number[]) => number} */
     MIN: a => Math.min(...a),
+    /** @type {(a: number[]) => number} */
     MAX: a => Math.max(...a),
-    LISTAGG: a => a.join(),
+    /** @type {(a: string[], s?: string) => string} */
+    LISTAGG: (a,s) => a.join(s),
     JSON_ARRAYAGG: VALUE_FUNCTIONS.JSON_STRINGIFY,
+    /** @type {(a: number[]) => number} */
     STDDEV_POP: a => Math.sqrt(AGGREGATE_FUNCTIONS.VAR_POP(a)),
+    /** @type {(a: number[]) => number} */
     STDDEV_SAMP: a => Math.sqrt(AGGREGATE_FUNCTIONS.VAR_SAMP(a)),
+    /** @type {(a: number[]) => number} */
     VAR_POP: a => VAR_SUM(a) / a.length,
+    /** @type {(a: number[]) => number} */
     VAR_SAMP: a => (a.length === 1) ? 0 : VAR_SUM(a) / (a.length - 1),
+    /** @type {(a: number[], b: number[]) => number} */
     COVAR_POP (a, b) {
         const meanA = AGGREGATE_FUNCTIONS.AVG(a);
         const meanB = AGGREGATE_FUNCTIONS.AVG(b);
         const avgOfProducts = AGGREGATE_FUNCTIONS.AVG(a.map((_, i) => a[i] * b[i]));
         return avgOfProducts - meanA * meanB;
     },
+    /** @type {(a: number[], b: number[]) => number} */
     COVAR_SAMP (a, b) {
         if (a.length === 1) return 0;
         const meanA = AGGREGATE_FUNCTIONS.AVG(a);
@@ -85,6 +97,10 @@ const AGGREGATE_FUNCTIONS = {
 /* Alias */
 AGGREGATE_FUNCTIONS.STDDEV = AGGREGATE_FUNCTIONS.STDDEV_SAMP;
 
+/**
+ *
+ * @param {number[]} a
+ */
 function VAR_SUM (a) {
     const mean = AGGREGATE_FUNCTIONS.AVG(a);
     return AGGREGATE_FUNCTIONS.SUM(a.map(v => Math.pow(v - mean, 2)));
@@ -133,6 +149,7 @@ const OPERATORS = {
 };
 
 const TABLE_VALUED_FUNCTIONS = {
+    /** @type {(start: number, end?: number, step?: number) => { value: number }[]} */
     RANGE (start, end=undefined, step=1) {
         if (typeof end === "undefined") {
             end = start;
@@ -146,9 +163,10 @@ const TABLE_VALUED_FUNCTIONS = {
             Array(count).fill(0).map((n,i) => ({ value: start + i * step })) :
             Array(count).fill(0).map((n,i) => ({ value: start - i * step }));
     },
-    LOAD (url) {
-        console.debug(`fetch(${url})`);
-        return fetch(url).then(r => r.ok ? r.json() : (console.error(`${r.statusText}: ${url}`), null));
+    /** @type {(url: string) => Promise} */
+    async LOAD (url) {
+        const r = await fetch(url);
+        return r.ok ? r.json() : (console.error(`${r.statusText}: ${url}`), null);
     },
 };
 

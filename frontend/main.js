@@ -24,6 +24,7 @@ queryForm.addEventListener("submit", e => {
     e.preventDefault();
     sendQuery();
 });
+
 document.addEventListener("keydown", e => {
     if (e.key === "Enter") sendQuery();
     else if (e.key === "Escape") hideSuggestions();
@@ -35,9 +36,11 @@ document.addEventListener("keydown", e => {
         }
     }
 });
+
 document.addEventListener("click", e => {
     hideSuggestions();
 });
+
 input.addEventListener("keyup", e => {
     if (e.altKey && "1234567890".includes(e.key)) {
         e.preventDefault();
@@ -49,6 +52,7 @@ input.addEventListener("keyup", e => {
     else if (e.key === "Escape") return;
     showSuggestions();
 });
+
 querySuggest.addEventListener("click", e => {
     if (e.target instanceof HTMLLIElement) {
         input.value = e.target.textContent;
@@ -73,24 +77,49 @@ function populateExplorer () {
     const explorer = document.getElementById('explorer');
     explorer.addEventListener("click", e => {
         if (e.target instanceof HTMLLIElement) {
-            input.value += e.target.textContent;
+            let { value, selectionStart, selectionEnd } = input;
+            const { insert, insertBefore = "", insertAfter = "" } = e.target.dataset;
+
+            const before = value.substring(0,selectionStart);
+            const inside = value.substring(selectionStart, selectionEnd);
+            const after = value.substring(selectionEnd);
+
+            const newInside = insert || inside;
+            input.value = before + insertBefore + newInside + insertAfter + after;
+
+            selectionStart += insertBefore.length
+            if (inside === "") {
+                selectionStart += newInside.length;
+                selectionEnd = selectionStart;
+            } else {
+                selectionEnd = selectionStart + newInside.length;
+            }
+
+            input.setSelectionRange(selectionStart, selectionEnd);
+            input.focus();
         }
     });
 
-    query(`
-        FROM information_schema.tables
+    query(`FROM information_schema.tables
         SELECT table_schema, table_name, table_type
         UNION ALL
         FROM information_schema.routines
         WHERE data_type = 'table'
-        SELECT null, routine_name, 'table function'
-    `).then(r => {
+        SELECT null, routine_name, 'table function'`)
+    .then(r => {
         // headers
         r.shift();
 
         const out = r.map(t => {
-            const className = t[2] === "table function" ? "table-function" : (t[2].includes("VIEW") ? "view" : "table");
-            return `<li class="${className}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
+            if (t[2] === "table function") {
+                const className = "table-function";
+                const insertBefore = `${t[1]}(`;
+                const insertAfter = ")";
+                return `<li class="${className}" data-insert-before="${insertBefore}" data-insert-after="${insertAfter}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
+            }
+            const className = t[2].includes("VIEW") ? "view" : "table";
+            const insert = t[0] === "information_schema" ? `${t[0]}.${t[1]}` : t[1];
+            return `<li class="${className}" data-insert="${insert}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
         }).join("");
 
         document.getElementById("explorer-table-list").innerHTML = out;
@@ -102,7 +131,7 @@ function populateExplorer () {
         const nameCol = headers.indexOf("routine_name");
 
         const out = r.map(t => {
-            return `<li class="function">${t[nameCol]}</li>`;
+            return `<li class="function" data-insert-before="${t[nameCol]}(" data-insert-after=")">${t[nameCol]}</li>`;
         }).join("");
 
         document.getElementById("explorer-function-list").innerHTML = out;

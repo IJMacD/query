@@ -13,6 +13,7 @@ form {
     display: flex;
     flex-direction: row;
     margin: 10px;
+    position: relative;
 }
 input {
     flex: 1;
@@ -43,10 +44,9 @@ button  {
 }
 #query-suggest {
     position: absolute;
-    top: 40px;
+    top: 20px;
     background: white;
     padding: 20px 10px 20px 40px;
-    left: 20px;
     border: 1px solid #999;
     box-shadow: 2px 2px 9px 0px;
 }

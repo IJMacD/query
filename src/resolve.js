@@ -75,6 +75,7 @@ function resolveConstant (str) {
  * @param {ResultRow} row
  * @param {string} col
  * @param {ResultRow[]} [rows]
+ * @returns {string|number|boolean|Date}
  */
 function resolveValue (row, col, rows=null) {
     const { tables, colAlias, cols } = this;

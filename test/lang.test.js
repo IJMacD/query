@@ -576,7 +576,7 @@ describe("Subqueries", () => {
     });
 
     test("As Single column value", () => {
-        return demoQuery("FROM Test AS t SELECT n AS m,(FROM Test)").then(r => {
+        return demoQuery("FROM Test AS t SELECT n AS m,(FROM Test) AS \"Col 2\"").then(r => {
             expect(r).toEqual([
                 ["m","Col 2"],
                 [0, 0],
@@ -594,7 +594,7 @@ describe("Subqueries", () => {
     });
 
     test("As Single column value using outer context", () => {
-        return demoQuery("FROM Test AS t SELECT n AS m,(FROM Test WHERE n > m)").then(r => {
+        return demoQuery("FROM Test AS t SELECT n AS m,(FROM Test WHERE n > m) AS \"Col 2\"").then(r => {
             expect(r).toEqual([
                 ["m","Col 2"],
                 [0, 1],

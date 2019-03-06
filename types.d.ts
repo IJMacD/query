@@ -1,11 +1,34 @@
+export declare enum TokenTypes {
+  UNKNOWN = 0,
+  BRACKET = 1,
+  COMMA = 2,
+  KEYWORD = 3,
+  NAME = 4,
+  STRING = 5,
+  NUMBER = 6,
+  OPERATOR = 7,
+}
+
+export declare enum NodeTypes {
+  UNKNOWN = 0,
+  STATEMENT = 1,
+  CLAUSE = 2,
+  FUNCTION_CALL = 3,
+  SYMBOL = 4,
+  STRING = 5,
+  NUMBER = 6,
+  OPERATOR = 7,
+  LIST = 8,
+}
+
 export declare interface Token {
-  type: number;
+  type: TokenTypes;
   value?: string;
   start: number;
 }
 
 export declare interface Node {
-  type: number;
+  type: NodeTypes;
   id: string | number;
   alias?: string;
   using?: string;
@@ -62,14 +85,14 @@ export declare interface QueryContext {
     rows: ResultRow[];
   }
 
-  evaluate: (row: ResultRow, node: Node, rows?: ResultRow[]) => any;
+  evaluate: (row: ResultRow, node: Node, rows?: ResultRow[]) => string|number|boolean|date;
 
   resolveConstant: (path: string) => string|number|boolean|Date;
   resolvePath: (data: any, path: string) => any;
-  resolveValue: (row: ResultRow, col: string, rows?: ResultRow[]) => any;
+  resolveValue: (row: ResultRow, col: string, rows?: ResultRow[]) => string|number|boolean|Date;
 
   findTable: (name: string) => ParsedTable;
-  findWhere: (symbol: string, operator?: string|string[]) => string|number;
+  findWhere: (symbol: string, operator?: string|string[]) => string|number|boolean|Date;
 
   setJoin: (table: ParsedTable, targetTable: ParsedTable) => void;
   setJoinPredicate: (table: ParsedTable, predicate: string) => void;

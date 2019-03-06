@@ -1,13 +1,6 @@
-/*
- * TOKENS:
- * -------
- * BRACKET: [()]
- * COMMA: ,
- * KEYWORD: "SELECT"|"FROM"|"WHERE"|"ORDER BY"|"LIMIT"|"GROUP BY"|"OFFSET"|"HAVING"|"EXPLAIN"|"AS"
- * NAME: [a-zA-Z_][a-zA-Z0-9_\.]*
- * STRING: '.*'
- * NUMBER: 0x[0-9a-f]+|[0-9]+
- * OPERATOR: [+-*\/=!><]|AND
+/**
+ * TOKENS
+ * @enum {number}
  */
 const TOKEN_TYPES = {
     UNKNOWN: 0,
@@ -31,12 +24,7 @@ const DEBUG_TOKEN_TYPES = [
     "OPERATOR",
 ];
 
- /**
-  * @typedef Token
-  * @prop {number} type
-  * @prop {string} [value]
-  * @prop {number} start
-  */
+/** @typedef {import('../types').Token} Token */
 
 module.exports = {
     /**

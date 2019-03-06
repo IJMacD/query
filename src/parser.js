@@ -4,6 +4,9 @@ const { tokenize, TOKEN_TYPES, DEBUG_TOKEN_TYPES } = require('./tokenizer');
 /** @typedef {import('../types').Node} Node */
 /** @typedef {import('../types').WindowSpec} WindowSpec */
 
+/**
+ * @enum {number}
+ */
 const NODE_TYPES = {
     UNKNOWN: 0,
     STATEMENT: 1,
@@ -29,7 +32,6 @@ const DEBUG_NODE_TYPES = [
 ];
 
 module.exports = {
-
     parseTokenList: parseFromTokenList,
 
     parse (sql) {
@@ -168,6 +170,8 @@ function parseFromTokenList (tokenList, source="") {
         switch (t.value) {
             case "FROM":
                 while (isList()) {
+                    const c = current();
+                    /** @type {Node} */
                     let child;
 
                     // First check for a sub-query
@@ -216,6 +220,8 @@ function parseFromTokenList (tokenList, source="") {
                         child.inner = true;
                     }
 
+                    child.source = source.substring(c.start, current() && current().start).trim();
+
                     if (!suspect(TOKEN_TYPES.COMMA)) {
                         break;
                     }
@@ -227,6 +233,7 @@ function parseFromTokenList (tokenList, source="") {
                 }
 
                 while (isList()) {
+                    const c = current();
                     const child = descendExpression();
                     out.children.push(child);
 
@@ -236,6 +243,8 @@ function parseFromTokenList (tokenList, source="") {
                         child.alias = alias.value;
                         child.source += ` AS ${alias.value}`;
                     }
+
+                    child.source = source.substring(c.start, current() && current().start).trim();
 
                     if (!suspect(TOKEN_TYPES.COMMA)) {
                         break;
@@ -269,6 +278,7 @@ function parseFromTokenList (tokenList, source="") {
                 break;
             case "WITH":
                 while (isList()) {
+                    const c = current();
                     const id = expect(TOKEN_TYPES.NAME).value;
 
                     /** @type {Node} */
@@ -300,10 +310,13 @@ function parseFromTokenList (tokenList, source="") {
                     if (!suspect(TOKEN_TYPES.COMMA)) {
                         break;
                     }
+
+                    child.source = source.substring(c.start, current() && current().start).trim();
                 }
                 break;
             case "WINDOW":
                 while (isList()) {
+                    const c = current();
                     const id = expect(TOKEN_TYPES.NAME).value;
 
                     /** @type {Node} */
@@ -318,6 +331,8 @@ function parseFromTokenList (tokenList, source="") {
 
                     out.children.push(child);
 
+                    child.source = source.substring(c.start, current() && current().start).trim();
+
                     if (!suspect(TOKEN_TYPES.COMMA)) {
                         break;
                     }
@@ -325,6 +340,7 @@ function parseFromTokenList (tokenList, source="") {
                 break;
             case "VALUES":
                 while (isList()) {
+                    const c = current();
                     const child = { type: NODE_TYPES.LIST, id: null, children: [] };
                     out.children.push(child);
 
@@ -338,16 +354,18 @@ function parseFromTokenList (tokenList, source="") {
                     }
                     expect(TOKEN_TYPES.BRACKET, ")");
 
+                    child.source = source.substring(c.start, current() && current().start).trim();
+
                     if (!suspect(TOKEN_TYPES.COMMA)) {
                         break;
                     }
                 }
                 break;
             case "LIMIT":
-                out.children.push(descendExpression())
+                out.children.push(descendExpression());
                 break;
             case "OFFSET":
-                out.children.push(descendExpression())
+                out.children.push(descendExpression());
                 break;
             case "EXPLAIN":
                 break;
@@ -355,8 +373,7 @@ function parseFromTokenList (tokenList, source="") {
                 throw TypeError(`Unexpected Keyword. Expected a clause but got ${t.value}`);
         }
 
-        const next_token = current();
-        out.source = source.substring(t.start, next_token && next_token.start).trim();
+        out.source = source.substring(t.start, current() && current().start).trim();
 
         return out;
     }
@@ -386,30 +403,40 @@ function parseFromTokenList (tokenList, source="") {
                     while (isList()) {
 
                         // Loop through adding each paramater
-                        appendChild(out, descend());
+                        out.children.push(descendExpression());
 
-                        // Consume a comma if needed
-                        suspect(TOKEN_TYPES.COMMA);
+                        if (
+                            // Consume a comma if needed
+                            !suspect(TOKEN_TYPES.COMMA) &&
 
-                        // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
-                        // They can be treated like a comma.
-                        suspect(TOKEN_TYPES.KEYWORD, "FROM");
-                        suspect(TOKEN_TYPES.KEYWORD, "AS");
+                            // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
+                            // They can be treated like a comma.
+                            !suspect(TOKEN_TYPES.KEYWORD, "FROM") &&
+                            !suspect(TOKEN_TYPES.KEYWORD, "AS")
+                        )
+                        {
+                            // We didn't have a comma (or FROM/AS) so we can't have
+                            // any more function paramaters
+                            break;
+                        }
                     }
 
-                    // More special treatment
-                    //
-                    // These functions always use keywords as one of their parameters.
-                    // To save adding them all to the tokenizer we manually tweak them here
+                    /* More special treatment
+                     *
+                     * These functions always use keywords as one of their parameters.
+                     * e.g. EXTRACT(MONTH... ); CAST( ...INT); DATEADD(WEEK... )
+                     * To save adding them all (MONTH, INT, WEEK etc.) to the tokenizer
+                     * we manually tweak them here.
+                     */
                     if (out.id === "EXTRACT") {
                         const extractPart = out.children[0];
-                        if (extractPart) extractPart.type = NODE_TYPES.KEYWORD;
+                        if (extractPart) extractPart.type = NODE_TYPES.STRING;
                     } else if (out.id === "CAST") {
                         const castType = out.children[1];
-                        if (castType) castType.type = NODE_TYPES.KEYWORD;
+                        if (castType) castType.type = NODE_TYPES.STRING;
                     } else if (out.id === "DATEADD") {
                         const datePart = out.children[0];
-                        if (datePart) datePart.type = NODE_TYPES.KEYWORD;
+                        if (datePart) datePart.type = NODE_TYPES.STRING;
                     }
 
                     expect(TOKEN_TYPES.BRACKET, ")");
@@ -452,21 +479,22 @@ function parseFromTokenList (tokenList, source="") {
 
                     }
 
-                    out.source = source.substring(t.start, current() && current().start).trim();
-
-                    return out;
+                    break;
                 }
 
-                return { type: NODE_TYPES.SYMBOL, id: t.value, source: t.value };
+                out = { type: NODE_TYPES.SYMBOL, id: t.value };
+                break;
             case TOKEN_TYPES.STRING:
                 next();
-                return { type: NODE_TYPES.STRING, id: t.value, source: `'${t.value}'` };
+                out = { type: NODE_TYPES.STRING, id: t.value };
+                break;
             case TOKEN_TYPES.NUMBER:
                 next();
-                return { type: NODE_TYPES.NUMBER, id: +t.value, source: t.value };
+                out = { type: NODE_TYPES.NUMBER, id: +t.value };
+                break;
             case TOKEN_TYPES.OPERATOR:
                 next();
-                out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [], source: "" };
+                out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [] };
 
                 // Unary operators
 
@@ -482,17 +510,15 @@ function parseFromTokenList (tokenList, source="") {
                     out.children[1] = descend();
                 }
 
-                next_token = current();
-                out.source = source.substring(t.start, next_token && next_token.start).trim();
-
-                return out;
+                break;
             case TOKEN_TYPES.BRACKET:
                 next();
 
                 if (peek(TOKEN_TYPES.KEYWORD)) {
                     const stmt = descendStatement();
                     expect(TOKEN_TYPES.BRACKET);
-                    return stmt;
+                    out = stmt;
+                    break;
                 }
 
                 out = { type: NODE_TYPES.LIST, id: null, children: [] };
@@ -507,12 +533,16 @@ function parseFromTokenList (tokenList, source="") {
 
                 expect(TOKEN_TYPES.BRACKET, ")");
 
-                return out;
+                break;
             case TOKEN_TYPES.COMMA:
                 throw new Error(`ParseError: Unexpected comma at ${t.start}`);
             default:
                 throw new Error("ParseError: Only able to parse some tokens. Got token type " + t.type);
         }
+
+        out.source = source.substring(t.start, current() && current().start).trim();
+
+        return out;
     }
 
     function descendExpression () {
@@ -524,6 +554,7 @@ function parseFromTokenList (tokenList, source="") {
         // When we're finished looping we can extract the child
         const dummyNode = { type: NODE_TYPES.UNKNOWN, id: null, children: [ node ] };
 
+        // We have to peek NUMBER as well for the `5-2` type expression - see below
         while (i < tokenList.length && (peek(TOKEN_TYPES.OPERATOR) || peek(TOKEN_TYPES.NUMBER))) {
             let child;
 

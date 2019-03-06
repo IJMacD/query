@@ -32,28 +32,32 @@ module.exports = {
  * @typedef {import('../types').QueryContext} QueryContext
  */
 
+ /** @typedef {string|number|boolean|Date} Primative */
+
 /**
-* Execute an expresion from AST nodes
-* @this {QueryContext}
-* @param {ResultRow} row
-* @param {Node} node
-* @param {ResultRow[]} [rows]
-*/
+ * Execute an expresion from AST nodes
+ * @this {QueryContext}
+ * @param {ResultRow} row
+ * @param {Node} node
+ * @param {ResultRow[]} [rows]
+ * @returns {Primative|Primative[]}
+ */
 function evaluate (row, node, rows=null) {
     switch (node.type) {
+        case NODE_TYPES.STATEMENT: {
+            throw Error("Statements can only be evaluated as one of the explicit column values.");
+        }
         case NODE_TYPES.FUNCTION_CALL: {
             const fnName = node.id;
 
             // First check if we're evaluating a window function
             if (node.window) {
-                let group;
+                let group = [ ...rows ];
                 const window = typeof node.window === "string" ? this.windows[node.window] : node.window;
 
                 if (window.partition) {
-                    const partitionVal = this.evaluate(row, window.partition, rows);
-                    group = rows.filter(r => OPERATORS['='](this.evaluate(r, window.partition, rows), partitionVal));
-                } else {
-                    group = [ ...rows ];
+                    const partitionVal = this.evaluate(row, window.partition, group);
+                    group = group.filter(r => OPERATORS['='](this.evaluate(r, window.partition, group), partitionVal));
                 }
 
                 if (window.order) {
@@ -89,7 +93,9 @@ function evaluate (row, node, rows=null) {
                         throw Error("Window functions require ORDER BY in OVER clause");
                     }
 
+                    /** @type {(index: number, order: Primative[], rows: ResultRow[], evaluator, ...nodes: Node[]) => Primative} */
                     const fn = WINDOW_FUNCTIONS[node.id];
+
                     const orderVals = group.map(getRowEvaluator(this, window.order, rows));
                     return fn(index, orderVals, group, this.evaluate, ...node.children);
                 }
@@ -99,6 +105,7 @@ function evaluate (row, node, rows=null) {
                         throw new Error(`Function ${node.id} requires at least one paramater.`);
                     }
 
+                    /** @type {(values: any[]) => Primative} */
                     const fn = AGGREGATE_FUNCTIONS[node.id];
 
                     // Aggregate values could have '*' as a child (paramater) node
@@ -119,12 +126,16 @@ function evaluate (row, node, rows=null) {
                     // There is a special case meaning we end up here instead
                     // though, namely a brand new aggregate function named
                     // in a HAVING clase. It gets evaluated here.
+
+                    /** @type {(values: any[]) => Primative} */
                     const fn = AGGREGATE_FUNCTIONS[fnName];
+
                     return fn(aggregateValues(this, row['group'], node.children[0]));
                 }
                 return;
             }
 
+            /** @type {(...args) => Primative} */
             const fn = this.userFunctions[fnName] || VALUE_FUNCTIONS[fnName];
 
             if (!fn) {
@@ -157,10 +168,6 @@ function evaluate (row, node, rows=null) {
         case NODE_TYPES.NUMBER: {
             return +node.id;
         }
-        case NODE_TYPES.KEYWORD: {
-            // Pass keywords like YEAR, SECOND, INT, FLOAT as strings
-            return String(node.id);
-        }
         case NODE_TYPES.OPERATOR: {
             // Special treatment for AND and OR because we don't need to evaluate all
             // operands beforehand
@@ -171,6 +178,7 @@ function evaluate (row, node, rows=null) {
                 return Boolean(this.evaluate(row, node.children[0], rows) || this.evaluate(row, node.children[1], rows));
             }
 
+            /** @type {(...operands) => string|number|boolean} */
             const op = OPERATORS[node.id];
 
             if (!op) {

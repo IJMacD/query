@@ -182,7 +182,7 @@ function parseFromTokenList (tokenList, source="") {
                     } else {
                         // It can't quite be an expression but it can be a function
                         // call i.e. RANGE()
-                        child = descend();
+                        child = descendNode();
                     }
                     out.children.push(child);
 
@@ -346,7 +346,7 @@ function parseFromTokenList (tokenList, source="") {
 
                     expect(TOKEN_TYPES.BRACKET, "(");
                     while (isList()) {
-                        child.children.push(descend());
+                        child.children.push(descendNode());
 
                         if (!suspect(TOKEN_TYPES.COMMA)) {
                             break;
@@ -368,6 +368,12 @@ function parseFromTokenList (tokenList, source="") {
                 out.children.push(descendExpression());
                 break;
             case "EXPLAIN":
+                if (suspect(TOKEN_TYPES.KEYWORD, "ANALYSE")) {
+                    out.children.push({ type: NODE_TYPES.SYMBOL, id: "ANALYSE" });
+                }
+                else if (suspect(TOKEN_TYPES.KEYWORD, "AST")) {
+                    out.children.push({ type: NODE_TYPES.SYMBOL, id: "AST" });
+                }
                 break;
             default:
                 throw TypeError(`Unexpected Keyword. Expected a clause but got ${t.value}`);
@@ -381,11 +387,10 @@ function parseFromTokenList (tokenList, source="") {
     /**
      * @returns {Node}
      */
-    function descend () {
+    function descendNode () {
         /** @type {Node} */
         let out;
         const t = current();
-        let next_token;
 
         switch (t.type) {
             case TOKEN_TYPES.NAME:
@@ -494,22 +499,8 @@ function parseFromTokenList (tokenList, source="") {
                 break;
             case TOKEN_TYPES.OPERATOR:
                 next();
+
                 out = { type: NODE_TYPES.OPERATOR, id: t.value, children: [] };
-
-                // Unary operators
-
-                // Unary prefix
-                if (t.value === "NOT") {
-                    out.children[0] = descend();
-                }
-                else
-                // Unary postfix
-                if (t.value !== "IS NULL" &&
-                    t.value !== "IS NOT NULL")
-                {
-                    out.children[1] = descend();
-                }
-
                 break;
             case TOKEN_TYPES.BRACKET:
                 next();
@@ -546,21 +537,103 @@ function parseFromTokenList (tokenList, source="") {
     }
 
     function descendExpression () {
+        const { start } = current();
 
-        let node = descend();
+        const nodes = [];
 
-        // We use a dummy node so that appendChild() has a place to put back
-        // the topmost node of an expression tree after each loop.
-        // When we're finished looping we can extract the child
-        const dummyNode = { type: NODE_TYPES.UNKNOWN, id: null, children: [ node ] };
-
-        while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
-            appendChild(dummyNode, descend());
+        while (!end()) {
+            try {
+                nodes.push(descendNode());
+            } catch (e) {
+                break;
+            }
         }
 
-        // Haha I've just invented the double pointer in javascript
-        return dummyNode.children[0];
+        if (nodes.length === 1) {
+            return nodes[0];
+        }
 
+        bubbleOperators(nodes);
+
+        let index = 0;
+
+        /**
+         *
+         * @param {Node[]} nodes
+         * @returns {Node}
+         */
+        function assembleExpressionTree (nodes) {
+            const root = nodes[index];
+
+            if (root.type !== NODE_TYPES.OPERATOR) {
+                throw Error("Expecting an operator");
+            }
+
+            index++;
+
+            const left = nodes[index];
+
+            if (left.type === NODE_TYPES.OPERATOR) {
+                root.children[0] = assembleExpressionTree(nodes)
+            } else {
+                root.children[0] = left;
+            }
+
+            index++;
+
+            const right = nodes[index];
+
+            if (right.type === NODE_TYPES.OPERATOR) {
+                root.children[1] = assembleExpressionTree(nodes)
+            } else {
+                root.children[1] = right;
+            }
+
+            return root;
+        }
+
+        return assembleExpressionTree(nodes);
+
+
+        //     const t = next();
+
+
+        //     let right;
+
+        //         // Unary prefix
+        //         if (t.value === "NOT") {}
+        //     // Unary postfix
+        //     if (t.value === "IS NULL" ||
+        //         t.value === "IS NOT NULL")
+        //     {
+        //         op.children.push(left);
+        //         root = op;
+        //     }
+        //     else {
+        //         right = descendExpression(getPrecedence(op));
+
+        //         if (right.type === NODE_TYPES.OPERATOR) {
+        //             // if child operator is weaker than me
+        //             if (getPrecedence(right) < getPrecedence(op)) {
+        //                 // Steal left child
+        //                 const leftChild = right.children[0];
+        //                 op.children.push(left, leftChild);
+        //                 right.children[0] = op;
+        //                 root = right;
+        //             } else {
+        //                 op.children.push(left, right);
+        //                 root = op;
+        //             }
+        //         } else {
+        //             op.children.push(left, right);
+        //             root = op;
+        //         }
+        //     }
+        // }
+
+        // root.source = source.substring(start, current() && current().start).trim();
+
+        // return root;
     }
 
     /**
@@ -640,62 +713,30 @@ function parseFromTokenList (tokenList, source="") {
 }
 
 /**
- * Normally adds the node to the end of the child array.
- * However, in the case of an operator it will pop the previous
- * node and add it as a child of this operator.
- * @param {Node} parent
- * @param {Node} node
- * @returns {Node} It just returns it's second parameter
+ *
+ * @param {Node[]} nodes
  */
-function appendChild (parent, node) {
-    const children = parent.children;
+function bubbleOperators (nodes) {
+    for (let i = nodes.length - 1; i > 0; i--) {
+        const n = nodes[i];
 
-    // Operators get special treatment to deal with precedence
-    if (node.type === NODE_TYPES.OPERATOR &&
-        node.id !== "NOT") // unary prefix operator
-    {
-        const prev = lastChild(parent);
-
-        if (prev && prev.type === NODE_TYPES.OPERATOR) {
-            // Special special treatment for BETWEEN since there are 3 operands
-            if (prev.id === "BETWEEN" && node.id === "AND") {
-                prev.children[2] = node.children[1];
-                return prev;
-            }
-            // Apply operator precedence
-            else if (getPrecedence(prev) < getPrecedence(node)) {
-                // Current and Prev nodes are both operators but the previous
-                // one outranks the current node so we'll add the current node
-                // as a child of the previous one.
-                appendChild(prev, node);
-
-                // And we're done.
-                return node;
-            }
+        if (n.type !== NODE_TYPES.OPERATOR) {
+            continue;
         }
 
-        // The previous node wasn't an operator or is an operator but
-        // has lower precedence than the current one.
-        //
-        // Therefore we'll remove the previous node and add it as the
-        // child of the current node.
-        node.children[0] = children.pop();
-        node.source = `${node.children[0].source} ${node.source}`;
+        for (let j = i; j > 0; j--) {
+            const a = nodes[j];
+            const b = nodes[j-1];
+
+            if (b.type === NODE_TYPES.OPERATOR && getPrecedence(b) < getPrecedence(a)) {
+                // i--;
+                break;
+            }
+
+            nodes[j-1] = a;
+            nodes[j] = b;
+        }
     }
-
-    // Finally add the new node to the parent.
-    children.push(node);
-
-    return node;
-}
-
-/**
- *
- * @param {Node} node
- * @returns {Node}
- */
-function lastChild (node) {
-    return node.children && node.children.length > 0 && node.children[node.children.length - 1];
 }
 
 /**

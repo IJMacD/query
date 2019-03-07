@@ -74,8 +74,16 @@ module.exports = {
                 const m = r.exec(ss);
 
                 if (m) {
-                    out.push({ type: TOKEN_TYPES.NUMBER, value: m[0], start: i });
-                    i += m[0].length;
+                    let value = m[0];
+                    // Two numbers back-to-back probably means something like '5-2'
+                    if (prevToken().type === TOKEN_TYPES.NUMBER && value[0] === "-") {
+                        out.push({ type: TOKEN_TYPES.OPERATOR, value: "-", start: i });
+                        value = value.substr(1);
+                        i++;
+                    }
+
+                    out.push({ type: TOKEN_TYPES.NUMBER, value, start: i });
+                    i += value.length;
                 }
                 else if (c === "-") {
                     out.push({ type: TOKEN_TYPES.OPERATOR, value: "-", start: i });
@@ -92,8 +100,8 @@ module.exports = {
                     continue;
                 }
 
-                // Remember hyphen '-' must be at end of character class
-                m = /^([<>+=!*\/|%?-]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b|OR\b|BETWEEN\b)/i.exec(ss);
+                // subtract is dealt with as part of the number parsing
+                m = /^([<>+=!*\/|%?]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b|OR\b|BETWEEN\b)/i.exec(ss);
                 if (m) {
                     let type = TOKEN_TYPES.OPERATOR;
 

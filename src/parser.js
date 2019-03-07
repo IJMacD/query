@@ -554,28 +554,8 @@ function parseFromTokenList (tokenList, source="") {
         // When we're finished looping we can extract the child
         const dummyNode = { type: NODE_TYPES.UNKNOWN, id: null, children: [ node ] };
 
-        // We have to peek NUMBER as well for the `5-2` type expression - see below
-        while (i < tokenList.length && (peek(TOKEN_TYPES.OPERATOR) || peek(TOKEN_TYPES.NUMBER))) {
-            let child;
-
-            if (peek(TOKEN_TYPES.NUMBER)) {
-                const currToken = current();
-                const currValue = +currToken.value;
-                if(currValue < 0) {
-                    // '-' was interpreted as unary minus rather than subtract operator
-                    const val = current().value;
-                    current().value = String(+val * -1);
-                    child = { type: NODE_TYPES.OPERATOR, id: '-', children: [ null, descend() ], source: val };
-                } else {
-                    // we had a positive number following a node other than an operator
-                    // that's illegal
-                    throw new TokenError(currToken);
-                }
-            } else {
-                child = descend();
-            }
-
-            appendChild(dummyNode, child);
+        while (i < tokenList.length && peek(TOKEN_TYPES.OPERATOR)) {
+            appendChild(dummyNode, descend());
         }
 
         // Haha I've just invented the double pointer in javascript

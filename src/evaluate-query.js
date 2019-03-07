@@ -56,8 +56,6 @@ async function evaluateQuery (query, statementNode, outer = null) {
     const subqueries = await getSubqueries(query, clauses.from);
     /** @type {ParsedTable[]} */
     const tables = nodesToTables(clauses.from);
-    /** @type {boolean} */
-    const analyse = clauses.explain && (clauses.explain.id === "ANALYSE" || clauses.explain.id === "ANALYZE");
     /** @type {{ [name: string]: any[] }} */
     const CTEs = clauses.with ? await getCTEsMap(query, clauses.with) : {};
     /** @type {{ [name: string]: WindowSpec }} */
@@ -99,6 +97,12 @@ async function evaluateQuery (query, statementNode, outer = null) {
      ************/
 
     if (typeof clauses.explain !== "undefined") {
+        if (clauses.explain.id === "AST") {
+            const ast = { ...statementNode };
+            ast.children = ast.children.filter(c => c.id !== "EXPLAIN");
+            return [['AST'], [JSON.stringify(ast, null, 4)]];
+        }
+        const analyse = clauses.explain.id == "ANALYSE";
         return explain(tables, analyse);
     }
 

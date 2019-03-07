@@ -78,8 +78,14 @@ function sendQuery () {
     query(input.value)
         .then(data => {
             const duration = (Date.now() - start) / 1000;
-            output.innerHTML = renderTable({ rows: data.slice(), duration });
             saveHistory(input.value);
+
+            if (data.length === 2 && data[0][0] === "AST") {
+                output.innerHTML = renderAST(data[1][0]);
+                return;
+            }
+
+            output.innerHTML = renderTable({ rows: data.slice(), duration });
 
             if (data.length >= 3 && data[0].length >= 2 &&
                 typeof data[1][0] === "number" && typeof data[1][1] === "number")
@@ -217,6 +223,16 @@ function renderGraph (data) {
     ctx.stroke();
 
     return canvas;
+}
+
+function renderAST (json) {
+    const ast = JSON.parse(json);
+
+    return renderNode(ast);
+}
+
+function renderNode (node) {
+    return `${node.id || ''}${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li>${renderNode(c)}</li>`).join('')}</ul>` : ''}`;
 }
 
 function getSuggestions () {

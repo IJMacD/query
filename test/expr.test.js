@@ -609,4 +609,38 @@ describe("Operator Precedence", () => {
             }),
         ]);
     });
+
+    test("BETWEEN AND BETWEEN", () => {
+        return Promise.all([
+            demoQuery("SELECT 5 BETWEEN 1 AND 10 AND 15 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 15 BETWEEN 1 AND 10 AND 15 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+            demoQuery("SELECT 5 BETWEEN 1 AND 10 AND 5 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+            demoQuery("SELECT 15 BETWEEN 1 AND 10 AND 5 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+        ]);
+    });
+
+    test("BETWEEN OR BETWEEN", () => {
+        return Promise.all([
+            demoQuery("SELECT 5 BETWEEN 1 AND 10 OR 15 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 15 BETWEEN 1 AND 10 OR 15 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 5 BETWEEN 1 AND 10 OR 25 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(true);
+            }),
+            demoQuery("SELECT 15 BETWEEN 1 AND 10 OR 25 BETWEEN 10 AND 20").then(r => {
+                expect(r[1][0]).toBe(false);
+            }),
+        ]);
+    });
 })

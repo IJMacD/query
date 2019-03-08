@@ -554,7 +554,11 @@ function parseFromTokenList (tokenList, source="") {
             return nodes[0];
         }
 
+        markBAnd(nodes);
+
         bubbleOperators(nodes);
+
+        stripBAnd(nodes);
 
         let index = 0;
 
@@ -595,12 +599,6 @@ function parseFromTokenList (tokenList, source="") {
             }
 
             let right = nodes[++index];
-
-            if (root.id === "BETWEEN" && right.id === "AND") {
-                // skip ahead then we have two more nodes to add
-
-                right = nodes[++index];
-            }
 
             if (right.type === NODE_TYPES.OPERATOR) {
                 right = assembleExpressionTree(nodes);
@@ -714,6 +712,36 @@ function parseFromTokenList (tokenList, source="") {
     }
 
     return descendStatement();
+}
+
+/**
+ * The 'AND' following a 'BETWEEN' should have higher
+ * binding power than normal ANDs. In order to process
+ * properly we can just strip out the first AND after
+ * every BETWEEN.
+ * @param {Node[]} nodes
+ */
+function markBAnd (nodes) {
+    let pending = false;
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        if (!n) break;
+
+        if (n.id === "BETWEEN") {
+            pending = true;
+        } else if (pending && n.id === "AND") {
+            n.id = "BAND";
+            pending = false;
+        }
+    }
+}
+
+function stripBAnd (nodes) {
+    for (const i in nodes) {
+        if (nodes[i].id === "BAND") {
+            nodes.splice(i, 1);
+        }
+    }
 }
 
 /**

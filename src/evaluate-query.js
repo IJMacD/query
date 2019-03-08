@@ -99,6 +99,7 @@ async function evaluateQuery (query, statementNode, outer = null) {
     if (typeof clauses.explain !== "undefined") {
         if (clauses.explain.id === "AST") {
             const ast = { ...statementNode };
+            ast.source = ast.source.replace("EXPLAIN AST ", "");
             ast.children = ast.children.filter(c => c.id !== "EXPLAIN");
             return [['AST'], [JSON.stringify(ast, null, 4)]];
         }

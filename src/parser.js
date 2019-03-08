@@ -148,6 +148,7 @@ function parseFromTokenList (tokenList, source="") {
             type: NODE_TYPES.STATEMENT,
             id: null,
             children: [],
+            source,
         };
 
         while (!end() && !peek(TOKEN_TYPES.BRACKET, ")")) {
@@ -581,6 +582,7 @@ function parseFromTokenList (tokenList, source="") {
                 // it's really a subexpression in brackets.
                 // That subexpression has already been correctly parsed.
                 left = left.children[0];
+                left.source = `(${left.source})`;
             }
 
             root.children[0] = left;
@@ -606,9 +608,12 @@ function parseFromTokenList (tokenList, source="") {
                 // Most of the time 'LISTs' are just bracketed sub-expressions
                 // but the IN operators can take a list
                 right = right.children[0];
+                right.source = `(${right.source})`;
             }
 
             root.children[1] = right;
+
+            root.source = `${root.children[0].source} ${root.source} ${root.children.length > 1 ? root.children[1].source:''}`;
 
             if (root.id === "BETWEEN") {
                 // Between has a third child node
@@ -621,6 +626,8 @@ function parseFromTokenList (tokenList, source="") {
                 }
 
                 root.children[2] = farRight;
+
+                root.source += ` AND ${farRight.source}`;
             }
 
             return root;
@@ -743,12 +750,12 @@ function bubbleOperators (nodes) {
  */
 function getPrecedence (node) {
     switch (node.id) {
-        case "BETWEEN":
-            return 5;
         case "AND":
             return 10;
         case "OR":
             return 15;
+        case "BETWEEN":
+        case "BAND":
         case ">":
         case "<":
         case "=":

@@ -70,6 +70,7 @@ describe("Parser", () => {
     expect(ast).toEqual({
       type: 1,
       id: null,
+      source,
       children: [{
         type: 2,
         id: "SELECT",
@@ -90,6 +91,7 @@ describe("Parser", () => {
     expect(ast).toEqual({
       type: NODE_TYPES.STATEMENT,
       id: null,
+      source,
       children: [{
         type: NODE_TYPES.CLAUSE,
         id: "SELECT",
@@ -116,6 +118,7 @@ describe("Parser", () => {
     expect(ast).toEqual({
       type: NODE_TYPES.STATEMENT,
       id: null,
+      source,
       children: [{
         type: NODE_TYPES.CLAUSE,
         id: "SELECT",
@@ -147,6 +150,7 @@ describe("Parser", () => {
     expect(ast).toEqual({
       type: NODE_TYPES.STATEMENT,
       id: null,
+      source,
       children: [{
         type: NODE_TYPES.CLAUSE,
         id: "FROM",

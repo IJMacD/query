@@ -118,3 +118,62 @@ canvas {
         margin: 3px;
     }
 }
+
+.node-type-statement {
+    border: 1px solid #666;
+    background: white;
+    padding: 8px;
+    margin: 4px;
+    white-space: normal;
+}
+
+.node-type-statement > ul {
+    list-style: none;
+    padding: 0;
+}
+
+.node-type-clause {
+    border: 1px solid #C66;
+    background: #FCC;
+    padding: 8px;
+    margin: 4px;
+}
+
+/* These clauses only take a single node rather than a list */
+.node-type-clause.node-id-where > ul,
+.node-type-clause.node-id-having > ul,
+.node-type-clause.node-id-limit > ul,
+.node-type-clause.node-id-offset > ul {
+    list-style: none;
+    padding: 0;
+}
+
+.node-type-clause > .node-id {
+    font-weight: bold;
+}
+
+.node-type-operator {
+    border: 1px solid #6C6;
+    background: #CFC;
+    padding: 8px;
+    margin: 4px;
+}
+
+.node-type-function-call {
+    border: 1px solid #66C;
+    background: #CCF;
+    padding: 8px;
+    margin: 4px;
+}
+
+.node-alias {
+    color: #666;
+}
+
+.node-type-number .node-id {
+    color: blue;
+}
+
+.node-type-string .node-id {
+    color: orangered;
+}

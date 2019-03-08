@@ -259,7 +259,7 @@ const DEBUG_NODE_TYPES = [
 
 function renderNode (node) {
     const type = DEBUG_NODE_TYPES[node.type].toLowerCase().replace(/[ _]/g, "-");
-    const name = String(node.id || (node.type === NODE_TYPES.LIST ? "LIST" : ''));
+    const name = String(node.id !== null ? node.id : (node.type === NODE_TYPES.LIST ? "LIST" : ''));
     const id = name.toLowerCase().replace(/[ _]/g, "-");
     return `<div class="node-type-${type} node-id-${id}" title="${node.source.replace(/"/g, '&quot;')}">
         <span class="node-id">${name}</span>

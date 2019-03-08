@@ -168,6 +168,17 @@ canvas {
 
 .node-alias {
     color: #666;
+    border:  1px dashed #999;
+    padding:  0px 8px;
+    background-color: #f0f0f0;
+    margin-right: 4px;
+}
+
+.node-type-symbol,
+.node-type-string,
+.node-type-number
+{
+    display: inline-block;
 }
 
 .node-type-number .node-id {
@@ -176,4 +187,9 @@ canvas {
 
 .node-type-string .node-id {
     color: orangered;
+}
+
+.node-type-string .node-id::before,
+.node-type-string .node-id::after {
+    content: "'";
 }

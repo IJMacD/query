@@ -263,7 +263,7 @@ function renderNode (node) {
     const id = name.toLowerCase().replace(/[ _]/g, "-");
     return `<div class="node-type-${type} node-id-${id}" title="${node.source.replace(/"/g, '&quot;')}">
         <span class="node-id">${name}</span>
-        ${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li><span class="node-alias">${c.alias?`${c.alias}: `:''}</span>${renderNode(c)}</li>`).join('')}</ul>` : ''}
+        ${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li>${c.alias?`<span class="node-alias">${c.alias}</span>`:''}${renderNode(c)}</li>`).join('')}</ul>` : ''}
     </div>`;
 }
 

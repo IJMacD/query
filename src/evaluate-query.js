@@ -45,6 +45,13 @@ async function evaluateQuery (query, statementNode, outer = null) {
 
     const clauses = nodeToQueryObject(statementNode);
 
+    if (typeof clauses.explain !== "undefined" && clauses.explain.id === "AST") {
+        const ast = { ...statementNode };
+        ast.source = ast.source.replace("EXPLAIN AST ", "");
+        ast.children = ast.children.filter(c => c.id !== "EXPLAIN");
+        return [['AST'], [JSON.stringify(ast, null, 4)]];
+    }
+
     if (clauses.values) {
         // VALUES clause trumps everything else
         return evaluateValues(clauses.values);
@@ -97,12 +104,6 @@ async function evaluateQuery (query, statementNode, outer = null) {
      ************/
 
     if (typeof clauses.explain !== "undefined") {
-        if (clauses.explain.id === "AST") {
-            const ast = { ...statementNode };
-            ast.source = ast.source.replace("EXPLAIN AST ", "");
-            ast.children = ast.children.filter(c => c.id !== "EXPLAIN");
-            return [['AST'], [JSON.stringify(ast, null, 4)]];
-        }
         const analyse = clauses.explain.id == "ANALYSE";
         return explain(tables, analyse);
     }

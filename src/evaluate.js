@@ -137,7 +137,7 @@ function evaluate (row, node, rows=null) {
             }
 
             /** @type {(...args) => Primative} */
-            const fn = this.userFunctions[fnName] || VALUE_FUNCTIONS[fnName];
+            const fn = (typeof this.userFunctions !== "undefined" && this.userFunctions[fnName]) || VALUE_FUNCTIONS[fnName];
 
             if (!fn) {
                 if (fnName in TABLE_VALUED_FUNCTIONS) {

@@ -156,10 +156,17 @@ describe("LIMIT", () => {
         });
     });
 
-    test("Expression LIMIT", () => {
+    test("Constant Expression LIMIT", () => {
         return demoQuery("FROM Test LIMIT 3 + 3").then(r => {
             // Remember header row
             expect(r.length - 1).toBe(6);
+        });
+    });
+
+    test("Constant Expression with function call LIMIT", () => {
+        return demoQuery("FROM Test LIMIT EXTRACT(MONTH FROM '2019-03-08')").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(3);
         });
     });
 });

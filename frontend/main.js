@@ -231,8 +231,10 @@ function renderAST (json) {
     return renderNode(ast);
 }
 
+const NODE_TYPE_LIST = 8;
+
 function renderNode (node) {
-    return `${node.id || ''}${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li>${renderNode(c)}</li>`).join('')}</ul>` : ''}`;
+    return `${node.id || (node.type === NODE_TYPE_LIST ? "LIST" : '')}${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li>${renderNode(c)}</li>`).join('')}</ul>` : ''}`;
 }
 
 function getSuggestions () {

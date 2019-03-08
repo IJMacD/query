@@ -541,7 +541,7 @@ function parseFromTokenList (tokenList, source="") {
 
         const nodes = [];
 
-        while (!end()) {
+        while (!end() && !peek(TOKEN_TYPES.BRACKET, ")")) {
             try {
                 nodes.push(descendNode());
             } catch (e) {
@@ -569,71 +569,68 @@ function parseFromTokenList (tokenList, source="") {
                 throw Error("Expecting an operator");
             }
 
-            index++;
+            // // Unary prefix
+            // if (t.value === "NOT") {}
 
-            const left = nodes[index];
+            let left = nodes[++index];
 
             if (left.type === NODE_TYPES.OPERATOR) {
-                root.children[0] = assembleExpressionTree(nodes)
-            } else {
-                root.children[0] = left;
+                left = assembleExpressionTree(nodes);
+            } else if (left.type === NODE_TYPES.LIST) {
+                // If we have a list here it's not actually a list
+                // it's really a subexpression in brackets.
+                // That subexpression has already been correctly parsed.
+                left = left.children[0];
             }
 
-            index++;
+            root.children[0] = left;
 
-            const right = nodes[index];
+            // Unary postfix
+            if (root.id === "IS NULL" ||
+                root.id === "IS NOT NULL")
+            {
+                return root;
+            }
+
+            let right = nodes[++index];
+
+            if (root.id === "BETWEEN" && right.id === "AND") {
+                // skip ahead then we have two more nodes to add
+
+                right = nodes[++index];
+            }
 
             if (right.type === NODE_TYPES.OPERATOR) {
-                root.children[1] = assembleExpressionTree(nodes)
-            } else {
-                root.children[1] = right;
+                right = assembleExpressionTree(nodes);
+            } else if (right.type === NODE_TYPES.LIST && (root.id !== "IN" && root.id !== "NOT IN")) {
+                // Most of the time 'LISTs' are just bracketed sub-expressions
+                // but the IN operators can take a list
+                right = right.children[0];
+            }
+
+            root.children[1] = right;
+
+            if (root.id === "BETWEEN") {
+                // Between has a third child node
+                let farRight = nodes[++index];
+
+                if (farRight.type === NODE_TYPES.OPERATOR) {
+                    farRight = assembleExpressionTree(nodes);
+                } else if (farRight.type === NODE_TYPES.LIST) {
+                    farRight = farRight.children[0];
+                }
+
+                root.children[2] = farRight;
             }
 
             return root;
         }
 
-        return assembleExpressionTree(nodes);
+        const root = assembleExpressionTree(nodes);
 
+        root.source = source.substring(start, current() && current().start).trim();
 
-        //     const t = next();
-
-
-        //     let right;
-
-        //         // Unary prefix
-        //         if (t.value === "NOT") {}
-        //     // Unary postfix
-        //     if (t.value === "IS NULL" ||
-        //         t.value === "IS NOT NULL")
-        //     {
-        //         op.children.push(left);
-        //         root = op;
-        //     }
-        //     else {
-        //         right = descendExpression(getPrecedence(op));
-
-        //         if (right.type === NODE_TYPES.OPERATOR) {
-        //             // if child operator is weaker than me
-        //             if (getPrecedence(right) < getPrecedence(op)) {
-        //                 // Steal left child
-        //                 const leftChild = right.children[0];
-        //                 op.children.push(left, leftChild);
-        //                 right.children[0] = op;
-        //                 root = right;
-        //             } else {
-        //                 op.children.push(left, right);
-        //                 root = op;
-        //             }
-        //         } else {
-        //             op.children.push(left, right);
-        //             root = op;
-        //         }
-        //     }
-        // }
-
-        // root.source = source.substring(start, current() && current().start).trim();
-
-        // return root;
+        return root;
     }
 
     /**

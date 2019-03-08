@@ -102,63 +102,65 @@ describe("Maths", () => {
         });
     });
 
-    test("Order of Operations: +-", () => {
-        return runQuery("SELECT 14 + 28 - 18").then(r => {
-            expect(r[1][0]).toBe(24);
+    describe("Order of Operations", () => {
+        test("+-", () => {
+            return runQuery("SELECT 14 + 28 - 18").then(r => {
+                expect(r[1][0]).toBe(24);
+            });
         });
-    });
 
-    test("Order of Operations: -+", () => {
-        return runQuery("SELECT 14 - 8 + 26").then(r => {
-            expect(r[1][0]).toBe(32);
+        test("-+", () => {
+            return runQuery("SELECT 14 - 8 + 26").then(r => {
+                expect(r[1][0]).toBe(32);
+            });
         });
-    });
 
-    test("Order of Operations: *+", () => {
-        return runQuery("SELECT 14 * 2 + 7").then(r => {
-            expect(r[1][0]).toBe(35);
+        test("*+", () => {
+            return runQuery("SELECT 14 * 2 + 7").then(r => {
+                expect(r[1][0]).toBe(35);
+            });
         });
-    });
 
-    test("Order of Operations: *-", () => {
-        return runQuery("SELECT 14 * 2 - 7").then(r => {
-            expect(r[1][0]).toBe(21);
+        test("*-", () => {
+            return runQuery("SELECT 14 * 2 - 7").then(r => {
+                expect(r[1][0]).toBe(21);
+            });
         });
-    });
 
-    test("Order of Operations: +*", () => {
-        return runQuery("SELECT 14 + 7 * 2").then(r => {
-            expect(r[1][0]).toBe(28);
+        test("+*", () => {
+            return runQuery("SELECT 14 + 7 * 2").then(r => {
+                expect(r[1][0]).toBe(28);
+            });
         });
-    });
 
-    test("Order of Operations: -*", () => {
-        return runQuery("SELECT 42 - 7 * 3").then(r => {
-            expect(r[1][0]).toBe(21);
+        test("-*", () => {
+            return runQuery("SELECT 42 - 7 * 3").then(r => {
+                expect(r[1][0]).toBe(21);
+            });
         });
-    });
 
-    test("Order of Operations: +*+", () => {
-        return runQuery("SELECT 14 + 7 * 2 + 1").then(r => {
-            expect(r[1][0]).toBe(29);
+        test("+*+", () => {
+            return runQuery("SELECT 14 + 7 * 2 + 1").then(r => {
+                expect(r[1][0]).toBe(29);
+            });
         });
-    });
 
-    test("Order of Operations: +*-", () => {
-        return runQuery("SELECT 14 + 7 * 5 - 1").then(r => {
-            expect(r[1][0]).toBe(48);
+        test("+*-", () => {
+            return runQuery("SELECT 14 + 7 * 5 - 1").then(r => {
+                expect(r[1][0]).toBe(48);
+            });
         });
-    });
 
-    test("Order of Operations: *+*", () => {
-        return runQuery("SELECT 14 * 2 + 7 * 2").then(r => {
-            expect(r[1][0]).toBe(42);
+        test("*+*", () => {
+            return runQuery("SELECT 14 * 2 + 7 * 2").then(r => {
+                expect(r[1][0]).toBe(42);
+            });
         });
-    });
 
-    test("Order of Operations: *-*", () => {
-        return runQuery("SELECT 14 * 3 - 7 * 5").then(r => {
-            expect(r[1][0]).toBe(7);
+        test("*-*", () => {
+            return runQuery("SELECT 14 * 3 - 7 * 5").then(r => {
+                expect(r[1][0]).toBe(7);
+            });
         });
     });
 });
@@ -180,7 +182,39 @@ test("Coalesce operator (??)", () => {
             expect(r[1][0]).toBe(0);
         }),
     ]);
-})
+});
+
+describe("Brackets", () => {
+    test("(+)*", () => {
+        return runQuery("SELECT (5 + 2) * 3").then(r => {
+            expect(r[1][0]).toBe(21);
+        });
+    });
+
+    test("+(*)", () => {
+        return runQuery("SELECT 5 + (2 * 3)").then(r => {
+            expect(r[1][0]).toBe(11);
+        });
+    });
+
+    test("* (-) *", () => {
+        return runQuery("SELECT 2 * (10 - 6) * 3").then(r => {
+            expect(r[1][0]).toBe(24);
+        });
+    });
+
+    test("+ (-) *", () => {
+        return runQuery("SELECT 2 + (10 - 4) * 3").then(r => {
+            expect(r[1][0]).toBe(20);
+        });
+    });
+
+    test("(+) IN", () => {
+        return runQuery("SELECT (3 + 4) IN (5, 6, 7, 8)").then(r => {
+            expect(r[1][0]).toBe(true);
+        });
+    });
+});
 
 describe("Nested Functions", () => {
     test("Function -> Expression", () => {

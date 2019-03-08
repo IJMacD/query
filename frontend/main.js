@@ -231,10 +231,40 @@ function renderAST (json) {
     return renderNode(ast);
 }
 
-const NODE_TYPE_LIST = 8;
+/**
+ * @enum {number}
+ */
+const NODE_TYPES = {
+    UNKNOWN: 0,
+    STATEMENT: 1,
+    CLAUSE: 2,
+    FUNCTION_CALL: 3,
+    SYMBOL: 4,
+    STRING: 5,
+    NUMBER: 6,
+    OPERATOR: 7,
+    LIST: 8,
+};
+const DEBUG_NODE_TYPES = [
+    "UNKNOWN",
+    "STATEMENT",
+    "CLAUSE",
+    "FUNCTION_CALL",
+    "SYMBOL",
+    "STRING",
+    "NUMBER",
+    "OPERATOR",
+    "LIST",
+];
 
 function renderNode (node) {
-    return `${node.id || (node.type === NODE_TYPE_LIST ? "LIST" : '')}${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li>${renderNode(c)}</li>`).join('')}</ul>` : ''}`;
+    const type = DEBUG_NODE_TYPES[node.type].toLowerCase().replace(/[ _]/g, "-");
+    const name = String(node.id || (node.type === NODE_TYPES.LIST ? "LIST" : ''));
+    const id = name.toLowerCase().replace(/[ _]/g, "-");
+    return `<div class="node-type-${type} node-id-${id}" title="${node.source.replace(/"/g, '&quot;')}">
+        <span class="node-id">${name}</span>
+        ${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li><span class="node-alias">${c.alias?`${c.alias}: `:''}</span>${renderNode(c)}</li>`).join('')}</ul>` : ''}
+    </div>`;
 }
 
 function getSuggestions () {

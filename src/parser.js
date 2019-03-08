@@ -369,10 +369,10 @@ function parseFromTokenList (tokenList, source="") {
                 out.children.push(descendExpression());
                 break;
             case "EXPLAIN":
-                if (suspect(TOKEN_TYPES.KEYWORD, "ANALYSE")) {
+                if (suspect(TOKEN_TYPES.NAME, "ANALYSE")) {
                     out.children.push({ type: NODE_TYPES.SYMBOL, id: "ANALYSE" });
                 }
-                else if (suspect(TOKEN_TYPES.KEYWORD, "AST")) {
+                else if (suspect(TOKEN_TYPES.NAME, "AST")) {
                     out.children.push({ type: NODE_TYPES.SYMBOL, id: "AST" });
                 }
                 break;

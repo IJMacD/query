@@ -13,39 +13,40 @@ module.exports = {
 const { NODE_TYPES } = require('./parser');
 
 function nodeToQueryObject (node) {
-  if (node.type !== NODE_TYPES.STATEMENT) {
-      throw TypeError("Not a statement node")
-  }
+    if (node.type !== NODE_TYPES.STATEMENT) {
+        throw TypeError("Not a statement node")
+    }
 
-  const out = {};
+    const out = {};
 
-  for (const clause of node.children) {
-      const name = clause.id.toString().toLowerCase();
+    for (const clause of node.children) {
+        const name = clause.id.toString().toLowerCase();
 
-      if (/FROM|SELECT|ORDER BY|GROUP BY|WINDOW|WITH|VALUES/.test(clause.id)) {
-          out[name] = clause.children;
-      } else {
-          out[name] = clause.children[0];
-      }
-  }
+        if (/WHERE|HAVING|LIMIT|OFFSET|EXPLAIN/.test(clause.id)) {
+            out[name] = clause.children[0];
+        } else {
+            // /FROM|SELECT|ORDER BY|GROUP BY|WINDOW|WITH|VALUES/
+            out[name] = clause.children;
+        }
+    }
 
-  if (!out.from && !out.select && !out.values) {
-      throw new Error("You must specify FROM or SELECT or VALUES");
-  }
+    if (!out.from && !out.select && !out.values) {
+        throw new Error("You must specify FROM or SELECT or VALUES");
+    }
 
-  if (!out.from) {
-      out.from = [];
-  }
+    if (!out.from) {
+        out.from = [];
+    }
 
-  if (!out.select) {
-      out.select = [];
-  }
+    if (!out.select) {
+        out.select = [];
+    }
 
-  if (out.select.length === 0) {
-      out.select.push({ type: NODE_TYPES.SYMBOL, id: "*" });
-  }
+    if (out.select.length === 0) {
+        out.select.push({ type: NODE_TYPES.SYMBOL, id: "*" });
+    }
 
-  return out;
+    return out;
 }
 
 /**

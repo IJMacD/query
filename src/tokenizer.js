@@ -93,7 +93,7 @@ module.exports = {
             } else {
                 const ss = string.substr(i);
 
-                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|AST|WITH|WINDOW|VALUES|AS|USING|ON|INNER|OVER|PARTITION BY|DISTINCT|FILTER|WITHIN GROUP|ASC|DESC|UNBOUNDED|PRECEDING|FOLLOWING|CURRENT ROW)\b/i.exec(ss);
+                let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|WITH|WINDOW|VALUES|AS|USING|ON|INNER|OVER|PARTITION BY|DISTINCT|FILTER|WITHIN GROUP|ASC|DESC|UNBOUNDED|PRECEDING|FOLLOWING|CURRENT ROW)\b/i.exec(ss);
                 if (m) {
                     out.push({ type: TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;

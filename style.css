@@ -13,25 +13,28 @@ form {
     display: flex;
     flex-direction: row;
     margin: 10px;
+    position: relative;
 }
 input {
     flex: 1;
     font-size: 1.1em;
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
     border: 1px solid #999;
-    border-width: 1px 0 1px 1px;
+    border-width: 1px 0 1px 0;
     padding: 5px;
 }
 button  {
-    font-size: 1.1em;
+    font-size: 1em;
     background-image: linear-gradient(to bottom, #FFF, #CCC);
     border: 1px solid #999;
     border-radius: 5px;
 }
-.query {
+.input-right {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+.input-left {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
 }
 .link {
     background: none;
@@ -43,10 +46,9 @@ button  {
 }
 #query-suggest {
     position: absolute;
-    top: 40px;
+    top: 20px;
     background: white;
     padding: 20px 10px 20px 40px;
-    left: 20px;
     border: 1px solid #999;
     box-shadow: 2px 2px 9px 0px;
 }
@@ -119,6 +121,53 @@ canvas {
     }
 }
 
+#explorer {
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+#explorer h2 {
+    margin: 0.2em;
+    font-size: 1em;
+}
+
+#explorer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#explorer li {
+    padding-left: 28px;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    background-position: 4px;
+    cursor: pointer;
+}
+
+#explorer li.table {
+    background-image: url(img/table.svg);
+}
+
+#explorer li.view {
+    background-image: url(img/view.svg);
+}
+
+#explorer li.function {
+    background-image: url(img/function.svg);
+}
+
+#explorer li.table-function {
+    background-image: url(img/table-function.svg);
+}
+
+#explorer li.aggregate-function {
+    background-image: url(img/aggregate-function.svg);
+}
+
+#explorer li:hover {
+    text-decoration: underline;
+}
 .node-type-statement {
     border: 1px solid #666;
     background: white;

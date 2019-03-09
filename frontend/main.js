@@ -3,6 +3,7 @@ const input =  /* @type {HTMLInputElement} */ (document.getElementById("input"))
 const output = document.getElementById("output");
 const queryForm = document.getElementById("query-form");
 const querySuggest = document.getElementById("query-suggest");
+const explorer = document.getElementById("explorer");
 const explorerToggle = document.getElementById("explorer-toggle");
 
 const QUERY_HISTORY = "query_history";
@@ -64,8 +65,8 @@ querySuggest.addEventListener("click", e => {
 
 window.addEventListener("hashchange", handleHash);
 
+explorer.style.display = "none";
 explorerToggle.addEventListener("click", () => {
-    const explorer = document.getElementById("explorer");
     explorer.style.display = explorer.style.display === "none" ? "block" : "none";
 });
 
@@ -121,11 +122,11 @@ function populateExplorer () {
                 const className = "table-function";
                 const insertBefore = `${t[1]}(`;
                 const insertAfter = ")";
-                return `<li class="${className}" data-insert-before="${insertBefore}" data-insert-after="${insertAfter}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
+                return `<li class="${className}" data-insert-before="${insertBefore}" data-insert-after="${insertAfter}" title="TABLE VALUED FUNCTION">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
             }
             const className = t[2].includes("VIEW") ? "view" : "table";
             const insert = t[0] === "information_schema" ? `${t[0]}.${t[1]}` : t[1];
-            return `<li class="${className}" data-insert="${insert}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
+            return `<li class="${className}" data-insert="${insert}" title="${t[2]}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
         }).join("");
 
         document.getElementById("explorer-table-list").innerHTML = out;
@@ -135,9 +136,11 @@ function populateExplorer () {
         /** @type {string[]} */
         const headers = r.shift();
         const nameCol = headers.indexOf("routine_name");
+        const typeCol = headers.indexOf("routine_type");
 
         const out = r.map(t => {
-            return `<li class="function" data-insert-before="${t[nameCol]}(" data-insert-after=")">${t[nameCol]}</li>`;
+            const className = t[typeCol] === "AGGREGATE FUNCTION" || t[typeCol] === "WINDOW FUNCTION" ? "aggregate-function" : "function";
+            return `<li class="${className}" data-insert-before="${t[nameCol]}(" data-insert-after=")" title="${t[typeCol]}">${t[nameCol]}</li>`;
         }).join("");
 
         document.getElementById("explorer-function-list").innerHTML = out;

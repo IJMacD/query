@@ -124,7 +124,6 @@ canvas {
 #explorer {
     overflow-y: auto;
     flex-shrink: 0;
-    display: none;
 }
 
 #explorer h2 {
@@ -160,6 +159,10 @@ canvas {
 
 #explorer li.table-function {
     background-image: url(img/table-function.svg);
+}
+
+#explorer li.aggregate-function {
+    background-image: url(img/aggregate-function.svg);
 }
 
 #explorer li:hover {

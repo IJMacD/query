@@ -124,14 +124,14 @@ const infoTables = {
     routines ({ schema: { name: schema_name, userFunctions } }) {
         const results = [];
 
-        function formatRoutine(routine_name, fn, data_type = null, routine_schema="system") {
+        function formatRoutine(routine_name, fn, data_type = null, routine_type = "FUNCTION", routine_schema="system" ) {
             const definition = String(fn);
             const nativeMatch = /function ([a-zA-Z]+)\(\) { \[native code\] }/.exec(definition);
 
             return {
                 routine_schema,
                 routine_name,
-                routine_type: "FUNCTION",
+                routine_type,
                 data_type,
                 routine_body: "EXTERNAL",
                 routine_definition: nativeMatch ? null : definition,
@@ -145,19 +145,19 @@ const infoTables = {
         }
 
         for (const name in AGGREGATE_FUNCTIONS) {
-            results.push(formatRoutine(name, AGGREGATE_FUNCTIONS[name]));
+            results.push(formatRoutine(name, AGGREGATE_FUNCTIONS[name], null, "AGGREGATE FUNCTION"));
         }
 
         for (const name in TABLE_VALUED_FUNCTIONS) {
-            results.push(formatRoutine(name, TABLE_VALUED_FUNCTIONS[name], "table"));
+            results.push(formatRoutine(name, TABLE_VALUED_FUNCTIONS[name], "table", "TABLE VALUED FUNCTION"));
         }
 
         for (const name in WINDOW_FUNCTIONS) {
-            results.push(formatRoutine(name, WINDOW_FUNCTIONS[name]));
+            results.push(formatRoutine(name, WINDOW_FUNCTIONS[name], null, "WINDOW FUNCTION"));
         }
 
         for (const name in userFunctions) {
-            results.push(formatRoutine(name, userFunctions[name], null, schema_name));
+            results.push(formatRoutine(name, userFunctions[name], null, undefined, schema_name));
         }
 
         return results;

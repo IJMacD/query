@@ -18,10 +18,8 @@ form {
 input {
     flex: 1;
     font-size: 1.1em;
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
     border: 1px solid #999;
-    border-width: 1px 0 1px 1px;
+    border-width: 1px 0 1px 0;
     padding: 5px;
 }
 button  {
@@ -30,9 +28,13 @@ button  {
     border: 1px solid #999;
     border-radius: 5px;
 }
-.query {
+.input-right {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+.input-left {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
 }
 .link {
     background: none;
@@ -121,9 +123,8 @@ canvas {
 
 #explorer {
     overflow-y: auto;
-    /* flex-basis: 250px; */
     flex-shrink: 0;
-    /* flex: 1; */
+    display: none;
 }
 
 #explorer h2 {

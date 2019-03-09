@@ -3,6 +3,7 @@ const input =  /* @type {HTMLInputElement} */ (document.getElementById("input"))
 const output = document.getElementById("output");
 const queryForm = document.getElementById("query-form");
 const querySuggest = document.getElementById("query-suggest");
+const explorerToggle = document.getElementById("explorer-toggle");
 
 const QUERY_HISTORY = "query_history";
 const HISTORY_SHOW_COUNT = 20;
@@ -62,6 +63,11 @@ querySuggest.addEventListener("click", e => {
 });
 
 window.addEventListener("hashchange", handleHash);
+
+explorerToggle.addEventListener("click", () => {
+    const explorer = document.getElementById("explorer");
+    explorer.style.display = explorer.style.display === "none" ? "block" : "none";
+});
 
 function handleHash () {
     if (location.hash && !input.disabled) {

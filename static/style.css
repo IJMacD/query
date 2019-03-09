@@ -23,7 +23,7 @@ input {
     padding: 5px;
 }
 button  {
-    font-size: 1.1em;
+    font-size: 1em;
     background-image: linear-gradient(to bottom, #FFF, #CCC);
     border: 1px solid #999;
     border-radius: 5px;

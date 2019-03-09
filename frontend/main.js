@@ -233,11 +233,11 @@ function formatCell ({ cell }) {
         return `<div style="background-color: ${str}; height: 20px; width: 20px; margin: 0 auto;" title="${str}"></div>`;
     }
 
-    // Special formatting for date
-    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-        const d = new Date(str);
-        return formatDate(d);
-    }
+    // // Special formatting for date
+    // if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(str)) {
+    //     const d = new Date(str);
+    //     return formatDate(d);
+    // }
 
     if (!str.includes("<")) {
         // Special formatting for urls and images

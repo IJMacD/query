@@ -570,7 +570,7 @@ function parseFromTokenList (tokenList, source="") {
         function assembleExpressionTree (nodes) {
             const root = nodes[index];
 
-            if (root.type !== NODE_TYPES.OPERATOR) {
+            if (!root || root.type !== NODE_TYPES.OPERATOR) {
                 throw Error("Expecting an operator");
             }
 

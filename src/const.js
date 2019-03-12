@@ -3,25 +3,57 @@ const momentDurationFormatSetup = require('moment-duration-format');
 // @ts-ignore
 momentDurationFormatSetup(moment);
 
-const { isNullDate } = require('./util');
+const { isNullDate, toUTF8Array } = require('./util');
 
 const VALUE_FUNCTIONS = {
-    'WEEKDAY': v => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][v],
-    'RAND': Math.random,
-    'CONCAT': (...vs) => vs.join(""),
-    'COALESCE': (...vs) => vs.find(OPERATORS['IS NOT NULL']),
-    'CHAR': String.fromCodePoint,
-    'UNICODE': s => s.codePointAt(0),
-    'DATE': d => moment(d).format("YYYY-MM-DD"),
-    'TIME': d => moment(d).format("HH:mm:ss"),
-    'DATETIME': d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
-    // @ts-ignore
-    'DURATION': m => moment.duration(m, "milliseconds").format(),
-    'JSON_STRINGIFY': JSON.stringify,
-    'DATEADD': (part, v, date) => moment(date).add(v, part).toDate(),
-    'HEX': v => `0x${(+v).toString(16)}`,
-    'BIN': v => `0b${(+v).toString(2)}`,
+    // Conditional functions
+    COALESCE: (...vs) => vs.find(OPERATORS['IS NOT NULL']),
 
+    // Number functions
+    RAND: Math.random,
+    // Also all from Math.*
+    CAST (v, type) {
+        if (/^int/i.test(type)) return parseInt(v);
+        if (/^float|^real/i.test(type)) return parseFloat(v);
+        if (/^num/i.test(type)) return +v;
+        return String(v);
+    },
+    HEX: v => `0x${(+v).toString(16)}`,
+    BIN: v => `0b${(+v).toString(2)}`,
+
+    // String functions
+    SUBSTR: (v, from, length) => String(v).substr(from, length),
+    REPLACE: (v, from, to) => String(v).replace(from, to),
+    REVERSE: v => String(v).split("").reverse().join(""),
+    LOWER: v => String(v).toLowerCase(),
+    UPPER: v => String(v).toUpperCase(),
+    CONCAT: (...vs) => vs.join(""),
+    CHAR: String.fromCodePoint,
+    UNICODE: s => String(s).codePointAt(0),
+    JSON_STRINGIFY: JSON.stringify,
+    TO_HEX: v => toUTF8Array(v).map(n => n.toString(16).padStart(2, "0")).join(""),
+
+    REGEXP_EXTRACT (value, regexp) {
+        try {
+            const re = RegExp(regexp);
+            const match = re.exec(value);
+            return match ? match[0] : null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    // Date functions
+    WEEKDAY: v => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][v],
+    DATE: d => moment(d).format("YYYY-MM-DD"),
+    TIME: d => moment(d).format("HH:mm:ss"),
+    DATETIME: d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
+    CURRENT_DATE: () => new Date(),
+    // @ts-ignore
+    DURATION: m => moment.duration(m, "milliseconds").format(),
+    DATEADD: (part, v, date) => moment(date).add(v, part).toDate(),
+    DATEDIFF: (dateA, dateB, part) => moment(dateA).diff(dateB, part),
+    AGE: (date, part) => moment().diff(date, part),
     EXTRACT (part, v) {
         const m = moment(v);
         switch (part) {
@@ -48,14 +80,13 @@ const VALUE_FUNCTIONS = {
             case 'YEAR': return m.year();
         }
     },
-
-    CAST (v, type) {
-        if (/^int/i.test(type)) return parseInt(v);
-        if (/^float|^real/i.test(type)) return parseFloat(v);
-        if (/^num/i.test(type)) return +v;
-        return String(v);
-    }
 };
+
+for (const name of Object.getOwnPropertyNames(Math)) {
+    if (Math[name] instanceof Function) {
+        VALUE_FUNCTIONS[name.toUpperCase()] = Math[name];
+    }
+}
 
 const AGGREGATE_FUNCTIONS = {
     /** @type {(a: any[]) => number} */

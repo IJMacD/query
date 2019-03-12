@@ -100,6 +100,14 @@ module.exports = {
                     continue;
                 }
 
+                // These constants can be treated like strings
+                m = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|DOY|DOW|EPOCH|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING)\b/i.exec(ss);
+                if (m) {
+                    out.push({ type: TOKEN_TYPES.STRING, value: m[0].toUpperCase(), start: i });
+                    i += m[0].length;
+                    continue;
+                }
+
                 // subtract is dealt with as part of the number parsing
                 m = /^([<>+=!*\/|%?]+|IS(?: NOT)? NULL\b|(?:NOT )?LIKE\b|(?:NOT )?REGEXP\b|(?:NOT )?IN\b|NOT\b|AND\b|OR\b|BETWEEN\b)/i.exec(ss);
                 if (m) {

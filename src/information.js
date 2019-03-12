@@ -126,7 +126,7 @@ const infoTables = {
 
         function formatRoutine(routine_name, fn, data_type = null, routine_type = "FUNCTION", routine_schema="system" ) {
             const definition = String(fn);
-            const nativeMatch = /function ([a-zA-Z]+)\(\) { \[native code\] }/.exec(definition);
+            const nativeMatch = /function ([a-zA-Z0-9]+)\(\) { \[native code\] }/.exec(definition);
 
             return {
                 routine_schema,

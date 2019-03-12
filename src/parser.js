@@ -427,24 +427,6 @@ function parseFromTokenList (tokenList, source="") {
                         }
                     }
 
-                    /* More special treatment
-                     *
-                     * These functions always use keywords as one of their parameters.
-                     * e.g. EXTRACT(MONTH... ); CAST( ...INT); DATEADD(WEEK... )
-                     * To save adding them all (MONTH, INT, WEEK etc.) to the tokenizer
-                     * we manually tweak them here.
-                     */
-                    if (out.id === "EXTRACT") {
-                        const extractPart = out.children[0];
-                        if (extractPart) extractPart.type = NODE_TYPES.STRING;
-                    } else if (out.id === "CAST") {
-                        const castType = out.children[1];
-                        if (castType) castType.type = NODE_TYPES.STRING;
-                    } else if (out.id === "DATEADD") {
-                        const datePart = out.children[0];
-                        if (datePart) datePart.type = NODE_TYPES.STRING;
-                    }
-
                     expect(TOKEN_TYPES.BRACKET, ")");
 
                     if (suspect(TOKEN_TYPES.KEYWORD, "FILTER")) {

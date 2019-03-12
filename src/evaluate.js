@@ -25,12 +25,12 @@ module.exports = {
 };
 
 /**
- * @typedef {import('../types').Node} Node
- * @typedef {import('../types').ParsedTable} ParsedTable
- * @typedef {import('../types').WindowSpec} WindowSpec
- * @typedef {import('../types').ResultRow} ResultRow
- * @typedef {import('../types').QueryCallbacks} QueryCallbacks
- * @typedef {import('../types').QueryContext} QueryContext
+ * @typedef {import('..').Node} Node
+ * @typedef {import('..').ParsedTable} ParsedTable
+ * @typedef {import('..').WindowSpec} WindowSpec
+ * @typedef {import('..').ResultRow} ResultRow
+ * @typedef {import('..').QueryCallbacks} QueryCallbacks
+ * @typedef {import('..').QueryContext} QueryContext
  */
 
  /** @typedef {string|number|boolean|Date} Primative */
@@ -78,7 +78,7 @@ function evaluate (row, node, rows=null) {
                         group = group.slice(start, index + window.following + 1);
 
                     } else if (window.frameUnit === "range") {
-                        const currentVal = this.evaluate(row, window.order, rows);
+                        const currentVal = +this.evaluate(row, window.order, rows);
                         const min = currentVal - window.preceding;
                         const max = currentVal + window.following;
 

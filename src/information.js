@@ -11,8 +11,8 @@ module.exports = {
   informationSchema,
 };
 
-/** @typedef {import('../types')} Query */
-/** @typedef {import('../types').QueryContext} QueryContext */
+/** @typedef {import('..')} Query */
+/** @typedef {import('..').QueryContext} QueryContext */
 
 /**
  * @param {QueryContext} context

@@ -7,11 +7,11 @@ module.exports = {
 };
 
 /**
- * @typedef {import('./query')} Query
- * @typedef {import('../types').Node} Node
- * @typedef {import('../types').ResultRow} ResultRow
- * @typedef {import('../types').ParsedTable} ParsedTable
- * @typedef {import('../types').QueryContext} QueryContext
+ * @typedef {import('..')} Query
+ * @typedef {import('..').Node} Node
+ * @typedef {import('..').ResultRow} ResultRow
+ * @typedef {import('..').ParsedTable} ParsedTable
+ * @typedef {import('..').QueryContext} QueryContext
  */
 
 const Query = require('./query');

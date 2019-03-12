@@ -24,7 +24,7 @@ const DEBUG_TOKEN_TYPES = [
     "OPERATOR",
 ];
 
-/** @typedef {import('../types').Token} Token */
+/** @typedef {import('..').Token} Token */
 
 module.exports = {
     /**

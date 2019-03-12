@@ -1,8 +1,8 @@
 const { tokenize, TOKEN_TYPES, DEBUG_TOKEN_TYPES } = require('./tokenizer');
 
-/** @typedef {import('../types').Token} Token */
-/** @typedef {import('../types').Node} Node */
-/** @typedef {import('../types').WindowSpec} WindowSpec */
+/** @typedef {import('..').Token} Token */
+/** @typedef {import('..').Node} Node */
+/** @typedef {import('..').WindowSpec} WindowSpec */
 
 /**
  * @enum {number}

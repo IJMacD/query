@@ -5,12 +5,16 @@ const evaluateQuery = require('./evaluate-query');
 
 const VIEW_KEY = "views";
 
+/**
+ * @typedef {import('..').Schema} Schema
+ */
+
 class Query {
     constructor () {
-        /** @type {{ [name: string]: import('../types').Schema }} */
+        /** @type {{ [name: string]: Schema }} */
         this.providers = {};
 
-        /** @type {import('../types').Schema} */
+        /** @type {Schema} */
         this.schema = null;
 
         /** @type {{ [name: string]: string }} */
@@ -18,7 +22,7 @@ class Query {
     }
 
     /**
-     * @param {import('../types').Schema} schema
+     * @param {Schema} schema
      * @param {string} [name]
      */
     addProvider (schema, name=undefined) {

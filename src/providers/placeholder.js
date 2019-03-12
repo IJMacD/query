@@ -12,11 +12,11 @@ module.exports = {
 const API_ROOT = `https://jsonplaceholder.typicode.com/`;
 
 /**
- * @typedef {import ('../../types').ParsedTable} ParsedTable
+ * @typedef {import ('../..').ParsedTable} ParsedTable
  */
 
 /**
- * @typedef {import ('../../types').Node} Node
+ * @typedef {import ('../..').Node} Node
  */
 
 /**

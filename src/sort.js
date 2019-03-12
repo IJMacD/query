@@ -6,8 +6,8 @@ module.exports = {
 };
 
 /**
- * @typedef {import('../types').Node} Node
- * @typedef {import('../types').ResultRow} ResultRow
+ * @typedef {import('..').Node} Node
+ * @typedef {import('..').ResultRow} ResultRow
  */
 
 /**

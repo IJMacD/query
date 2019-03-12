@@ -172,8 +172,8 @@ const TABLE_VALUED_FUNCTIONS = {
     },
 };
 
-/** @typedef {import('../types').ResultRow} ResultRow */
-/** @typedef {import('../types').Node} Node */
+/** @typedef {import('..').ResultRow} ResultRow */
+/** @typedef {import('..').Node} Node */
 /** @typedef {(index: number, values: number[], rows?: ResultRow[], executor?: (row: ResultRow, node: Node) => any, ...other: any) => any} WindowFunction */
 
 /**

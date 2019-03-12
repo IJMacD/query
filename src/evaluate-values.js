@@ -1,6 +1,6 @@
 module.exports = evaluateValues;
 
-/** @typedef {import('../types').Node} Node */
+/** @typedef {import('..').Node} Node */
 
 /**
  * Evaluate VALUES clause

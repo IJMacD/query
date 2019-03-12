@@ -15,14 +15,14 @@ const { applyLimit } = require('./limit');
 const { getQueryContext } = require('./context');
 
 /**
- * @typedef {import('../types')} Query
- * @typedef {import('../types').Schema} Schema
- * @typedef {import('../types').Node} Node
- * @typedef {import('../types').ParsedTable} ParsedTable
- * @typedef {import('../types').WindowSpec} WindowSpec
- * @typedef {import('../types').ResultRow} ResultRow
- * @typedef {import('../types').QueryCallbacks} QueryCallbacks
- * @typedef {import('../types').QueryContext} QueryContext
+ * @typedef {import('..')} Query
+ * @typedef {import('..').Schema} Schema
+ * @typedef {import('..').Node} Node
+ * @typedef {import('..').ParsedTable} ParsedTable
+ * @typedef {import('..').WindowSpec} WindowSpec
+ * @typedef {import('..').ResultRow} ResultRow
+ * @typedef {import('..').QueryCallbacks} QueryCallbacks
+ * @typedef {import('..').QueryContext} QueryContext
  */
 
 

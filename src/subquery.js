@@ -8,8 +8,8 @@ const evaluateQuery = require('./evaluate-query');
 const { queryResultToObjectArray } = require('./util');
 
 /**
- * @typedef {import('../types')} Query
- * @typedef {import('../types').Node} Node
+ * @typedef {import('..')} Query
+ * @typedef {import('..').Node} Node
  */
 
 /**

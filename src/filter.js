@@ -7,11 +7,11 @@ module.exports = {
 };
 
 /**
- * @typedef {import('../types')} Query
- * @typedef {import('../types').QueryContext} QueryContext
- * @typedef {import('../types').Node} Node
- * @typedef {import('../types').ResultRow} ResultRow
- * @typedef {import('../types').ParsedTable} ParsedTable
+ * @typedef {import('..')} Query
+ * @typedef {import('..').QueryContext} QueryContext
+ * @typedef {import('..').Node} Node
+ * @typedef {import('..').ResultRow} ResultRow
+ * @typedef {import('..').ParsedTable} ParsedTable
  */
 
 /**

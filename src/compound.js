@@ -1,4 +1,4 @@
-/** @typedef {import('../types').ResultRow} ResultRow */
+/** @typedef {import('..').ResultRow} ResultRow */
 
 /**
  * @param {ResultRow[][]} resultsL

@@ -53,7 +53,7 @@ class TokenError extends Error {
         }
 
         const offset = Math.max(0, token.start - 5);
-        message += `\nSource:    '${source.substr(offset, 10)}'`;
+        message += `\nSource:   '${source.substr(offset, 15)}'`;
         message += `\nError here:${repeat(" ", Math.min(5, offset))}^`;
 
         super(message);
@@ -207,7 +207,7 @@ function parseFromTokenList (tokenList, source="") {
 
                     // First check for a sub-query
                     if (suspect(TOKEN_TYPES.BRACKET, "(")) {
-                        child = descendStatement();
+                        child = descendQueryExpression();
 
                         expect(TOKEN_TYPES.BRACKET, ")");
                     } else {
@@ -334,7 +334,7 @@ function parseFromTokenList (tokenList, source="") {
                     expect(TOKEN_TYPES.KEYWORD, "AS");
                     expect(TOKEN_TYPES.BRACKET, "(");
 
-                    child.children = [ descendStatement() ];
+                    child.children = [ descendQueryExpression() ];
 
                     expect(TOKEN_TYPES.BRACKET, ")");
 
@@ -519,9 +519,8 @@ function parseFromTokenList (tokenList, source="") {
                 next();
 
                 if (peek(TOKEN_TYPES.KEYWORD)) {
-                    const stmt = descendStatement();
-                    expect(TOKEN_TYPES.BRACKET);
-                    out = stmt;
+                    out = descendQueryExpression();
+                    expect(TOKEN_TYPES.BRACKET, ")");
                     break;
                 }
 

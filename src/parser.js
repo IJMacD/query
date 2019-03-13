@@ -149,23 +149,24 @@ function parseFromTokenList (tokenList, source="") {
     function descendQueryExpression () {
         const { start } = current();
 
-        let left = descendStatement();
+        let root = descendStatement();
 
-        if (!peek(TOKEN_TYPES.QUERY_OPERATOR)) {
-            return left;
+        while (peek(TOKEN_TYPES.QUERY_OPERATOR)) {
+
+            const t = next();
+
+            const op = {
+                type: NODE_TYPES.COMPOUND_QUERY,
+                id: t.value,
+                children: [ root, descendStatement() ],
+            };
+
+            op.source = source.substring(start, current() && current().start).trim();
+
+            root = op;
         }
 
-        const t = next();
-
-        const op = {
-            type: NODE_TYPES.COMPOUND_QUERY,
-            id: t.value,
-            children: [ left, descendStatement() ],
-        };
-
-        op.source = source.substring(start, current() && current().start).trim();
-
-        return op;
+        return root;
     }
 
     function descendStatement () {

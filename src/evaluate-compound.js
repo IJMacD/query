@@ -26,7 +26,7 @@ async function evaluateCompound (query, node) {
     throw new Error(`Cannot evalute node type ${DEBUG_NODE_TYPES[node.type]} as COMPOUND_QUERY`);
   }
 
-  const [ resultsL, resultsR ] = await Promise.all(node.children.map(c => evaluateQuery(query, c)));
+  const [ resultsL, resultsR ] = await Promise.all(node.children.map(c => evaluateCompound(query, c)));
 
   return COMPOUND_OPERATORS[node.id](resultsL, resultsR);
 }

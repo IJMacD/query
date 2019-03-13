@@ -11,18 +11,10 @@ const TOKEN_TYPES = {
     STRING: 5,
     NUMBER: 6,
     OPERATOR: 7,
+    QUERY_OPERATOR: 8,
 };
 
-const DEBUG_TOKEN_TYPES = [
-    "UNKNOWN",
-    "BRACKET",
-    "COMMA",
-    "KEYWORD",
-    "NAME",
-    "STRING",
-    "NUMBER",
-    "OPERATOR",
-];
+const DEBUG_TOKEN_TYPES = Object.keys(TOKEN_TYPES);
 
 /** @typedef {import('..').Token} Token */
 
@@ -96,6 +88,13 @@ module.exports = {
                 let m = /^(?:SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|OFFSET|HAVING|EXPLAIN|WITH|WINDOW|VALUES|AS|USING|ON|INNER|OVER|PARTITION BY|DISTINCT|FILTER|WITHIN GROUP|ASC|DESC|UNBOUNDED|PRECEDING|FOLLOWING|CURRENT ROW)\b/i.exec(ss);
                 if (m) {
                     out.push({ type: TOKEN_TYPES.KEYWORD, value: m[0].toUpperCase(), start: i });
+                    i += m[0].length;
+                    continue;
+                }
+
+                m = /^(?:UNION(?: ALL)?|INTERSECT|EXCEPT)\b/i.exec(ss);
+                if (m) {
+                    out.push({ type: TOKEN_TYPES.QUERY_OPERATOR, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;
                     continue;
                 }

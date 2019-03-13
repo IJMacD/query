@@ -2,6 +2,8 @@ export = Query;
 
 declare class Query {
   schema: Query.Schema;
+  providers: { [name: string]: Query.Schema };
+  views: { [name: string]: string };
   addProvider (schema: Query.Schema, name?: string);
   run (query: string): Promise<Query.ResultRow[]>;
 }
@@ -16,6 +18,7 @@ declare namespace Query {
     STRING = 5,
     NUMBER = 6,
     OPERATOR = 7,
+    QUERY_OPERATOR = 8,
   }
 
   enum NodeTypes {
@@ -28,6 +31,7 @@ declare namespace Query {
     NUMBER = 6,
     OPERATOR = 7,
     LIST = 8,
+    COMPOUND_QUERY = 9,
   }
 
   interface Token {

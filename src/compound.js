@@ -1,3 +1,13 @@
+module.exports = {
+  COMPOUND_OPERATORS: {
+    INTERSECT: intersectResults,
+    EXCEPT: exceptResults,
+    UNION: unionResults,
+    "UNION ALL": unionAllResults,
+  },
+  distinctResults,
+};
+
 /** @typedef {import('..').ResultRow} ResultRow */
 
 /**
@@ -98,11 +108,3 @@ function distinctMap (results) {
   }
   return outMap;
 }
-
-module.exports = {
-  intersectResults,
-  exceptResults,
-  unionResults,
-  unionAllResults,
-  distinctResults,
-};

@@ -1,7 +1,8 @@
 const Parser = require('./parser');
 const persist = require('./persist');
-const { intersectResults, exceptResults, unionResults, unionAllResults } = require('./compound');
 const evaluateQuery = require('./evaluate-query');
+const evaluateCompoundQuery = require('./evaluate-compound');
+const { NODE_TYPES, DEBUG_NODE_TYPES } = require('./parser');
 
 const VIEW_KEY = "views";
 
@@ -55,31 +56,6 @@ class Query {
             return [];
         }
 
-        /****************
-         * Set Functions
-         ****************/
-
-        if (/INTERSECT/.test(query)) {
-            const [ resultsL, resultsR ] = await this.runQueries(query.split("INTERSECT", 2));
-            return intersectResults(resultsL, resultsR);
-        }
-
-        if (/EXCEPT/.test(query)) {
-            const [ resultsL, resultsR ] = await this.runQueries(query.split("EXCEPT", 2));
-            return exceptResults(await resultsL, await resultsR);
-        }
-
-        const unionMatch = /UNION (ALL)?/.exec(query)
-        if (unionMatch) {
-            const qLEnd = unionMatch.index;
-            const qRStart = qLEnd + unionMatch[0].length;
-            const all = unionMatch[1] === "ALL";
-            const queryL = query.substring(0, qLEnd);
-            const queryR = query.substring(qRStart);
-            const [ resultsL, resultsR ] = await this.runQueries([queryL, queryR]);
-            return all ? unionAllResults(resultsL, resultsR) : unionResults(resultsL, resultsR);
-        }
-
         /**************
          * Matrix
          **************/
@@ -107,7 +83,15 @@ class Query {
 
         const parsedQuery = Parser.parse(query);
 
-        return evaluateQuery(this, parsedQuery);
+        if (parsedQuery.type === NODE_TYPES.COMPOUND_QUERY) {
+            return evaluateCompoundQuery(this, parsedQuery);
+        }
+
+        if (parsedQuery.type === NODE_TYPES.STATEMENT) {
+            return evaluateQuery(this, parsedQuery);
+        }
+
+        throw new Error(`Cannot evaluate node type ${DEBUG_NODE_TYPES[parsedQuery.type]} as Query`);
     }
 
     /**

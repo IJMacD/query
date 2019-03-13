@@ -1,12 +1,12 @@
 const { tokenize, TOKEN_TYPES, DEBUG_TOKEN_TYPES } = require('./tokenizer');
+const { repeat } = require('./util');
 
 /** @typedef {import('..').Token} Token */
 /** @typedef {import('..').Node} Node */
 /** @typedef {import('..').WindowSpec} WindowSpec */
+/** @typedef {import('..').NodeTypes} NodeTypes */
+/** @typedef {import('..').TokenTypes} TokenTypes */
 
-/**
- * @enum {number}
- */
 const NODE_TYPES = {
     UNKNOWN: 0,
     STATEMENT: 1,
@@ -17,19 +17,10 @@ const NODE_TYPES = {
     NUMBER: 6,
     OPERATOR: 7,
     LIST: 8,
+    COMPOUND_QUERY: 9,
 };
 
-const DEBUG_NODE_TYPES = [
-    "UNKNOWN",
-    "STATEMENT",
-    "CLAUSE",
-    "FUNCTION_CALL",
-    "SYMBOL",
-    "STRING",
-    "NUMBER",
-    "OPERATOR",
-    "LIST",
-];
+const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
 
 module.exports = {
     parseTokenList: parseFromTokenList,
@@ -43,7 +34,14 @@ module.exports = {
 };
 
 class TokenError extends Error {
-    constructor (token, expectedType=undefined, expectedValue=undefined) {
+    /**
+     *
+     * @param {Token} token
+     * @param {string} source
+     * @param {TokenTypes} expectedType
+     * @param {string} expectedValue
+     */
+    constructor (token, source, expectedType=undefined, expectedValue=undefined) {
         const tokenMessage = token ?
             `Invalid token found: [${DEBUG_TOKEN_TYPES[token.type]} ${token.value}] at ${token.start}` :
             "Unexpected end of tokens";
@@ -54,9 +52,15 @@ class TokenError extends Error {
             message += `\nExpected: [${DEBUG_TOKEN_TYPES[expectedType]}${typeof expectedValue !== "undefined" ? ` '${expectedValue}'`: ""}]`;
         }
 
+        const offset = Math.max(0, token.start - 5);
+        message += `\nSource:    '${source.substr(offset, 10)}'`;
+        message += `\nError here:${repeat(" ", Math.min(5, offset))}^`;
+
         super(message);
     }
 }
+
+class ClauseError extends Error {}
 
 /**
  * @param {Token[]} tokenList
@@ -116,11 +120,11 @@ function parseFromTokenList (tokenList, source="") {
         const current = tokenList[i];
 
         if (!current) {
-            throw new TokenError(null, type, value);
+            throw new TokenError(null, source, type, value);
         }
 
         if ((type !== current.type) && (typeof value === "undefined" || value !== current.value)) {
-            throw new TokenError(current, type, value);
+            throw new TokenError(current, source, type, value);
         }
 
         return tokenList[i++];
@@ -142,18 +146,43 @@ function parseFromTokenList (tokenList, source="") {
         return (!end() && !peek(TOKEN_TYPES.KEYWORD) && !peek(TOKEN_TYPES.BRACKET, ")"));
     }
 
+    function descendQueryExpression () {
+        const { start } = current();
+
+        let left = descendStatement();
+
+        if (!peek(TOKEN_TYPES.QUERY_OPERATOR)) {
+            return left;
+        }
+
+        const t = next();
+
+        const op = {
+            type: NODE_TYPES.COMPOUND_QUERY,
+            id: t.value,
+            children: [ left, descendStatement() ],
+        };
+
+        op.source = source.substring(start, current() && current().start).trim();
+
+        return op;
+    }
+
     function descendStatement () {
+        const { start } = current();
+
         /** @type {Node} */
         let out = {
             type: NODE_TYPES.STATEMENT,
             id: null,
             children: [],
-            source,
         };
 
-        while (!end() && !peek(TOKEN_TYPES.BRACKET, ")")) {
+        while (!end() && !peek(TOKEN_TYPES.BRACKET, ")") && !peek(TOKEN_TYPES.QUERY_OPERATOR)) {
             out.children.push(descendClause());
         }
+
+        out.source = source.substring(start, current() && current().start).trim();
 
         return out;
     }
@@ -377,7 +406,7 @@ function parseFromTokenList (tokenList, source="") {
                 }
                 break;
             default:
-                throw TypeError(`Unexpected Keyword. Expected a clause but got ${t.value}`);
+                throw new TokenError(t, source, TOKEN_TYPES.KEYWORD);
         }
 
         out.source = source.substring(t.start, current() && current().start).trim();
@@ -511,7 +540,7 @@ function parseFromTokenList (tokenList, source="") {
             case TOKEN_TYPES.COMMA:
                 throw new Error(`ParseError: Unexpected comma at ${t.start}`);
             default:
-                throw new Error("ParseError: Only able to parse some tokens. Got token type " + t.type);
+                throw new TokenError(t, source);
         }
 
         out.source = source.substring(t.start, current() && current().start).trim();
@@ -693,7 +722,7 @@ function parseFromTokenList (tokenList, source="") {
         return window;
     }
 
-    return descendStatement();
+    return descendQueryExpression();
 }
 
 /**

@@ -310,33 +310,26 @@ function renderAST (json) {
     return renderNode(ast);
 }
 
-/**
- * @enum {number}
- */
-const NODE_TYPES = {
-    UNKNOWN: 0,
-    STATEMENT: 1,
-    CLAUSE: 2,
-    FUNCTION_CALL: 3,
-    SYMBOL: 4,
-    STRING: 5,
-    NUMBER: 6,
-    OPERATOR: 7,
-    LIST: 8,
-};
-const DEBUG_NODE_TYPES = [
-    "UNKNOWN",
-    "STATEMENT",
-    "CLAUSE",
-    "FUNCTION_CALL",
-    "SYMBOL",
-    "STRING",
-    "NUMBER",
-    "OPERATOR",
-    "LIST",
-];
 
 function renderNode (node) {
+    /**
+     * Shouldn't really be copied!
+     * @enum {number}
+     */
+    const NODE_TYPES = {
+        UNKNOWN: 0,
+        STATEMENT: 1,
+        CLAUSE: 2,
+        FUNCTION_CALL: 3,
+        SYMBOL: 4,
+        STRING: 5,
+        NUMBER: 6,
+        OPERATOR: 7,
+        LIST: 8,
+        COMPOUND_QUERY: 9,
+    };
+    const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
+
     const type = DEBUG_NODE_TYPES[node.type].toLowerCase().replace(/[ _]/g, "-");
     const name = String(node.id !== null ? node.id : (node.type === NODE_TYPES.LIST ? "LIST" : ''));
     const id = name.toLowerCase().replace(/[ _]/g, "-");

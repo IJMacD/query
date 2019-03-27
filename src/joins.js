@@ -9,7 +9,7 @@ module.exports = {
 
 const { parseExpression } = require('./parser');
 
-const { filterRows } = require('./filter');
+const { filterRow } = require('./filter');
 
 const { resolvePath } = require('./resolve');
 
@@ -165,6 +165,7 @@ function applyJoin (context, table, rows) {
                 continue;
             }
 
+            let added = 0;
             data.forEach((sr, si) => {
                 // Clone the row
                 const newRow = cloneRow(row);
@@ -173,8 +174,27 @@ function applyJoin (context, table, rows) {
                 // Set the ROWID again, this time including the subquery id too
                 Object.defineProperty(newRow, 'ROWID', { value: `${row['ROWID']}.${si}`, writable: true });
 
-                newRows.push(newRow);
+                // If we _do_ have a predicate we only push the new row if it passes the filter test
+                if (!table.predicate || filterRow(context, newRow, table.predicate, newRows, true)) {
+                    newRows.push(newRow);
+                    added++;
+                }
             });
+
+            /*
+             * The predicate must have ruled out all the rows if `added` === 0
+             * If this is an inner join, we do nothing.
+             * In the case it is not an INNER JOIN (i.e it is a LEFT JOIN),
+             * we need to add a null row.
+             */
+            if (added === 0 && !table.inner) {
+                // Update the ROWID to indicate there was no row in this particular table
+                row['ROWID'] += ".-1";
+                setRowData(row, table, null);
+
+                newRows.push(row);
+            }
+
         } else {
             // Update all the row IDs for one-to-one JOIN
             row['ROWID'] += ".0";
@@ -185,10 +205,6 @@ function applyJoin (context, table, rows) {
 
     if (one2many) {
         table.explain += ` one-to-many`;
-    }
-
-    if (table.predicate) {
-        return filterRows(context, newRows, table.predicate);
     }
 
     return newRows;

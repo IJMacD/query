@@ -247,8 +247,11 @@ function parseFromTokenList (tokenList, source="") {
                         child.source += ` USING ${name.value}`;
                     }
 
-                    if (suspect(TOKEN_TYPES.KEYWORD, "INNER")) {
-                        child.inner = true;
+                    child.inner = true;
+                    if (suspect(TOKEN_TYPES.KEYWORD, "LEFT")) {
+                        child.inner = false;
+                    } else {
+                        suspect(TOKEN_TYPES.KEYWORD, "INNER");
                     }
 
                     child.source = source.substring(c.start, current() && current().start).trim();

@@ -2,6 +2,7 @@ const { NODE_TYPES } = require('./parser');
 const { SymbolError, evaluateConstantExpression } = require('./evaluate');
 
 module.exports = {
+  filterRow,
   filterRows,
   traverseWhereTree
 };

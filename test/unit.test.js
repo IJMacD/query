@@ -156,8 +156,8 @@ describe("Parser", () => {
         id: "FROM",
         source: source.substr(0,25),
         children: [
-          { type: NODE_TYPES.SYMBOL, id: "Test", alias: "a", source: "Test AS a" },
-          { type: NODE_TYPES.SYMBOL, id: "Test", alias: "b", source: "Test AS b" },
+          { type: NODE_TYPES.SYMBOL, id: "Test", alias: "a", source: "Test AS a", inner: true },
+          { type: NODE_TYPES.SYMBOL, id: "Test", alias: "b", source: "Test AS b", inner: true },
         ]
       },{
         type: NODE_TYPES.CLAUSE,

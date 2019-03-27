@@ -25,7 +25,7 @@ test("SELECT columns FROM JOIN on object", () => {
 test("JOIN on array", () => {
   return demoQuery("FROM Test_4, A").then(r => {
     // Don't forget header row
-    expect(r.length - 1).toBe(22);
+    expect(r.length - 1).toBe(20);
     expect(r[1][0]).toBe('K');
     expect(r[1][1]).toBe(-1);
     expect(r[2][0]).toBe('K');
@@ -36,15 +36,15 @@ test("JOIN on array", () => {
     expect(r[4][1]).toBe(-12);
     expect(r[5][0]).toBe('L');
     expect(r[5][1]).toBe(-13);
-    expect(r[6][0]).toBe('M');
-    expect(r[6][1]).toBeNull();
+    expect(r[6][0]).toBe('N');
+    expect(r[6][1]).toBe(-3);
   });
 });
 
 test("SELECT columns JOIN on array", () => {
   return demoQuery("FROM Test_4, A SELECT n, c").then(r => {
     // Don't forget header row
-    expect(r.length - 1).toBe(22);
+    expect(r.length - 1).toBe(20);
     expect(r[1][0]).toBe(-1);
     expect(r[1][1]).toBe('K');
     expect(r[2][0]).toBe(-11);
@@ -55,12 +55,12 @@ test("SELECT columns JOIN on array", () => {
     expect(r[4][1]).toBe('L');
     expect(r[5][0]).toBe(-13);
     expect(r[5][1]).toBe('L');
-    expect(r[6][0]).toBeNull();
-    expect(r[6][1]).toBe('M');
+    expect(r[6][0]).toBe(-3);
+    expect(r[6][1]).toBe('N');
   });
 });
 
-test("INNER JOIN on array", () => {
+test("Explicit INNER JOIN on array", () => {
   return demoQuery("FROM Test_4, A INNER SELECT n, c").then(r => {
     // Don't forget header row
     expect(r.length - 1).toBe(20);
@@ -76,6 +76,27 @@ test("INNER JOIN on array", () => {
     expect(r[5][1]).toBe('L');
     expect(r[6][0]).toBe(-3);
     expect(r[6][1]).toBe('N');
+  });
+});
+
+test("LEFT JOIN on array", () => {
+  return demoQuery("FROM Test_4, A LEFT SELECT n, c").then(r => {
+    // Don't forget header row
+    expect(r.length - 1).toBe(22);
+    expect(r[1][0]).toBe(-1);
+    expect(r[1][1]).toBe('K');
+    expect(r[2][0]).toBe(-11);
+    expect(r[2][1]).toBe('K');
+    expect(r[3][0]).toBe(-2);
+    expect(r[3][1]).toBe('L');
+    expect(r[4][0]).toBe(-12);
+    expect(r[4][1]).toBe('L');
+    expect(r[5][0]).toBe(-13);
+    expect(r[5][1]).toBe('L');
+    expect(r[6][0]).toBeNull();
+    expect(r[6][1]).toBe('M');
+    expect(r[7][0]).toBe(-3);
+    expect(r[7][1]).toBe('N');
   });
 });
 

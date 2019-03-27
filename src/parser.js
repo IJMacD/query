@@ -377,7 +377,7 @@ function parseFromTokenList (tokenList, source="") {
 
                     expect(TOKEN_TYPES.BRACKET, "(");
                     while (isList()) {
-                        child.children.push(descendNode());
+                        child.children.push(descendExpression());
 
                         if (!suspect(TOKEN_TYPES.COMMA)) {
                             break;

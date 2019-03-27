@@ -1088,4 +1088,19 @@ describe("VALUES", () => {
             expect(r[3][1]).toBe('c');
         });
     });
+
+    test("With Constant Expressions", () => {
+        return demoQuery("FROM (VALUES (1+1,'a'||'a'),(2-3,'b'||'a'),(3*4,'c'||'d'))").then(r => {
+            expect(r.length - 1).toBe(3);
+
+            expect(r[1][0]).toBe(2);
+            expect(r[1][1]).toBe('aa');
+
+            expect(r[2][0]).toBe(-1);
+            expect(r[2][1]).toBe('ba');
+
+            expect(r[3][0]).toBe(12);
+            expect(r[3][1]).toBe('cd');
+        });
+    });
 })

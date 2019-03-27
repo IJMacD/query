@@ -1,5 +1,7 @@
 module.exports = evaluateValues;
 
+const { evaluateConstantExpression } = require('./evaluate');
+
 /** @typedef {import('..').Node} Node */
 
 /**
@@ -16,7 +18,7 @@ function evaluateValues (values) {
     const width = firstRow.children.length;
     const headers = Array(width).fill(0).map((_, i) => `Col ${i + 1}`);
 
-    const out = values.map(row => row.children.map(col => col.id));
+    const out = values.map(row => row.children.map(evaluateConstantExpression));
 
     out.unshift(headers);
 

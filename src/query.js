@@ -3,6 +3,7 @@ const persist = require('./persist');
 const evaluateQuery = require('./evaluate-query');
 const evaluateCompoundQuery = require('./evaluate-compound');
 const { NODE_TYPES, DEBUG_NODE_TYPES } = require('./parser');
+const { queryResultToObjectArray } = require('./util');
 
 const VIEW_KEY = "views";
 
@@ -52,6 +53,53 @@ class Query {
             this.views[name] = view;
 
             persist.setItem(VIEW_KEY, this.views);
+
+            return [];
+        }
+
+        const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_]+)/.exec(query);
+        if (tableMatch)
+        {
+            const name = tableMatch[1];
+
+            if (this.schema.callbacks.createTable) {
+                await this.schema.callbacks.createTable(name);
+                return [];
+            }
+
+            return [];
+        }
+
+        const insertMatch = /^INSERT INTO ([a-zA-Z0-9_]+) \(([a-zA-Z0-9_,]+)\)/.exec(query);
+        if (insertMatch)
+        {
+            const name = insertMatch[1];
+            const cols = insertMatch[2].split(",").map(c => c.trim());
+
+            const insertQuery = query.substring(insertMatch[0].length);
+
+            const parsedQuery = Parser.parse(insertQuery);
+
+            let results;
+    
+            if (parsedQuery.type === NODE_TYPES.COMPOUND_QUERY) {
+                results = await evaluateCompoundQuery(this, parsedQuery);
+            }
+    
+            if (parsedQuery.type === NODE_TYPES.STATEMENT) {
+                results = await evaluateQuery(this, parsedQuery);
+            }
+    
+            if (!results) {
+                throw new Error(`Cannot evaluate node type ${DEBUG_NODE_TYPES[parsedQuery.type]} as Query`);
+            }
+
+            const objArray = queryResultToObjectArray(results, cols);
+
+            if (this.schema.callbacks.insertIntoTable) {
+                await Promise.all(objArray.map(r => this.schema.callbacks.insertIntoTable(name, r)));
+                return [];
+            }
 
             return [];
         }

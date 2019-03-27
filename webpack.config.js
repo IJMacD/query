@@ -3,7 +3,7 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = [{
-    entry: [ "@babel/polyfill", "./frontend/demo-query.js" ],
+    entry: [ "@babel/polyfill", "./frontend/indexeddb-query.js" ],
     output: {
         library: "query",
         path: path.resolve(__dirname, 'dist'),

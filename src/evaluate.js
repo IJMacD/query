@@ -1,4 +1,6 @@
+
 const { NODE_TYPES } = require('./parser');
+const { resolveConstant } = require('./resolve');
 const evaluateQuery = require('./evaluate-query');
 
 const {
@@ -156,6 +158,11 @@ function evaluate (row, node, rows=null) {
 
         }
         case NODE_TYPES.SYMBOL: {
+            if (!(this.resolveValue instanceof Function)) {
+                const const_val = resolveConstant(String(node.id));
+                if (typeof const_val !== "undefined") return const_val;
+                throw new Error(`Symbol detected in Constant Expression: "${node.id}"`);
+            }
             return this.resolveValue(row, String(node.id), rows);
         }
         case NODE_TYPES.STRING: {

@@ -58,7 +58,8 @@ function repeat (char, n) {
 * @returns {boolean}
 */
 function isNullDate (date) {
-  return date instanceof Date && isNaN(+date);
+  // if this has already passed through `moment.format` it might appear as 'Invalid Date'
+  return date === "Invalid date" || date instanceof Date && isNaN(+date);
 }
 
 /**

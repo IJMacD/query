@@ -4,8 +4,6 @@ if (typeof window === "undefined" || !window.indexedDB) {
     throw Error("IndexedDB is not supported");
 }
 
-const STORE_NAME = "tables";
-
 async function primaryTable (table) {
     const db = await openDB();
 
@@ -21,11 +19,7 @@ async function primaryTable (table) {
 async function getTables () {
     const db = await openDB();
 
-    return new Promise((resolve, reject) => {
-        const request = db.transaction(STORE_NAME).objectStore(STORE_NAME).getAllKeys();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+    return Array.from(db.objectStoreNames);
 }
 
 module.exports = {
@@ -40,16 +34,8 @@ module.exports = {
 
             return getColumnTypes(results[0]);
         },
-        createTable: async (name) => {
-            const db = await openDB();
-
-            return createTable(db, name);
-        },
-        insertIntoTable: async (name, data) => {
-            const db = await openDB();
-
-            return insertIntoTable(db, name, data);
-        },
+        createTable,
+        insertIntoTable,
     },
 };
 
@@ -58,13 +44,26 @@ module.exports = {
  */
 function openDB () {
     return new Promise((resolve, reject) => {
-        const request = window.indexedDB.open("ijmacd-query", 1);
+        const request = window.indexedDB.open("ijmacd-query");
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            db.createObjectStore(STORE_NAME);
-        }
+    });
+}
+
+/**
+ * @param {(db: IDBDatabase) => void} callback
+ * @returns {Promise<IDBDatabase>}
+ */
+async function upgradeDB (callback) {
+    const db = await openDB();
+    const { version } = db;
+    db.close();
+
+    return new Promise((resolve, reject) => {
+        const request = window.indexedDB.open("ijmacd-query", version + 1);
+        request.onupgradeneeded = () => callback(request.result);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
     });
 }
 
@@ -75,9 +74,9 @@ function openDB () {
  */
 function getTable (db, name) {
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME);
-        const objStore = transaction.objectStore(STORE_NAME);
-        const request = objStore.get(name);
+        const transaction = db.transaction(name);
+        const objStore = transaction.objectStore(name);
+        const request = objStore.getAll();
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
     });
@@ -85,60 +84,33 @@ function getTable (db, name) {
 
 /**
  * 
- * @param {IDBDatabase} db 
  * @param {string} name 
  */
-function createTable (db, name, values=[]) {
-    if (!Array.isArray(values)) {
-        throw RangeError("Values must be an array. Received: " + typeof values);
-    }
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, "readwrite");
-        const objStore = transaction.objectStore(STORE_NAME);
-        const request = objStore.add(values, name);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+function createTable (name) {
+    return upgradeDB(db => db.createObjectStore(name, { autoIncrement: true }));
 }
 
 /**
- * 
- * @param {IDBDatabase} db 
  * @param {string} name 
  */
-function updateTable (db, name, values) {
-    if (!Array.isArray(values)) {
-        throw RangeError("Values must be an array. Received: " + typeof values);
-    }
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, "readwrite");
-        const objStore = transaction.objectStore(STORE_NAME);
-        const request = objStore.put(values, name);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+function dropTable (name) {
+    return upgradeDB(db => db.deleteObjectStore(name));
 }
 
 /**
  * 
- * @param {IDBDatabase} db 
  * @param {string} name 
  * @param {any} row
+ * @return {Promise<IDBValidKey>}
  */
-function insertIntoTable (db, name, row) {
+async function insertIntoTable (name, row) {
+    const db = await openDB();
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE_NAME, "readwrite");
-        const objStore = transaction.objectStore(STORE_NAME);
-        const request = objStore.get(name);
-        request.onsuccess = () => {
-            const rows = request.result;
+        const transaction = db.transaction(name, "readwrite");
+        const objStore = transaction.objectStore(name);
 
-            rows.push(row);
-
-            const insertRequest = objStore.put(rows, name);
-            insertRequest.onsuccess = () => resolve(insertRequest.result);
-            insertRequest.onerror = () => reject(insertRequest.error);
-        };
+        const request = objStore.add(row);
+        request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
     });
 }

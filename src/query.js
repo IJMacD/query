@@ -70,29 +70,15 @@ class Query {
             return [];
         }
 
-        const insertMatch = /^INSERT INTO ([a-zA-Z0-9_]+) \(([a-zA-Z0-9_,]+)\)/.exec(query);
+        const insertMatch = /^INSERT INTO ([a-zA-Z0-9_]+)(?: \(([a-zA-Z0-9_, ]+)\))?/.exec(query);
         if (insertMatch)
         {
             const name = insertMatch[1];
-            const cols = insertMatch[2].split(",").map(c => c.trim());
+            const cols = insertMatch[2] ? insertMatch[2].split(",").map(c => c.trim()) : null;
 
             const insertQuery = query.substring(insertMatch[0].length);
 
-            const parsedQuery = Parser.parse(insertQuery);
-
-            let results;
-    
-            if (parsedQuery.type === NODE_TYPES.COMPOUND_QUERY) {
-                results = await evaluateCompoundQuery(this, parsedQuery);
-            }
-    
-            if (parsedQuery.type === NODE_TYPES.STATEMENT) {
-                results = await evaluateQuery(this, parsedQuery);
-            }
-    
-            if (!results) {
-                throw new Error(`Cannot evaluate node type ${DEBUG_NODE_TYPES[parsedQuery.type]} as Query`);
-            }
+            let results = await this.runSelect(insertQuery);
 
             const objArray = queryResultToObjectArray(results, cols);
 
@@ -125,10 +111,11 @@ class Query {
             return out;
         }
 
-        // Everything above was to process a compound query of some
-        // description. If we've got to this point we just need to
-        // perform a "simple" query.
+        // If we got to this point we're executing a "SELECT"
+        return this.runSelect(query);
+    }
 
+    runSelect (query) {
         const parsedQuery = Parser.parse(query);
 
         if (parsedQuery.type === NODE_TYPES.COMPOUND_QUERY) {

@@ -36,6 +36,7 @@ module.exports = {
         },
         createTable,
         insertIntoTable,
+        dropTable,
     },
 };
 
@@ -68,9 +69,9 @@ async function upgradeDB (callback) {
 }
 
 /**
- * 
- * @param {IDBDatabase} db 
- * @param {string} name 
+ *
+ * @param {IDBDatabase} db
+ * @param {string} name
  */
 function getTable (db, name) {
     return new Promise((resolve, reject) => {
@@ -83,23 +84,23 @@ function getTable (db, name) {
 }
 
 /**
- * 
- * @param {string} name 
+ *
+ * @param {string} name
  */
 function createTable (name) {
     return upgradeDB(db => db.createObjectStore(name, { autoIncrement: true }));
 }
 
 /**
- * @param {string} name 
+ * @param {string} name
  */
 function dropTable (name) {
     return upgradeDB(db => db.deleteObjectStore(name));
 }
 
 /**
- * 
- * @param {string} name 
+ *
+ * @param {string} name
  * @param {any} row
  * @return {Promise<IDBValidKey>}
  */

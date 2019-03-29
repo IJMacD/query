@@ -3,7 +3,7 @@ const persist = require('./persist');
 const evaluateQuery = require('./evaluate-query');
 const evaluateCompoundQuery = require('./evaluate-compound');
 const { NODE_TYPES, DEBUG_NODE_TYPES } = require('./parser');
-const { queryResultToObjectArray } = require('./util');
+const { queryResultToObjectArray, split } = require('./util');
 
 const VIEW_KEY = "views";
 
@@ -32,6 +32,7 @@ class Query {
         name = name || schema.name || `SCHEMA_${providerCount + 1}`;
 
         this.providers[name] = schema;
+        schema.name = name;
 
         if (!this.schema) {
             this.schema = schema;
@@ -43,6 +44,9 @@ class Query {
      * @returns {Promise<any[][]>}
      */
     async run (query) {
+        // TODO: Should probably come up with a method of returning useful information
+        // such as inserted row count;
+        const EMPTY_RESULT = [];
 
         const viewMatch = /^CREATE VIEW ([a-zA-Z0-9_]+) AS\s+/.exec(query);
         if (viewMatch)
@@ -54,27 +58,43 @@ class Query {
 
             persist.setItem(VIEW_KEY, this.views);
 
-            return [];
+            return EMPTY_RESULT;
         }
 
-        const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_]+)/.exec(query);
+        const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_\.]+)/.exec(query);
         if (tableMatch)
         {
             const name = tableMatch[1];
 
-            if (this.schema.callbacks.createTable) {
-                await this.schema.callbacks.createTable(name);
-                return [];
+            let tableName = name;
+            let schemaName;
+
+            if (name.includes(".")) {
+                [ schemaName, tableName ] = split(name, ".", 2);
             }
 
-            return [];
+            const { callbacks } = this.providers[schemaName] || this.schema;
+
+            if (callbacks.createTable) {
+                await callbacks.createTable(tableName);
+                return EMPTY_RESULT;
+            } else {
+                throw Error("Schema does not support creating tables");
+            }
         }
 
-        const insertMatch = /^INSERT INTO ([a-zA-Z0-9_]+)(?: \(([a-zA-Z0-9_, ]+)\))?/.exec(query);
+        const insertMatch = /^INSERT INTO ([a-zA-Z0-9_\.]+)(?: \(([a-zA-Z0-9_, ]+)\))?/.exec(query);
         if (insertMatch)
         {
             const name = insertMatch[1];
             const cols = insertMatch[2] ? insertMatch[2].split(",").map(c => c.trim()) : null;
+
+            let tableName = name;
+            let schemaName;
+
+            if (name.includes(".")) {
+                [ schemaName, tableName ] = split(name, ".", 2);
+            }
 
             const insertQuery = query.substring(insertMatch[0].length);
 
@@ -82,12 +102,36 @@ class Query {
 
             const objArray = queryResultToObjectArray(results, cols);
 
-            if (this.schema.callbacks.insertIntoTable) {
-                await Promise.all(objArray.map(r => this.schema.callbacks.insertIntoTable(name, r)));
-                return [];
+            const { callbacks } = this.providers[schemaName] || this.schema;
+
+            if (callbacks.insertIntoTable) {
+                await Promise.all(objArray.map(r => callbacks.insertIntoTable(tableName, r)));
+                return EMPTY_RESULT;
+            } else {
+                throw Error("Schema does not support insertion");
+            }
+        }
+
+        const dropMatch = /^DROP TABLE ([a-zA-Z0-9_\.]+)/.exec(query);
+        if (dropMatch)
+        {
+            const name = dropMatch[1];
+
+            let tableName = name;
+            let schemaName;
+
+            if (name.includes(".")) {
+                [ schemaName, tableName ] = split(name, ".", 2);
             }
 
-            return [];
+            const { callbacks } = this.providers[schemaName] || this.schema;
+
+            if (callbacks.dropTable) {
+                await callbacks.dropTable(tableName);
+                return EMPTY_RESULT;
+            } else {
+                throw Error("Schema does not support creating tables");
+            }
         }
 
         /**************

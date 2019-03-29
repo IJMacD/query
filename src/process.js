@@ -22,7 +22,7 @@ const { findJoin, applyJoin, setRowData, getRowData,  } = require('./joins');
 const { filterRows } = require('./filter');
 const { setAnalysis } = require('./explain');
 const { getTableAliasMap, PendingValue } = require('./resolve');
-const { scalar, queryResultToObjectArray } = require('./util');
+const { scalar, queryResultToObjectArray, split } = require('./util');
 const { evaluateConstantExpression, SymbolError, isConstantExpression } = require('./evaluate');
 const evaluateStatement = require('./evaluate-query');
 
@@ -216,7 +216,7 @@ async function getPrimaryResults(context, table) {
     let tableName = table.name;
 
     if (table.name.includes(".")) {
-        [schemaName, tableName] = table.name.split(".", 2);
+        [schemaName, tableName] = split(table.name, ".", 2);
     }
 
     if (table.name in subqueries) {

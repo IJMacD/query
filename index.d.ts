@@ -124,10 +124,11 @@ declare namespace Query {
     primaryTable?: (ParsedFrom) => Promise<any[]>|any[];
     beforeJoin?: (ParsedFrom, results: any[]) => Promise<void>;
     afterJoin?: (ParsedFrom, results: any[]) => Promise<void>;
-    getTables?: () => string[];
+    getTables?: () => Promise<string[]>|string[];
     getColumns?: (tableName: string) => Promise<{ name: string, type: string }[]>|{ name: string, type: string }[];
-    createTable: (name: string) => Promise<void>,
-    insertIntoTable: (name: string, data: any) => Promise<void>,
+    createTable?: (name: string) => Promise,
+    insertIntoTable?: (name: string, data: any) => Promise,
+    dropTable?: (name: string) => Promise,
   }
 
   interface ParsedTable {

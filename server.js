@@ -9,6 +9,7 @@ const port = 3000;
 const Query = require('./src/query')
 const demoProvider = require('./src/providers/demo');
 const placeholderProvider = require('./src/providers/placeholder');
+const indexedDBProvider = require('./src/providers/indexeddb');
 const Formatter = require('./src/formatter');
 
 const [ node, script, ...rest ] = process.argv;
@@ -26,6 +27,12 @@ if (global['QueryProvider']) {
 
 if (args.includes("--placeholder")) {
     QueryExecutor.addProvider(placeholderProvider, "Placeholder");
+    providers++;
+}
+
+
+if (args.includes("--idb")) {
+    QueryExecutor.addProvider(indexedDBProvider, "IDB");
     providers++;
 }
 

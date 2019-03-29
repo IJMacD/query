@@ -9,6 +9,7 @@ module.exports = {
   matchInBrackets,
   queryResultToObjectArray,
   toUTF8Array,
+  split,
 };
 
 /**
@@ -201,4 +202,24 @@ function toUTF8Array (str) {
       }
   }
   return utf8;
+}
+
+/**
+ *
+ * @param {string} input
+ * @param {string} splitter
+ * @param {number} limit
+ */
+function split (input, splitter, limit) {
+    const index = input.indexOf(splitter);
+
+    if (index === -1) {
+        return [input];
+    }
+
+    if (limit > 2) {
+        throw Error("Split above 2 not implemented.");
+    }
+
+    return [ input.substr(0, index), input.substr(index + 1) ];
 }

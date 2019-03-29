@@ -10,7 +10,8 @@
             "name": "Demo Server",
             "program": "${workspaceFolder}/server.js",
             "args": [
-                // "--placeholder"
+                "--demo",
+                "--placeholder"
             ],
             "skipFiles": [
                 "node_modules/**/*.js",

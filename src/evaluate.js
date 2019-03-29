@@ -1,4 +1,17 @@
 
+class SymbolError extends Error { }
+
+module.exports = {
+    evaluate,
+    getRowEvaluator,
+    evaluateConstantExpression,
+    isConstantExpression,
+    aggregateValues,
+    rowSorter,
+    comparator,
+    SymbolError,
+};
+
 const { NODE_TYPES } = require('./parser');
 const { resolveConstant } = require('./resolve');
 const evaluateQuery = require('./evaluate-query');
@@ -12,19 +25,6 @@ const {
 } = require('./const');
 
 const { isValidDate } = require('./util');
-
-class SymbolError extends Error { }
-
-module.exports = {
-    evaluate,
-    getRowEvaluator,
-    evaluateConstantExpression,
-    isConstantExpression,
-    aggregateValues,
-    rowSorter,
-    comparator,
-    SymbolError,
-};
 
 /**
  * @typedef {import('..').Node} Node

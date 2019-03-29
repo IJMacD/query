@@ -28,8 +28,7 @@ async function informationSchema(context, schema) {
 
 
 const infoTables = {
-    tables ({ schema, views }) {
-        const { callbacks } = schema;
+    tables ({ providers, views }) {
         const results = [];
         let table_type = "BASE TABLE";
 
@@ -39,18 +38,21 @@ const infoTables = {
             table_type: "SYSTEM VIEW",
         })));
 
-        if (typeof callbacks.getTables === "function") {
-            results.push(...callbacks.getTables().map(table_name => ({
-                table_schema: schema.name,
-                table_name,
-                table_type
-            })));
+        for (const schema of Object.values(providers)) {
+            const { callbacks } = schema;
+            if (typeof callbacks.getTables === "function") {
+                results.push(...callbacks.getTables().map(table_name => ({
+                    table_schema: schema.name,
+                    table_name,
+                    table_type
+                })));
+            }
         }
 
         table_type = "VIEW";
         for (const table_name in views) {
             results.push({
-                table_schema: schema.name,
+                table_schema: "",
                 table_name,
                 table_type
             });

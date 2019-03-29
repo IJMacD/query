@@ -210,7 +210,14 @@ function processColumns (context, rawCols, rows) {
  * @returns {Promise<any[]>}
  */
 async function getPrimaryResults(context, table) {
-    const { views, subqueries, CTEs, schema: { callbacks } } = context;
+    const { views, subqueries, CTEs } = context;
+
+    let schemaName;
+    let tableName = table.name;
+
+    if (table.name.includes(".")) {
+        [schemaName, tableName] = table.name.split(".", 2);
+    }
 
     if (table.name in subqueries) {
         return subqueries[table.name];
@@ -224,18 +231,22 @@ async function getPrimaryResults(context, table) {
         return queryResultToObjectArray(await context.query.run(views[table.name]), table.headers);
     }
 
-    const infoMatch = /^information_schema\.([a-z_]+)/.exec(table.name);
-    if (infoMatch) {
-        return informationSchema(context, infoMatch[1]);
+    if (schemaName === "information_schema") {
+        return informationSchema(context, tableName);
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {
         return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateConstantExpression(c)));
     }
 
+    const { callbacks } = context.providers[schemaName] || context.schema;
+
     if (typeof callbacks.primaryTable === "undefined") {
         throw new Error("PrimaryTable callback not defined");
     }
+
+    // Just in case we've stripped off a schema name
+    table.name = tableName;
 
     return callbacks.primaryTable.call(context, table) || [];
 }

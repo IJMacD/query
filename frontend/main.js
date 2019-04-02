@@ -82,10 +82,30 @@ function handleHash () {
 
 function populateExplorer () {
     const explorer = document.getElementById('explorer');
+    explorer.innerHTML = "";
+
+    const refreshButton = document.createElement("button");
+    refreshButton.innerText = "Refresh";
+    refreshButton.addEventListener("click", populateExplorer);
+    explorer.appendChild(refreshButton);
+
+    const browseLabel = document.createElement("label");
+    const browseInput = document.createElement("input");
+    browseInput.type = "checkbox";
+    browseLabel.appendChild(browseInput);
+    browseLabel.appendChild(document.createTextNode("Browse"));
+    explorer.appendChild(browseLabel);
+
     explorer.addEventListener("click", e => {
         if (e.target instanceof HTMLLIElement) {
             let { value, selectionStart, selectionEnd } = input;
             const { insert, insertBefore = "", insertAfter = "" } = e.target.dataset;
+
+            if (browseInput.checked && insert) {
+                input.value = `FROM ${insert}`;
+                sendQuery();
+                return;
+            }
 
             const before = value.substring(0,selectionStart);
             const inside = value.substring(selectionStart, selectionEnd);
@@ -106,6 +126,13 @@ function populateExplorer () {
             input.focus();
         }
     });
+
+    const tablesHeader = document.createElement("h2");
+    tablesHeader.innerText = "Tables";
+    explorer.appendChild(tablesHeader);
+
+    const tablesList = document.createElement("ul");
+    explorer.appendChild(tablesList);
 
     query(`FROM information_schema.tables
         SELECT table_schema, table_name, table_type
@@ -128,8 +155,15 @@ function populateExplorer () {
             return `<li class="${className}" data-insert="${t[0]}.${t[1]}" title="${t[2]}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
         }).join("");
 
-        document.getElementById("explorer-table-list").innerHTML = out;
+        tablesList.innerHTML = out;
     });
+
+    const routinesHeader = document.createElement("h2");
+    routinesHeader.innerText = "Functions";
+    explorer.appendChild(routinesHeader);
+
+    const routinesList = document.createElement("ul");
+    explorer.appendChild(routinesList);
 
     query("FROM information_schema.routines WHERE data_type != 'table'").then(/** @param {any[][]} r */ r => {
         /** @type {string[]} */
@@ -142,7 +176,7 @@ function populateExplorer () {
             return `<li class="${className}" data-insert-before="${t[nameCol]}(" data-insert-after=")" title="${t[typeCol]}">${t[nameCol]}</li>`;
         }).join("");
 
-        document.getElementById("explorer-function-list").innerHTML = out;
+        routinesList.innerHTML = out;
     });
 }
 

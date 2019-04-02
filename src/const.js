@@ -32,6 +32,8 @@ const VALUE_FUNCTIONS = {
     UNICODE: s => String(s).codePointAt(0),
     JSON_STRINGIFY: JSON.stringify,
     TO_HEX: v => toUTF8Array(v).map(n => n.toString(16).padStart(2, "0")).join(""),
+    LPAD: (v, n, c="") => String(v).padStart(n, c),
+    RPAD: (v, n, c="") => String(v).padEnd(n, c),
 
     REGEXP_EXTRACT (value, regexp) {
         try {

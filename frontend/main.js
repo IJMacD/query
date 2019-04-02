@@ -152,7 +152,8 @@ function populateExplorer () {
                 return `<li class="${className}" data-insert-before="${insertBefore}" data-insert-after="${insertAfter}" title="TABLE VALUED FUNCTION">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
             }
             const className = t[2].includes("VIEW") ? "view" : "table";
-            return `<li class="${className}" data-insert="${t[0]}.${t[1]}" title="${t[2]}">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
+            const insert = `${t[0] ? (t[0] + ".") : ""}${t[1]}`;
+            return `<li class="${className}" data-insert="${insert}" title="${t[2]}">${insert}</li>`;
         }).join("");
 
         tablesList.innerHTML = out;

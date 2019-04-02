@@ -61,6 +61,18 @@ class Query {
             return EMPTY_RESULT;
         }
 
+        const dropViewMatch = /^DROP VIEW ([a-zA-Z0-9_]+)/.exec(query);
+        if (dropViewMatch)
+        {
+            const name = dropViewMatch[1];
+
+            delete this.views[name]
+
+            persist.setItem(VIEW_KEY, this.views);
+
+            return EMPTY_RESULT;
+        }
+
         const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_\.]+)/.exec(query);
         if (tableMatch)
         {

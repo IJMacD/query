@@ -9,7 +9,7 @@ const port = 3000;
 const Query = require('./src/query')
 const demoProvider = require('./src/providers/demo');
 const placeholderProvider = require('./src/providers/placeholder');
-const indexedDBProvider = require('./src/providers/indexeddb');
+// const indexedDBProvider = require('./src/providers/indexeddb');
 const Formatter = require('./src/formatter');
 
 const [ node, script, ...rest ] = process.argv;
@@ -31,10 +31,10 @@ if (args.includes("--placeholder")) {
 }
 
 
-if (args.includes("--idb")) {
-    QueryExecutor.addProvider(indexedDBProvider, "IDB");
-    providers++;
-}
+// if (args.includes("--idb")) {
+//     QueryExecutor.addProvider(indexedDBProvider, "IDB");
+//     providers++;
+// }
 
 if (providers === 0 || args.includes("--demo")) {
     QueryExecutor.addProvider(demoProvider, "Demo");

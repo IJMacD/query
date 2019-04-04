@@ -86,8 +86,12 @@ function getTable (db, name) {
 /**
  *
  * @param {string} name
+ * @param {string} [keyPath]
  */
-function createTable (name) {
+function createTable (name, keyPath) {
+    if (keyPath) {
+        return upgradeDB(db => db.createObjectStore(name, { keyPath }));
+    }
     return upgradeDB(db => db.createObjectStore(name, { autoIncrement: true }));
 }
 

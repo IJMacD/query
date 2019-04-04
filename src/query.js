@@ -73,10 +73,11 @@ class Query {
             return EMPTY_RESULT;
         }
 
-        const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_\.]+)/.exec(query);
+        const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_\.]+)(?: PRIMARY KEY ([a-zA-Z0-9_]+))/.exec(query);
         if (tableMatch)
         {
             const name = tableMatch[1];
+            const key = tableMatch[2];
 
             let tableName = name;
             let schemaName;
@@ -88,7 +89,7 @@ class Query {
             const { callbacks } = this.providers[schemaName] || this.schema;
 
             if (callbacks.createTable) {
-                await callbacks.createTable(tableName);
+                await callbacks.createTable(tableName, key);
                 return EMPTY_RESULT;
             } else {
                 throw Error("Schema does not support creating tables");

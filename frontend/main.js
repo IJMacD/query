@@ -1,15 +1,18 @@
-/** @type {HTMLInputElement} */
-const input =  /* @type {HTMLInputElement} */ (document.getElementById("input"));
+const input =  /** @type {HTMLInputElement} */ (document.getElementById("input"));
 const output = document.getElementById("output");
 const queryForm = document.getElementById("query-form");
 const querySuggest = document.getElementById("query-suggest");
 const explorer = document.getElementById("explorer");
 const explorerToggle = document.getElementById("explorer-toggle");
+const expandedToggle = document.getElementById("expanded-input-toggle");
+const expandedInput = /** @type {HTMLTextAreaElement} */ (document.getElementById("input-expanded"));
 
 const QUERY_HISTORY = "query_history";
 const HISTORY_SHOW_COUNT = 20;
 const HISTORY_SAVE_COUNT = 100;
 let queryHistory = loadHistory();
+
+let isInputExpanded = false;
 
 /**
  * Use <object> instead of <img>
@@ -28,6 +31,23 @@ queryForm.addEventListener("submit", e => {
 });
 
 document.addEventListener("keydown", e => {
+    if (e.target instanceof HTMLTextAreaElement) {
+        if (e.key === "Tab") {
+            e.preventDefault();
+            var start = e.target.selectionStart;
+            var end = e.target.selectionEnd;
+            var text = e.target.value
+            var selText = text.substring(start, end);
+            e.target.value =
+                text.substring(0, start) +
+                "\t" + selText.replace(/\n/g, "\n\t") +
+                text.substring(end)
+            ;
+            e.target.selectionStart = e.target.selectionEnd = start + 1;
+        }
+        return;
+    }
+
     if (e.key === "Enter") sendQuery();
     else if (e.key === "Escape") hideSuggestions();
     else if (e.key === "Tab") {
@@ -68,6 +88,17 @@ window.addEventListener("hashchange", handleHash);
 explorer.style.display = "none";
 explorerToggle.addEventListener("click", () => {
     explorer.style.display = explorer.style.display === "none" ? "block" : "none";
+});
+
+expandedToggle.addEventListener('click', () => {
+    isInputExpanded = !isInputExpanded;
+    input.style.display = isInputExpanded ? "none" : "";
+    expandedInput.style.display = isInputExpanded ? "" : "none";
+    if (isInputExpanded) {
+        expandedInput.value = input.value;
+    } else {
+        input.value = expandedInput.value;
+    }
 });
 
 function handleHash () {
@@ -183,15 +214,20 @@ function populateExplorer () {
 
 function sendQuery () {
     hideSuggestions();
+    if (!isInputExpanded) {
+       expandedInput.value = input.value;
+    }
+    const { value } = expandedInput;
     output.innerHTML = "";
     input.disabled = true;
+    expandedInput.disabled = true;
     const start = Date.now();
-    location.hash = "#q=" + encodeURIComponent(input.value);
-    document.title = "Query: " + input.value;
-    query(input.value)
+    location.hash = "#q=" + encodeURIComponent(value);
+    document.title = "Query: " + value;
+    query(value)
         .then(data => {
             const duration = (Date.now() - start) / 1000;
-            saveHistory(input.value);
+            saveHistory(value);
 
             if (data.length === 2 && data[0][0] === "AST") {
                 output.innerHTML = renderAST(data[1][0]);
@@ -221,6 +257,7 @@ function sendQuery () {
         })
         .then(() => {
             input.disabled = false;
+            expandedInput.disabled = false;
         });
 }
 

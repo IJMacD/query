@@ -15,12 +15,17 @@ form {
     margin: 10px;
     position: relative;
 }
-input {
+input,
+textarea {
     flex: 1;
     font-size: 1.1em;
     border: 1px solid #999;
     border-width: 1px 0 1px 0;
     padding: 5px;
+}
+textarea {
+    min-height: 40px;
+    height: 180px;
 }
 button  {
     font-size: 1em;
@@ -31,6 +36,9 @@ button  {
 .input-right {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+.input-middle {
+    border-radius: 0;
 }
 .input-left {
     border-top-right-radius: 0;

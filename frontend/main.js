@@ -367,9 +367,18 @@ function renderNode (node) {
     const type = DEBUG_NODE_TYPES[node.type].toLowerCase().replace(/[ _]/g, "-");
     const name = String(node.id !== null ? node.id : (node.type === NODE_TYPES.LIST ? "LIST" : ''));
     const id = name.toLowerCase().replace(/[ _]/g, "-");
-    return `<div class="node-type-${type} node-id-${id}" title="${node.source.replace(/"/g, '&quot;')}">
-        <span class="node-id">${name}</span>
-        ${Array.isArray(node.children) ? `<ul>${node.children.map(c => `<li>${c.alias?`<span class="node-alias">${c.alias}</span>`:''}${renderNode(c)}</li>`).join('')}</ul>` : ''}
+    const source = (node.source || "");
+    const innerSource = source.replace(/ +AS +"?[a-zA-Z0-9_.]+"? *$/, "");
+    return `<div class="node-type-${type} node-id-${id}" title="${innerSource.replace(/"/g, '&quot;')}">
+        ${name ? `<span class="node-id">${name}</span>` : ''}
+        ${Array.isArray(node.children) ? `<ul>${node.children.map(c => {
+            const source = (c.source || "");
+            const aliasSource = source.match(/ +AS +"?[a-zA-Z0-9_.]+"? *$/);
+            return `<li title="${source.replace(/"/g, '&quot;')}">
+                ${c.alias?`<span class="node-alias" title="${aliasSource ? aliasSource[0].replace(/"/g, '&quot;') : ''}">${c.alias}</span>`:''}
+                ${renderNode(c)}
+            </li>`
+        }).join('')}</ul>` : ''}
     </div>`;
 }
 

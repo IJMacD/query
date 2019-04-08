@@ -168,6 +168,17 @@ canvas {
 #explorer li:hover {
     text-decoration: underline;
 }
+
+[class^=node-type-] ul {
+    list-style: none;
+    padding-left: 1em;
+}
+
+[class^=node-type-] li {
+    position: relative;
+    display: flex;
+}
+
 .node-type-statement {
     border: 1px solid #666;
     background: white;
@@ -215,12 +226,44 @@ canvas {
     margin: 4px;
 }
 
+.node-type-symbol {
+    background: white;
+    border: #999 1px solid;
+    padding: 2px 4px;
+    border-radius: 13px;
+}
+
+.node-id {
+    margin-right: 32px;
+}
+
 .node-alias {
     color: #666;
-    border:  1px dashed #999;
+    border:  1px solid #999;
     padding:  0px 8px;
     background-color: #f0f0f0;
-    margin-right: 4px;
+    position: absolute;
+    display: inline-block;
+    height: 24px;
+    right: 0;
+}
+.node-alias::before {
+    content: "";
+    border: 12px solid transparent;
+    border-right-color: #aaa;
+    position: absolute;
+    left: -25px;
+    top: -1px;
+    height: 0;
+}
+.node-alias::after {
+    content: "";
+    border: 11px solid transparent;
+    border-right-color: #f0f0f0;
+    position: absolute;
+    left: -22px;
+    top: 0;
+    height: 0;
 }
 
 .node-type-symbol,

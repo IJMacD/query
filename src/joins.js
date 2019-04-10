@@ -84,7 +84,7 @@ function findJoin (tables, table, rows) {
 
     /*
     * This will search for the plural of the table name and
-    * if that is an array we can do a multi-way join.
+    * if that is an array we can do a one-to-many join.
     */
     const ts = `${t}s`;
 
@@ -92,7 +92,7 @@ function findJoin (tables, table, rows) {
         const join = findPath(tables, r, ts);
 
         if (typeof join !== "undefined") {
-            const data = getRowData(r, table);
+            const data = getRowData(r, join[0]);
 
             const array = resolvePath(data, ts);
 

@@ -231,10 +231,18 @@ describe("Value Functions", () => {
   });
 
   test("COALESCE", () => {
-    return demoQuery("SELECT COALESCE(null, null, 'hey', 21)").then(r => {
-      expect(r[1][0]).toBe('hey');
-    });
-  })
+    return Promise.all([
+      demoQuery("SELECT COALESCE(null, null, 'hey', 21)").then(r => {
+        expect(r[1][0]).toBe('hey');
+      }),
+      demoQuery("FROM Test SELECT COALESCE(n, 'fine')").then(r => {
+        expect(r[1][0]).toBe(0);
+      }),
+      demoQuery("FROM Test SELECT COALESCE(n4, 'fine')").then(r => {
+        expect(r[1][0]).toBe('fine');
+      }),
+    ]);
+  });
 });
 
 describe("Table Valued Functions", function() {

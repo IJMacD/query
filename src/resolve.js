@@ -185,7 +185,9 @@ function resolveValue (row, col, rows=null) {
         }
     }
 
-    throw new SymbolError("Unable to resolve symbol: " + col);
+    // throw new SymbolError("Unable to resolve symbol: " + col);
+    console.log("Unable to resolve symbol: " + col);
+    return null;
 }
 
 /**

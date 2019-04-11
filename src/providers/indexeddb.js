@@ -9,6 +9,8 @@ async function primaryTable (table) {
 
     const result = await getTable(db, table.name);
 
+    db.close();
+
     if (typeof result !== "undefined") {
         return result;
     }
@@ -19,7 +21,11 @@ async function primaryTable (table) {
 async function getTables () {
     const db = await openDB();
 
-    return Array.from(db.objectStoreNames);
+    const tables = Array.from(db.objectStoreNames);
+
+    db.close();
+
+    return tables;
 }
 
 /** @type {import('../../index').Schema} */
@@ -130,7 +136,7 @@ async function insertIntoTable (name, row, duplicate="error") {
                 resolve();
             }
         }
-    });
+    }).then((key) => (db.close(),key));
 }
 
 /**

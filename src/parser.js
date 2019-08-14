@@ -53,8 +53,8 @@ class TokenError extends Error {
         }
 
         const offset = Math.max(0, token.start - 5);
-        message += `\nSource:   '${source.substr(offset, 15)}'`;
-        message += `\nError here:${repeat(" ", Math.min(5, offset))}^`;
+        message += `\nSource:     ${source.substr(offset, 15)}`;
+        message += `\nError here: ${repeat(" ", Math.min(5, offset))}^`;
 
         super(message);
     }

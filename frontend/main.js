@@ -253,7 +253,7 @@ function sendQuery () {
             }
         })
         .catch(e => {
-            output.innerHTML = `<p style="color: red; margin: 20px;">${e}</p>`;
+            output.innerHTML = `<p style="color: red; margin: 20px; font-family: monospace;">${e}</p>`;
         })
         .then(() => {
             input.disabled = false;

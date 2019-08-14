@@ -127,7 +127,7 @@ declare namespace Query {
     getTables?: () => Promise<string[]>|string[];
     getColumns?: (tableName: string) => Promise<{ name: string, type: string }[]>|{ name: string, type: string }[];
     createTable?: (name: string, key?: string) => Promise,
-    insertIntoTable?: (name: string, data: object) => Promise,
+    insertIntoTable?: (name: string, data: object, duplicate?: "error"|"ignore"|"update") => Promise,
     updateTable?: (name: string, update: (data: object) => object, where: (data: object) => boolean) => Promise,
     deleteFromTable?: (name: string, where: (data: object) => boolean) => Promise,
     dropTable?: (name: string) => Promise,

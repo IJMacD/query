@@ -34,6 +34,7 @@ const VALUE_FUNCTIONS = {
     TO_HEX: v => toUTF8Array(v).map(n => n.toString(16).padStart(2, "0")).join(""),
     LPAD: (v, n, c="") => String(v).padStart(n, c),
     RPAD: (v, n, c="") => String(v).padEnd(n, c),
+    TRIM: (v) => String(v).trim(),
 
     REGEXP_EXTRACT (value, regexp) {
         try {

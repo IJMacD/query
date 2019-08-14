@@ -109,9 +109,10 @@ function dropTable (name) {
  *
  * @param {string} name
  * @param {object} row
+ * @param {"error"|"ignore"|"update"} duplicate
  * @return {Promise<IDBValidKey>}
  */
-async function insertIntoTable (name, row) {
+async function insertIntoTable (name, row, duplicate="error") {
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(name, "readwrite");
@@ -119,7 +120,16 @@ async function insertIntoTable (name, row) {
 
         const request = objStore.add(row);
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        request.onerror = () => {
+            if (duplicate === "error") {
+                reject(request.error);
+            } else if (duplicate === "update") {
+                reject(new Error("ON DUPLICATE KEY UPDATE not implemented yet"));
+            }
+            else {
+                resolve();
+            }
+        }
     });
 }
 

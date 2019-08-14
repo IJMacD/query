@@ -109,7 +109,17 @@ class Query {
                 [ schemaName, tableName ] = split(name, ".", 2);
             }
 
-            const insertQuery = query.substring(insertMatch[0].length);
+            let insertQuery = query.substring(insertMatch[0].length);
+            /** @type {"error"|"ignore"|"update"} */
+            let duplicate = "error";
+
+            if (query.endsWith("ON DUPLICATE KEY IGNORE")) {
+                insertQuery = insertQuery.substr(0, insertQuery.length - "ON DUPLICATE KEY IGNORE".length);
+                duplicate = "ignore";
+            } else if (query.endsWith("ON DUPLICATE KEY UPDATE")) {
+                insertQuery = insertQuery.substr(0, insertQuery.length - "ON DUPLICATE KEY UPDATE".length);
+                duplicate = "update";
+            }
 
             let results = await this.runSelect(insertQuery);
 
@@ -118,7 +128,7 @@ class Query {
             const { callbacks } = this.providers[schemaName] || this.schema;
 
             if (callbacks.insertIntoTable) {
-                await Promise.all(objArray.map(r => callbacks.insertIntoTable(tableName, r)));
+                await Promise.all(objArray.map(r => callbacks.insertIntoTable(tableName, r, duplicate)));
                 return EMPTY_RESULT;
             } else {
                 throw Error("Schema does not support insertion");

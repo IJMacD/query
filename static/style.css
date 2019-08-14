@@ -145,12 +145,49 @@ canvas {
     margin: 0;
 }
 
+#explorer .treeview {
+    padding-left: 22px;
+}
+
+#explorer .treeview::before {
+    content: "⏶";
+}
+
+#explorer .treeview.collapsed::before {
+    content: "⏷";
+}
+
+#explorer .treeview.collapsed ul {
+    display: none;
+}
+
+#explorer li ul {
+    text-decoration: none;
+}
+
+#explorer li.treeview span,
+#explorer li[data-insert],
+#explorer li[data-insert-before],
+#explorer li[data-insert-after] {
+    cursor: pointer;
+}
+
+#explorer li.treeview span:hover,
+#explorer li[data-insert]:hover,
+#explorer li[data-insert-before]:hover,
+#explorer li[data-insert-after]:hover {
+    text-decoration: underline;
+}
+
 #explorer li {
     padding-left: 28px;
     background-repeat: no-repeat;
     background-size: 16px;
-    background-position: 4px;
-    cursor: pointer;
+    background-position: 4px 4px;
+}
+
+#explorer li.schema {
+    background-image: url(img/schema.svg);
 }
 
 #explorer li.table {
@@ -171,10 +208,6 @@ canvas {
 
 #explorer li.aggregate-function {
     background-image: url(img/aggregate-function.svg);
-}
-
-#explorer li:hover {
-    text-decoration: underline;
 }
 
 [class^=node-type-] ul {

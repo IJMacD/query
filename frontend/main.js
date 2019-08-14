@@ -137,9 +137,21 @@ function populateExplorer () {
 
     // Just assign to onclick to avoid double events after "Refresh"
     explorer.onclick = e => {
-        if (e.target instanceof HTMLLIElement) {
+        let target = e.target;
+
+        if (target instanceof HTMLSpanElement) {
+            target = target.parentElement;
+        }
+
+        if (target instanceof HTMLLIElement) {
             let { value, selectionStart, selectionEnd } = input;
-            const { insert, insertBefore = "", insertAfter = "" } = e.target.dataset;
+            const { dataset, classList } = target;
+            const { insert, insertBefore = "", insertAfter = "" } = dataset;
+
+            if (classList.contains("treeview")) {
+                classList.toggle("collapsed");
+                return;
+            }
 
             if (browseInput.checked && insert) {
                 input.value = `FROM ${insert}`;
@@ -181,21 +193,39 @@ function populateExplorer () {
         UNION ALL
         FROM information_schema.routines
         WHERE data_type = 'table'
-        SELECT null, routine_name, 'table function'`)
+        SELECT routine_schema, routine_name, 'table function'`)
     .then(r => {
         // headers
         r.shift();
+        let prevSchema = null;
 
         const out = r.map(t => {
+            let out = "";
+            const schema = t[0] || "No Schema";
+
+            if (schema !== prevSchema) {
+                if (prevSchema !== null) {
+                    out += "</ul></li>"
+                }
+
+                out += `<li class="schema treeview collapsed"><span>${schema}</span><ul>`;
+            }
+
             if (t[2] === "table function") {
                 const className = "table-function";
                 const insertBefore = `${t[1]}(`;
                 const insertAfter = ")";
-                return `<li class="${className}" data-insert-before="${insertBefore}" data-insert-after="${insertAfter}" title="TABLE VALUED FUNCTION">${t[0] ? (t[0] + ".") : ""}${t[1]}</li>`;
+                out += `<li class="${className}" data-insert-before="${insertBefore}" data-insert-after="${insertAfter}" title="TABLE VALUED FUNCTION">${t[1]}</li>`;
             }
-            const className = t[2].includes("VIEW") ? "view" : "table";
-            const insert = `${t[0] ? (t[0] + ".") : ""}${t[1]}`;
-            return `<li class="${className}" data-insert="${insert}" title="${t[2]}">${insert}</li>`;
+            else {
+                const className = t[2].includes("VIEW") ? "view" : "table";
+                const insert = `${t[0] ? (t[0] + ".") : ""}${t[1]}`;
+                out += `<li class="${className}" data-insert="${insert}" title="${t[2]}">${t[1]}</li>`;
+            }
+
+            prevSchema = schema;
+
+            return out;
         }).join("");
 
         tablesList.innerHTML = out;
@@ -221,6 +251,21 @@ function populateExplorer () {
 
         routinesList.innerHTML = out;
     });
+
+    const keywordsHeader = document.createElement("h2");
+    keywordsHeader.innerText = "Keywords";
+    explorer.appendChild(keywordsHeader);
+
+    const keywordsList = document.createElement("ul");
+    explorer.appendChild(keywordsList);
+
+    const keywords = ["SELECT","FROM","WHERE","GROUP BY","ORDER BY","OVER","WITH"];
+
+    const out = keywords.map(t => {
+        return `<li class="" data-insert-before="${t} ">${t}</li>`;
+    }).join("");
+
+    keywordsList.innerHTML = out;
 }
 
 function sendQuery () {

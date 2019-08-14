@@ -38,6 +38,7 @@ module.exports = {
         createTable,
         insertIntoTable,
         updateTable,
+        deleteFromTable,
         dropTable,
     },
 };
@@ -127,7 +128,7 @@ async function insertIntoTable (name, row) {
  * @param {string} name
  * @param {(data: object) => object} update
  * @param {(data: object) => boolean} where
- * @return {Promise<IDBValidKey>}
+ * @return {Promise}
  */
 async function updateTable (name, update, where) {
     const db = await openDB();
@@ -145,6 +146,41 @@ async function updateTable (name, update, where) {
 
                     updateRequest.onerror = () => {
                         reject(updateRequest.error);
+                        transaction.abort();
+                        failed = true;
+                    }
+                }
+
+                cursor.continue();
+            }
+            resolve();
+        }
+        cursorRequest.onerror = () => reject(cursorRequest.error);
+    });
+}
+
+/**
+ *
+ * @param {string} name
+ * @param {(data: object) => boolean} where
+ * @return {Promise}
+ */
+async function deleteFromTable (name, where) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(name, "readwrite");
+        const objStore = transaction.objectStore(name);
+        const cursorRequest = objStore.openCursor();
+
+        cursorRequest.onsuccess = e => {
+            const cursor = cursorRequest.result;
+            let failed = false;
+            if (cursor && !failed) {
+                if (where(cursor.value)) {
+                    const deleteRequest = cursor.delete();
+
+                    deleteRequest.onerror = () => {
+                        reject(deleteRequest.error);
                         transaction.abort();
                         failed = true;
                     }

@@ -159,6 +159,34 @@ class Query {
             }
         }
 
+        const deleteMatch = /^DELETE FROM ([a-zA-Z0-9_\.]+)\s+WHERE ([a-zA-Z0-9_]+)\s*=\s*(.*)/.exec(query);
+        if (deleteMatch)
+        {
+            const name = deleteMatch[1];
+            const whereCol = deleteMatch[2];
+            const whereExpr = deleteMatch[3];
+
+            let tableName = name;
+            let schemaName;
+
+            if (name.includes(".")) {
+                [ schemaName, tableName ] = split(name, ".", 2);
+            }
+
+            // Simple constant expressions
+            let whereResults = await this.runSelect("SELECT " + whereExpr);
+            const whereVal = whereResults[1][0];
+
+            const { callbacks } = this.providers[schemaName] || this.schema;
+
+            if (callbacks.deleteFromTable) {
+                await callbacks.deleteFromTable(tableName, o => o[whereCol] == whereVal);
+                return EMPTY_RESULT;
+            } else {
+                throw Error("Schema does not support update");
+            }
+        }
+
         const dropMatch = /^DROP TABLE ([a-zA-Z0-9_\.]+)/.exec(query);
         if (dropMatch)
         {

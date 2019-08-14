@@ -129,6 +129,7 @@ declare namespace Query {
     createTable?: (name: string, key?: string) => Promise,
     insertIntoTable?: (name: string, data: object) => Promise,
     updateTable?: (name: string, update: (data: object) => object, where: (data: object) => boolean) => Promise,
+    deleteFromTable?: (name: string, where: (data: object) => boolean) => Promise,
     dropTable?: (name: string) => Promise,
   }
 

@@ -125,10 +125,11 @@ async function insertIntoTable (name, row) {
 /**
  *
  * @param {string} name
- * @param {object} data
+ * @param {(data: object) => object} update
+ * @param {(data: object) => boolean} where
  * @return {Promise<IDBValidKey>}
  */
-async function updateTable (name, data, whereCol, whereVal) {
+async function updateTable (name, update, where) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(name, "readwrite");
@@ -139,8 +140,8 @@ async function updateTable (name, data, whereCol, whereVal) {
             const cursor = cursorRequest.result;
             let failed = false;
             if (cursor && !failed) {
-                if (cursor.value[whereCol] === whereVal) {
-                    const updateRequest = cursor.update({ ...cursor.value, ...data });
+                if (where(cursor.value)) {
+                    const updateRequest = cursor.update(update(cursor.value));
 
                     updateRequest.onerror = () => {
                         reject(updateRequest.error);

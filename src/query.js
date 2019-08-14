@@ -152,7 +152,7 @@ class Query {
             const { callbacks } = this.providers[schemaName] || this.schema;
 
             if (callbacks.updateTable) {
-                await callbacks.updateTable(tableName, { [col]: updateVal }, whereCol, whereVal);
+                await callbacks.updateTable(tableName, o => ({ ...o, [col]: updateVal }), o => o[whereCol] == whereVal);
                 return EMPTY_RESULT;
             } else {
                 throw Error("Schema does not support update");

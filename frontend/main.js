@@ -122,12 +122,21 @@ function populateExplorer () {
 
     const browseLabel = document.createElement("label");
     const browseInput = document.createElement("input");
-    browseInput.type = "checkbox";
+    browseInput.checked = true;
+    browseInput.type = "radio";
+    browseInput.name = "browse_or_insert";
     browseLabel.appendChild(browseInput);
     browseLabel.appendChild(document.createTextNode("Browse"));
-    explorer.appendChild(browseLabel);
 
-    explorer.addEventListener("click", e => {
+    const insertLabel = document.createElement("label");
+    const insertInput = document.createElement("input");
+    insertInput.type = "radio";
+    insertInput.name = "browse_or_insert";
+    insertLabel.appendChild(insertInput);
+    insertLabel.appendChild(document.createTextNode("Insert"));
+
+    // Just assign to onclick to avoid double events after "Refresh"
+    explorer.onclick = e => {
         if (e.target instanceof HTMLLIElement) {
             let { value, selectionStart, selectionEnd } = input;
             const { insert, insertBefore = "", insertAfter = "" } = e.target.dataset;
@@ -156,11 +165,13 @@ function populateExplorer () {
             input.setSelectionRange(selectionStart, selectionEnd);
             input.focus();
         }
-    });
+    };
 
     const tablesHeader = document.createElement("h2");
     tablesHeader.innerText = "Tables";
     explorer.appendChild(tablesHeader);
+    explorer.appendChild(browseLabel);
+    explorer.appendChild(insertLabel);
 
     const tablesList = document.createElement("ul");
     explorer.appendChild(tablesList);

@@ -73,7 +73,7 @@ class Query {
             return EMPTY_RESULT;
         }
 
-        const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_\.]+)(?: PRIMARY KEY ([a-zA-Z0-9_]+))/.exec(query);
+        const tableMatch = /^CREATE TABLE ([a-zA-Z0-9_\.]+)(?: PRIMARY KEY ([a-zA-Z0-9_]+))?/.exec(query);
         if (tableMatch)
         {
             const name = tableMatch[1];
@@ -122,6 +122,40 @@ class Query {
                 return EMPTY_RESULT;
             } else {
                 throw Error("Schema does not support insertion");
+            }
+        }
+
+        const updateMatch = /^UPDATE ([a-zA-Z0-9_\.]+)\s+SET ([a-zA-Z0-9_]+)\s*=\s*(.*)\s+WHERE ([a-zA-Z0-9_]+)\s*=\s*(.*)/.exec(query);
+        if (updateMatch)
+        {
+            const name = updateMatch[1];
+            const col = updateMatch[2];
+            const expr = updateMatch[3];
+            const whereCol = updateMatch[4];
+            const whereExpr = updateMatch[5];
+
+            let tableName = name;
+            let schemaName;
+
+            if (name.includes(".")) {
+                [ schemaName, tableName ] = split(name, ".", 2);
+            }
+
+            // Simple constant expressions
+            let results = await this.runSelect("SELECT " + expr);
+            const updateVal = results[1][0];
+
+            // Simple constant expressions
+            let whereResults = await this.runSelect("SELECT " + whereExpr);
+            const whereVal = whereResults[1][0];
+
+            const { callbacks } = this.providers[schemaName] || this.schema;
+
+            if (callbacks.updateTable) {
+                await callbacks.updateTable(tableName, { [col]: updateVal }, whereCol, whereVal);
+                return EMPTY_RESULT;
+            } else {
+                throw Error("Schema does not support update");
             }
         }
 

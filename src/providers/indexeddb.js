@@ -22,6 +22,7 @@ async function getTables () {
     return Array.from(db.objectStoreNames);
 }
 
+/** @type {import('../../index').Schema} */
 module.exports = {
     name: "IndexedDB",
     callbacks: {
@@ -36,6 +37,7 @@ module.exports = {
         },
         createTable,
         insertIntoTable,
+        updateTable,
         dropTable,
     },
 };
@@ -105,7 +107,7 @@ function dropTable (name) {
 /**
  *
  * @param {string} name
- * @param {any} row
+ * @param {object} row
  * @return {Promise<IDBValidKey>}
  */
 async function insertIntoTable (name, row) {
@@ -117,5 +119,40 @@ async function insertIntoTable (name, row) {
         const request = objStore.add(row);
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ *
+ * @param {string} name
+ * @param {object} data
+ * @return {Promise<IDBValidKey>}
+ */
+async function updateTable (name, data, whereCol, whereVal) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(name, "readwrite");
+        const objStore = transaction.objectStore(name);
+        const cursorRequest = objStore.openCursor();
+
+        cursorRequest.onsuccess = e => {
+            const cursor = cursorRequest.result;
+            let failed = false;
+            if (cursor && !failed) {
+                if (cursor.value[whereCol] === whereVal) {
+                    const updateRequest = cursor.update({ ...cursor.value, ...data });
+
+                    updateRequest.onerror = () => {
+                        reject(updateRequest.error);
+                        transaction.abort();
+                        failed = true;
+                    }
+                }
+
+                cursor.continue();
+            }
+            resolve();
+        }
+        cursorRequest.onerror = () => reject(cursorRequest.error);
     });
 }

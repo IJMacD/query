@@ -31,7 +31,7 @@ const VALUE_FUNCTIONS = {
     CHAR: String.fromCodePoint,
     UNICODE: s => String(s).codePointAt(0),
     JSON_STRINGIFY: JSON.stringify,
-    TO_HEX: v => toUTF8Array(v).map(n => n.toString(16).padStart(2, "0")).join(""),
+    TO_UTF8_HEX: v => toUTF8Array(v).map(n => n.toString(16).padStart(2, "0")).join(" "),
     LPAD: (v, n, c="") => String(v).padStart(n, c),
     RPAD: (v, n, c="") => String(v).padEnd(n, c),
     TRIM: (v) => String(v).trim(),
@@ -84,6 +84,10 @@ const VALUE_FUNCTIONS = {
         }
     },
 };
+
+// Alias
+VALUE_FUNCTIONS.TO_CODE_POINT = VALUE_FUNCTIONS.UNICODE;
+VALUE_FUNCTIONS.FROM_CODE_POINT = VALUE_FUNCTIONS.CHAR;
 
 for (const name of Object.getOwnPropertyNames(Math)) {
     if (Math[name] instanceof Function) {
@@ -220,7 +224,7 @@ const WINDOW_FUNCTIONS = {
 
     RANK (index, values) {
         let prevVal = values[index];
-        while (values[--index] === prevVal) {}
+        while (OPERATORS["="](values[--index], prevVal)) {}
         return index + 2;
     },
 
@@ -228,7 +232,7 @@ const WINDOW_FUNCTIONS = {
         let rank = 0;
         let prevVal = values[index];
         while (--index >= 0) {
-            if (values[index] !== prevVal) rank++;
+            if (OPERATORS["!="](values[index], prevVal)) rank++;
             prevVal = values[index];
         }
         return rank + 1;

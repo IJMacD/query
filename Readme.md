@@ -38,7 +38,7 @@ LOAD is also a table valued function to load data from an arbritrary url.
 
 You can use expressions in table valued functions.
 
-`FROM RANGE(-7,0), LOAD('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=' || DATE(DATEADD(DAY, value))) AS nasa WHERE media_type = 'image' SELECT nasa.*`
+`FROM RANGE(-7,0), LOAD('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=' || DATE(DATEADD(DAY, value))) AS nasa WHERE media_type = 'image' SELECT nasa.*` [⯈](https://ijmacd.github.io/query/#q=FROM%20RANGE(-7%2C0)%2C%20LOAD('https%3A%2F%2Fapi.nasa.gov%2Fplanetary%2Fapod%3Fapi_key%3DDEMO_KEY%26date%3D'%20%7C%7C%20DATE(DATEADD(DAY%2C%20value)))%20AS%20nasa%20WHERE%20media_type%20%3D%20'image'%20SELECT%20nasa.*))
 
 CTEs are supported.
 

@@ -72,3 +72,15 @@ test("UNION ALL in cte", () => {
         expect(r[5][0]).toBe(4);
     });
 });
+
+test("UNION ALL in subquery in subquery", () => {
+    return demoQuery("FROM (FROM (FROM Test UNION ALL FROM Test) ORDER BY 1 DESC) LIMIT 14").then(r => {
+        // Remember header row
+        expect(r.length - 1).toBe(14);
+        expect(r[1][0]).toBe(9);
+        expect(r[2][0]).toBe(9);
+        expect(r[3][0]).toBe(8);
+        expect(r[4][0]).toBe(8);
+        expect(r[5][0]).toBe(7);
+    });
+});

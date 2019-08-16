@@ -112,7 +112,7 @@ describe("Parser", () => {
   });
 
   test("SELECT expression in function call", () => {
-    const source = "SELECT RANGE(1 + 2)";
+    const source = "SELECT HEX(10 + 12)";
     const ast = Parser.parse(source);
 
     expect(ast).toEqual({
@@ -126,15 +126,15 @@ describe("Parser", () => {
         children: [
           {
             type: NODE_TYPES.FUNCTION_CALL,
-            id: "RANGE",
-            source: "RANGE(1 + 2)",
+            id: "HEX",
+            source: "HEX(10 + 12)",
             children: [{
               type: NODE_TYPES.OPERATOR,
               id: "+",
-              source: "1 + 2",
+              source: "10 + 12",
               children: [
-                { type: NODE_TYPES.NUMBER, id: 1, source: "1" },
-                { type: NODE_TYPES.NUMBER, id: 2, source: "2" },
+                { type: NODE_TYPES.NUMBER, id: 10, source: "10" },
+                { type: NODE_TYPES.NUMBER, id: 12, source: "12" },
               ]
             }]
           }

@@ -167,7 +167,7 @@ test("Filtered Self CROSS JOIN", () => {
   });
 });
 
-test("Invariant Filtered Self CROSS JOIN", () => {
+test("Inequality Filtered Self CROSS JOIN", () => {
   return demoQuery("FROM Test AS a, Test AS b WHERE a.n < b.n").then(r => {
       // Don't forget header row
       expect(r.length - 1).toBe(45);

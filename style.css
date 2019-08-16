@@ -15,12 +15,17 @@ form {
     margin: 10px;
     position: relative;
 }
-input {
+input,
+textarea {
     flex: 1;
     font-size: 1.1em;
     border: 1px solid #999;
     border-width: 1px 0 1px 0;
     padding: 5px;
+}
+textarea {
+    min-height: 40px;
+    height: 180px;
 }
 button  {
     font-size: 1em;
@@ -31,6 +36,9 @@ button  {
 .input-right {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+.input-middle {
+    border-radius: 0;
 }
 .input-left {
     border-top-right-radius: 0;
@@ -137,12 +145,49 @@ canvas {
     margin: 0;
 }
 
+#explorer .treeview {
+    padding-left: 22px;
+}
+
+#explorer .treeview::before {
+    content: "⏶";
+}
+
+#explorer .treeview.collapsed::before {
+    content: "⏷";
+}
+
+#explorer .treeview.collapsed ul {
+    display: none;
+}
+
+#explorer li ul {
+    text-decoration: none;
+}
+
+#explorer li.treeview span,
+#explorer li[data-insert],
+#explorer li[data-insert-before],
+#explorer li[data-insert-after] {
+    cursor: pointer;
+}
+
+#explorer li.treeview span:hover,
+#explorer li[data-insert]:hover,
+#explorer li[data-insert-before]:hover,
+#explorer li[data-insert-after]:hover {
+    text-decoration: underline;
+}
+
 #explorer li {
     padding-left: 28px;
     background-repeat: no-repeat;
     background-size: 16px;
-    background-position: 4px;
-    cursor: pointer;
+    background-position: 4px 4px;
+}
+
+#explorer li.schema {
+    background-image: url(img/schema.svg);
 }
 
 #explorer li.table {
@@ -165,9 +210,16 @@ canvas {
     background-image: url(img/aggregate-function.svg);
 }
 
-#explorer li:hover {
-    text-decoration: underline;
+[class^=node-type-] ul {
+    list-style: none;
+    padding-left: 1em;
 }
+
+[class^=node-type-] li {
+    position: relative;
+    display: flex;
+}
+
 .node-type-statement {
     border: 1px solid #666;
     background: white;
@@ -215,12 +267,44 @@ canvas {
     margin: 4px;
 }
 
+.node-type-symbol {
+    background: white;
+    border: #999 1px solid;
+    padding: 2px 4px;
+    border-radius: 13px;
+}
+
+.node-id {
+    margin-right: 32px;
+}
+
 .node-alias {
     color: #666;
-    border:  1px dashed #999;
+    border:  1px solid #999;
     padding:  0px 8px;
     background-color: #f0f0f0;
-    margin-right: 4px;
+    position: absolute;
+    display: inline-block;
+    height: 24px;
+    right: 0;
+}
+.node-alias::before {
+    content: "";
+    border: 12px solid transparent;
+    border-right-color: #aaa;
+    position: absolute;
+    left: -25px;
+    top: -1px;
+    height: 0;
+}
+.node-alias::after {
+    content: "";
+    border: 11px solid transparent;
+    border-right-color: #f0f0f0;
+    position: absolute;
+    left: -22px;
+    top: 0;
+    height: 0;
 }
 
 .node-type-symbol,

@@ -849,6 +849,12 @@ describe("Window Functions", () => {
         });
     });
 
+    test("ORDER BY implicit ASC", () => {
+        return demoQuery("FROM Test SELECT n, SUM(n) OVER(ORDER BY n ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)").then(data => {
+            expect(data.length - 1).toBe(10);
+        });
+    });
+
     test("ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING", () => {
         return demoQuery("FROM Test SELECT n, LISTAGG(n) OVER(ORDER BY n ASC ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)").then (r => {
             expect(r.length - 1).toBe(10);
@@ -973,6 +979,7 @@ describe("WINDOW clause", () => {
             expect(data[4][1]).toBe(0.4);
         });
     });
+
     test("Named window with brackets", () => {
         return demoQuery("FROM Test SELECT n, CUME_DIST() OVER (win) WINDOW win AS (ORDER BY n)").then(data => {
             expect(data.length - 1).toBe(10);
@@ -1038,6 +1045,7 @@ describe("WINDOW clause", () => {
             expect(data[5][2]).toBe(2);
         });
     });
+
 });
 
 describe("VALUES", () => {

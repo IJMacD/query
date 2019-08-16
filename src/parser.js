@@ -62,6 +62,24 @@ class TokenError extends Error {
 
 class ClauseError extends Error {}
 
+
+/**
+ * Implement token exceptions
+ * @param {Token[]} tokenList
+ */
+function preParse (tokenList) {
+    for (let i = 0; i < tokenList.length; i++) {
+        const t = tokenList[i];
+
+        // RANGE() is a function not a keyword
+        if (t.type === TOKEN_TYPES.KEYWORD && t.value === "RANGE"
+            && i < tokenList.length - 1 && tokenList[i+1].type === TOKEN_TYPES.BRACKET)
+        {
+            t.type = TOKEN_TYPES.NAME;
+        }
+    }
+}
+
 /**
  * @param {Token[]} tokenList
  * @param {string} source
@@ -69,6 +87,9 @@ class ClauseError extends Error {}
  */
 function parseFromTokenList (tokenList, source="") {
     let i = 0;
+
+    // Pre parsing token substitutions
+    preParse(tokenList);
 
     /**
      * Peek ahead but don't consume the next token
@@ -564,6 +585,10 @@ function parseFromTokenList (tokenList, source="") {
             }
         }
 
+        if (nodes.length === 0) {
+            throw Error("Expected an expression but didn't find one");
+        }
+
         if (nodes.length === 1) {
             return nodes[0];
         }
@@ -686,9 +711,9 @@ function parseFromTokenList (tokenList, source="") {
         // These probably should be keywords rather than names.
         // However when they're added to the tokenizer it clashes with
         // the RANGE() table valued function.
-        if (peek(TOKEN_TYPES.NAME, "ROWS") ||
-            peek(TOKEN_TYPES.NAME, "RANGE") ||
-            peek(TOKEN_TYPES.NAME, "GROUPS")
+        if (peek(TOKEN_TYPES.KEYWORD, "ROWS") ||
+            peek(TOKEN_TYPES.KEYWORD, "RANGE") ||
+            peek(TOKEN_TYPES.KEYWORD, "GROUPS")
         ) {
             // @ts-ignore
             window.frameUnit = next().value.toLowerCase();

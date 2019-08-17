@@ -185,9 +185,8 @@ function resolveValue (row, col, rows=null) {
         }
     }
 
-    // throw new SymbolError("Unable to resolve symbol: " + col);
-    console.log("Unable to resolve symbol: " + col);
-    return null;
+    // SymbolErrors help non-strict WHERE filtering
+    throw new SymbolError("Unable to resolve symbol: " + col);
 }
 
 /**

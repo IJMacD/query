@@ -148,7 +148,15 @@ function evaluate (row, node, rows=null) {
                 throw new Error(`Tried to call a non-existant function (${fnName})`);
             }
 
-            const args = node.children.map(c => this.evaluate(row, c, rows));
+            // We need to wrap each function call paramater in try/catch in case
+            // we have some function like COALESCE
+            const args = node.children.map(c => {
+                try {
+                    return this.evaluate(row, c, rows);
+                } catch (e) {
+                    return null;
+                }
+            });
 
             try {
                 return fn(...args);
@@ -163,6 +171,7 @@ function evaluate (row, node, rows=null) {
                 if (typeof const_val !== "undefined") return const_val;
                 throw new Error(`Symbol detected in Constant Expression: "${node.id}"`);
             }
+
             return this.resolveValue(row, String(node.id), rows);
         }
         case NODE_TYPES.STRING: {

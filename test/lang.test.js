@@ -134,10 +134,24 @@ describe("SELECT", () => {
     });
 });
 
-test("Simple WHERE", () => {
-    return demoQuery("FROM Test WHERE n > 2").then(r => {
-        // Remember header row
-        expect(r.length - 1).toBe(7);
+describe("WHERE", () => {
+    test("Simple WHERE", () => {
+        return demoQuery("FROM Test WHERE n > 2").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(7);
+        });
+    });
+
+    test("delayed symbol resolution", () => {
+        return demoQuery("FROM Test, Test_2 WHERE c > 'g'").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(30);
+            expect(r[1][0]).toBe(0);
+            expect(r[1][1]).toBe(0);
+            expect(r[1][2]).toBe(0);
+            expect(r[1][3]).toBe(false);
+            expect(r[1][4]).toBe('h');
+        });
     });
 });
 

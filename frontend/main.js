@@ -61,6 +61,9 @@ document.addEventListener("keydown", e => {
 
 document.addEventListener("click", e => {
     hideSuggestions();
+    if (!explorer.contains(e.target)) {
+        explorer.style.display = "none";
+    }
 });
 
 input.addEventListener("keyup", e => {
@@ -86,11 +89,14 @@ querySuggest.addEventListener("click", e => {
 window.addEventListener("hashchange", handleHash);
 
 explorer.style.display = "none";
-explorerToggle.addEventListener("click", () => {
+const fn =  e => {
     explorer.style.display = explorer.style.display === "none" ? "block" : "none";
-});
+    e.stopPropagation();
+};
+explorerToggle.addEventListener("click", fn);
+explorerToggle.addEventListener("touchstart", fn);
 
-expandedToggle.addEventListener('click', () => {
+expandedToggle.addEventListener('click', e => {
     isInputExpanded = !isInputExpanded;
     input.style.display = isInputExpanded ? "none" : "";
     expandedInput.style.display = isInputExpanded ? "" : "none";

@@ -22,25 +22,25 @@ const VALUE_FUNCTIONS = {
     BIN: v => `0b${(+v).toString(2)}`,
 
     // String functions
-    SUBSTR: (v, from, length) => String(v).substr(from, length),
-    REPLACE: (v, from, to) => String(v).replace(from, to),
-    REVERSE: v => String(v).split("").reverse().join(""),
-    LOWER: v => String(v).toLowerCase(),
-    UPPER: v => String(v).toUpperCase(),
+    SUBSTR: (v, from, length) => isStrictNull(v) ? null : String(v).substr(from, length),
+    REPLACE: (v, from, to) => isStrictNull(v) ? null : String(v).replace(from, to),
+    REVERSE: v => isStrictNull(v) ? null : String(v).split("").reverse().join(""),
+    LOWER: v => isStrictNull(v) ? null : String(v).toLowerCase(),
+    UPPER: v => isStrictNull(v) ? null : String(v).toUpperCase(),
     CONCAT: (...vs) => vs.join(""),
     CHAR: String.fromCodePoint,
-    UNICODE: s => String(s).codePointAt(0),
+    UNICODE: s => isStrictNull(s) ? null : String(s).codePointAt(0),
     JSON_STRINGIFY: JSON.stringify,
     TO_UTF8_HEX: v => toUTF8Array(v).map(n => n.toString(16).padStart(2, "0")).join(" "),
     LPAD: (v, n, c="") => String(v).padStart(n, c),
     RPAD: (v, n, c="") => String(v).padEnd(n, c),
-    TRIM: (v) => String(v).trim(),
+    TRIM: (v) => isStrictNull(v) ? null : String(v).trim(),
 
     REGEXP_EXTRACT (value, regexp) {
         try {
             const re = RegExp(regexp);
             const match = re.exec(value);
-            return match ? match[0] : null;
+            return match ? (match[1] || match[0]) : null;
         } catch (e) {
             return null;
         }

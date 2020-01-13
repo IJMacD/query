@@ -11,6 +11,7 @@ const QUERY_HISTORY = "query_history";
 const HISTORY_SHOW_COUNT = 20;
 const HISTORY_SAVE_COUNT = 100;
 let queryHistory = loadHistory();
+const FLOATING_EXPLORER = false;
 
 let isInputExpanded = false;
 
@@ -59,12 +60,14 @@ document.addEventListener("keydown", e => {
     }
 });
 
-document.addEventListener("click", e => {
-    hideSuggestions();
-    if (!explorer.contains(e.target)) {
-        explorer.style.display = "none";
-    }
-});
+if (FLOATING_EXPLORER) {
+    document.addEventListener("click", e => {
+        hideSuggestions();
+        if (!explorer.contains(e.target)) {
+            explorer.style.display = "none";
+        }
+    });
+}
 
 input.addEventListener("keyup", e => {
     if (e.altKey && "1234567890".includes(e.key)) {
@@ -120,6 +123,8 @@ function handleHash () {
 function populateExplorer () {
     const explorer = document.getElementById('explorer');
     explorer.innerHTML = "";
+
+    explorer.className = FLOATING_EXPLORER ? "float" : "";
 
     const refreshButton = document.createElement("button");
     refreshButton.innerText = "Refresh";
@@ -301,17 +306,13 @@ function sendQuery () {
             if (data.length >= 3 && data[0].length >= 2 &&
                 typeof data[1][0] === "number" && typeof data[1][1] === "number")
             {
-                const footer = output.querySelector("tfoot td");
-                if (footer) {
-                    const btn = document.createElement("button");
-                    btn.className = "link";
-                    btn.innerHTML = "Graph";
-                    btn.addEventListener("click", () => {
-                    footer.removeChild(btn);
-                        output.appendChild(renderGraph(data.slice()));
-                    });
-                    footer.appendChild(btn);
-                }
+                const btn = document.createElement("button");
+                btn.innerHTML = "Graph " + data[0][1] + " vs. " + data[0][0];
+                btn.addEventListener("click", () => {
+                    output.removeChild(btn);
+                    output.appendChild(renderGraph(data.slice()));
+                });
+                output.appendChild(btn);
             }
         })
         .catch(e => {

@@ -90,7 +90,7 @@ declare namespace Query {
 
     schema: Schema;
     providers: { [name: string]: Schema };
-    userFunctions: { [name: string]: () => any }
+    userFunctions: { [name: string]: (...params) => any }
 
     outer?: {
       context: QueryContext;
@@ -117,7 +117,7 @@ declare namespace Query {
   interface Schema {
     name?: string;
     callbacks?: QueryCallbacks;
-    userFunctions?: { [name: string]: () => any };
+    userFunctions?: { [name: string]: (...params) => any };
   }
 
   interface QueryCallbacks {

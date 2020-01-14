@@ -84,12 +84,45 @@ const VALUE_FUNCTIONS = {
             case 'YEAR': return m.year();
         }
     },
+
+    // Geo Functions
+    /**
+     * Haversine formula for calculating distance between two points.
+     * 
+     * Assumes a spherical Earth.
+     * @see https://www.movable-type.co.uk/scripts/latlong.html
+     * @param {number} lat1 Latitude of first point in degrees
+     * @param {number} lon1 Longitude of first point in degrees
+     * @param {number} lat2 Latitude of second point in degrees
+     * @param {number} lon2 Longitude of second point in degrees
+     * @returns {number} Distance in metres
+     */
+    DISTANCE (lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Mean Earth radius in metres
+        const φ1 = toRadians(lat1);
+        const φ2 = toRadians(lat2);
+        const Δφ = toRadians(lat2-lat1);
+        const Δλ = toRadians(lon2-lon1);
+
+        const a =   Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return R * c;
+      
+        function toRadians (deg) {
+            return deg * (Math.PI/180)
+        }
+    },
 };
 
 // Alias
 VALUE_FUNCTIONS.TO_CODE_POINT = VALUE_FUNCTIONS.UNICODE;
 VALUE_FUNCTIONS.FROM_CODE_POINT = VALUE_FUNCTIONS.CHAR;
 
+// Copy all Math functions
 for (const name of Object.getOwnPropertyNames(Math)) {
     if (Math[name] instanceof Function) {
         VALUE_FUNCTIONS[name.toUpperCase()] = Math[name];

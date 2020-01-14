@@ -84,8 +84,8 @@ function findJoin (tables, table, rows) {
 
         const path_lower = findPath(tables, r, t_lower);
 
-        if (typeof path !== "undefined"){
-            table.join = path;
+        if (typeof path_lower !== "undefined"){
+            table.join = path_lower;
             return true;
         }
     }

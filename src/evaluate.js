@@ -215,6 +215,7 @@ function evaluate (row, node, rows=null) {
                     throw new Error(`Empty predicate clause: ${node.id}`);
                 }
             }
+            throw Error(`Cannot evaluate ${node.id} clause`);
         }
         case NODE_TYPES.LIST: {
             return node.children.map(c => this.evaluate(row, c, rows));

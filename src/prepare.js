@@ -55,15 +55,18 @@ function nodeToQueryObject (node) {
 * @returns {ParsedTable[]}
 */
 function nodesToTables (nodes) {
-    return nodes.map(node => {
+    return nodes.map((node,i) => {
 
-        if (node.type !== NODE_TYPES.SYMBOL &&
+        if (node.type !== NODE_TYPES.STATEMENT &&
+            node.type !== NODE_TYPES.COMPOUND_QUERY &&
+            node.type !== NODE_TYPES.SYMBOL &&
             node.type !== NODE_TYPES.FUNCTION_CALL)
         {
             throw new Error(`Node type ${node.type} cannot be a table`);
         }
 
-        const name = String(node.id);
+        const name = (node.type === NODE_TYPES.STATEMENT || node.type === NODE_TYPES.COMPOUND_QUERY) ? 
+            `SUBQUERY_${i}` : String(node.id);
 
         return {
             name,
@@ -76,6 +79,7 @@ function nodesToTables (nodes) {
             explain: "",
             rowCount: 0,
             symbol: Symbol(`Table ${node.alias || name}`),
+            subquery: (node.type === NODE_TYPES.STATEMENT || node.type === NODE_TYPES.COMPOUND_QUERY) ? node : null,
         };
     });
 }

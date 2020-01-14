@@ -145,5 +145,6 @@ declare namespace Query {
     rowCount?: number;
     analyse?: any;
     symbol: Symbol;
+    subquery?: Node;
   }
 }

@@ -25,6 +25,7 @@ const { getTableAliasMap, PendingValue } = require('./resolve');
 const { scalar, queryResultToObjectArray, split } = require('./util');
 const { evaluateConstantExpression, SymbolError, isConstantExpression } = require('./evaluate');
 const evaluateStatement = require('./evaluate-query');
+const evaluateCompound = require('./evaluate-compound');
 
 /**
  * @param {QueryContext} context
@@ -55,12 +56,12 @@ async function getRows(context) {
 
             // console.log(`Initial data set: ${results.length} items`);
 
-            // Poulate inital rows
+            // Populate initial rows
             rows = results.map((r,i) => {
                 /** @type {ResultRow} */
                 const row = [];
 
-                // Set inital data object
+                // Set initial data object
                 row.data = {};
                 setRowData(row, table, r);
 
@@ -90,11 +91,20 @@ async function getRows(context) {
                     setRowData(row, table, results);
                 }));
             }
+            else if (table.subquery) {
+                const results = queryResultToObjectArray(await evaluateCompound(query, table.subquery), table.subquery.headers);
+
+                table.explain += " cross-join";
+
+                for (const row of rows) {
+                    setRowData(row, table, results);
+                }
+            }
             else {
                 const findResult = findJoin(tables, table, rows);
 
                 if (!findResult) {
-                    // All attempts at joining failed, intead we're going to do a
+                    // All attempts at joining failed, instead we're going to do a
                     // CROSS JOIN!
                     const results = await getPrimaryResults(context, table);
 
@@ -210,7 +220,7 @@ function processColumns (context, rawCols, rows) {
  * @returns {Promise<any[]>}
  */
 async function getPrimaryResults(context, table) {
-    const { views, subqueries, CTEs } = context;
+    const { views, CTEs, query } = context;
 
     let schemaName;
     let tableName = table.name;
@@ -219,8 +229,8 @@ async function getPrimaryResults(context, table) {
         [schemaName, tableName] = split(table.name, ".", 2);
     }
 
-    if (table.name in subqueries) {
-        return subqueries[table.name];
+    if (table.subquery) {
+        return queryResultToObjectArray(await evaluateCompound(query, table.subquery), table.subquery.headers);
     }
 
     if (table.name in CTEs) {

@@ -1,3 +1,5 @@
+const { queryResultToObjectArray } = require('./util');
+
 const moment = require('moment');
 const momentDurationFormatSetup = require('moment-duration-format');
 // @ts-ignore
@@ -9,9 +11,8 @@ const VALUE_FUNCTIONS = {
     // Conditional functions
     COALESCE: (...vs) => vs.find(OPERATORS['IS NOT NULL']),
 
-    // Number functions
+    // Number functions - Also all from Math.*
     RAND: Math.random,
-    // Also all from Math.*
     CAST (v, type) {
         if (/^int/i.test(type)) return parseInt(v);
         if (/^float|^real/i.test(type)) return parseFloat(v);
@@ -83,12 +84,45 @@ const VALUE_FUNCTIONS = {
             case 'YEAR': return m.year();
         }
     },
+
+    // Geo Functions
+    /**
+     * Haversine formula for calculating distance between two points.
+     * 
+     * Assumes a spherical Earth.
+     * @see https://www.movable-type.co.uk/scripts/latlong.html
+     * @param {number} lat1 Latitude of first point in degrees
+     * @param {number} lon1 Longitude of first point in degrees
+     * @param {number} lat2 Latitude of second point in degrees
+     * @param {number} lon2 Longitude of second point in degrees
+     * @returns {number} Distance in metres
+     */
+    DISTANCE (lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Mean Earth radius in metres
+        const φ1 = toRadians(lat1);
+        const φ2 = toRadians(lat2);
+        const Δφ = toRadians(lat2-lat1);
+        const Δλ = toRadians(lon2-lon1);
+
+        const a =   Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ/2) * Math.sin(Δλ/2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return R * c;
+      
+        function toRadians (deg) {
+            return deg * (Math.PI/180)
+        }
+    },
 };
 
 // Alias
 VALUE_FUNCTIONS.TO_CODE_POINT = VALUE_FUNCTIONS.UNICODE;
 VALUE_FUNCTIONS.FROM_CODE_POINT = VALUE_FUNCTIONS.CHAR;
 
+// Copy all Math functions
 for (const name of Object.getOwnPropertyNames(Math)) {
     if (Math[name] instanceof Function) {
         VALUE_FUNCTIONS[name.toUpperCase()] = Math[name];
@@ -195,6 +229,7 @@ const TABLE_VALUED_FUNCTIONS = {
             end = start;
             start = 0;
         }
+
         const diff = Math.abs(end - start);
         step = Math.abs(step);
         const count = Math.ceil(diff / step);
@@ -203,12 +238,38 @@ const TABLE_VALUED_FUNCTIONS = {
             Array(count).fill(0).map((n,i) => ({ value: start + i * step })) :
             Array(count).fill(0).map((n,i) => ({ value: start - i * step }));
     },
-    /** @type {(url: string) => Promise} */
+
+    /** 
+     * Load JSON
+     * @type {(url: string) => Promise}
+     */
     async LOAD (url) {
         const r = await fetch(url);
         return r.ok ? r.json() : (console.error(`${r.statusText}: ${url}`), null);
     },
+
+    /**
+     * Load data from an HTML table
+     * @type {(url: string) => Promise}
+     */
+    async HTML (url) {
+        const r = await fetch(url);
+        const dom = new DOMParser().parseFromString(await r.text(), "text/html");
+        const fragment = new URL(url).hash.replace("#", "") || "1";
+        
+        let table = isNumeric(fragment) ? dom.getElementsByTagName("table")[+fragment-1] : dom.getElementById(fragment);
+
+        if (!(table instanceof HTMLTableElement)) {
+            throw Error(`Could not find table ${fragment} in ${url}`)
+        }
+        
+        return queryResultToObjectArray(Array.from(table.getElementsByTagName("tr")).map(tr => 
+            Array.from(tr.querySelectorAll("th,td")).map(td => td.textContent)
+        ));
+    },
 };
+
+function isNumeric (n) { return +n == n; }
 
 /** @typedef {import('..').ResultRow} ResultRow */
 /** @typedef {import('..').Node} Node */

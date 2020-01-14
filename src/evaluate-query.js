@@ -8,7 +8,7 @@ const { groupRows, populateAggregates } = require ('./aggregates');
 const { sortRows } = require('./sort');
 const { explain } = require('./explain');
 const { distinctResults } = require('./compound');
-const { getSubqueries, getCTEsMap } = require('./subquery');
+const { getCTEsMap } = require('./subquery');
 const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('./prepare');
 const evaluateValues = require('./evaluate-values');
 const { applyLimit } = require('./limit');
@@ -60,7 +60,6 @@ async function evaluateQuery (query, statementNode, outer = null) {
     const select = clauses.select;
     const rawCols = select;
 
-    const subqueries = await getSubqueries(query, clauses.from);
     /** @type {ParsedTable[]} */
     const tables = nodesToTables(clauses.from);
     /** @type {{ [name: string]: any[] }} */
@@ -73,7 +72,6 @@ async function evaluateQuery (query, statementNode, outer = null) {
         tables,
         clauses,
         windows,
-        subqueries,
         CTEs,
         schema,
         providers,

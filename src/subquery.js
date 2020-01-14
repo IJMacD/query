@@ -1,5 +1,4 @@
 module.exports = {
-    getSubqueries,
     getCTEsMap,
 }
 
@@ -11,32 +10,6 @@ const { queryResultToObjectArray } = require('./util');
  * @typedef {import('..')} Query
  * @typedef {import('..').Node} Node
  */
-
-/**
- * @param {Query} query
- * @param {Node[]} nodes
- */
-async function getSubqueries (query, nodes) {
-    /** @type {{ [name: string]: any[] }} */
-    const out = {};
-
-    let i = 1;
-
-    for (const node of nodes) {
-        if (node.type === NODE_TYPES.STATEMENT ||
-            node.type === NODE_TYPES.COMPOUND_QUERY) {
-            const name = node.alias || `SUBQUERY_${i++}`;
-
-            out[name] = queryResultToObjectArray(await evaluateCompound(query, node), node.headers);
-
-            node.id = name;
-            node.type = NODE_TYPES.SYMBOL;
-            node.children.length = 0;
-        }
-    }
-
-    return out;
-}
 
 /**
  * @param {Query} query

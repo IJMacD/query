@@ -71,13 +71,21 @@ function findJoin (tables, table, rows) {
 
     // AUTO JOIN! (natural join, comma join, implicit join?)
     // We will find the path automatically
-    const t = table.name.toLowerCase();
+    const t = table.name;
+    const t_lower = table.name.toLowerCase();
 
     for (const r of rows) {
         const path = findPath(tables, r, t);
 
         if (typeof path !== "undefined"){
             table.join = path;
+            return true;
+        }
+
+        const path_lower = findPath(tables, r, t_lower);
+
+        if (typeof path_lower !== "undefined"){
+            table.join = path_lower;
             return true;
         }
     }

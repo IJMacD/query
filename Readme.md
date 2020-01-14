@@ -33,12 +33,11 @@ LOAD is also a table valued function to load data from an arbritrary url.
 
 `FROM LOAD('http://www.reddit.com/r/javascript.json'), data.children AS c, c.data AS d` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('https%3A%2F%2Fwww.reddit.com%2Fr%2Fjavascript.json')%2C%20data.children%20AS%20c%2C%20c.data%20AS%20d)
 
-`FROM LOAD('http://dummy.restapiexample.com/api/v1/employees')` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('http%3A%2F%2Fdummy.restapiexample.com%2Fapi%2Fv1%2Femployees'))
-(You might need to "allow unsecure scripts" because restapiexample.com doesn't support https)
+`FROM LOAD('https://dummy.restapiexample.com/api/v1/employees'), data` [⯈](https://ijmacd.github.io/query/#q=FROM%20LOAD('https%3A%2F%2Fdummy.restapiexample.com%2Fapi%2Fv1%2Femployees')%2C%20data)
 
 You can use expressions in table valued functions.
 
-`FROM RANGE(-7,0), LOAD('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=' || DATE(DATEADD(DAY, value))) AS nasa WHERE media_type = 'image' SELECT nasa.*` [⯈](https://ijmacd.github.io/query/#q=FROM%20RANGE(-7%2C0)%2C%20LOAD('https%3A%2F%2Fapi.nasa.gov%2Fplanetary%2Fapod%3Fapi_key%3DDEMO_KEY%26date%3D'%20%7C%7C%20DATE(DATEADD(DAY%2C%20value)))%20AS%20nasa%20WHERE%20media_type%20%3D%20'image'%20SELECT%20nasa.*))
+`FROM RANGE(-7,0), LOAD('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=' || DATE(DATEADD(DAY, value))) AS nasa WHERE media_type = 'image' SELECT nasa.*` [⯈](https://ijmacd.github.io/query/#q=FROM%20RANGE(-7%2C0)%2C%20LOAD('https%3A%2F%2Fapi.nasa.gov%2Fplanetary%2Fapod%3Fapi_key%3DDEMO_KEY%26date%3D'%20%7C%7C%20DATE(DATEADD(DAY%2C%20value)))%20AS%20nasa%20WHERE%20media_type%20%3D%20'image'%20SELECT%20nasa.*)
 
 CTEs are supported.
 

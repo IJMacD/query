@@ -132,7 +132,7 @@ function parseFromTokenList (tokenList, source="") {
 
     /**
      * Consume and return a specific type. If the next token
-     * is not exactly as expected this frunction throws.
+     * is not exactly as expected this function throws.
      * @param {number} type
      * @param {string} value
      * @returns {Token}
@@ -462,7 +462,7 @@ function parseFromTokenList (tokenList, source="") {
 
                     while (isList()) {
 
-                        // Loop through adding each paramater
+                        // Loop through adding each parameter
                         out.children.push(descendExpression());
 
                         if (
@@ -476,7 +476,7 @@ function parseFromTokenList (tokenList, source="") {
                         )
                         {
                             // We didn't have a comma (or FROM/AS) so we can't have
-                            // any more function paramaters
+                            // any more function parameters
                             break;
                         }
                     }

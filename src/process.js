@@ -55,12 +55,12 @@ async function getRows(context) {
 
             // console.log(`Initial data set: ${results.length} items`);
 
-            // Poulate inital rows
+            // Populate initial rows
             rows = results.map((r,i) => {
                 /** @type {ResultRow} */
                 const row = [];
 
-                // Set inital data object
+                // Set initial data object
                 row.data = {};
                 setRowData(row, table, r);
 
@@ -94,7 +94,7 @@ async function getRows(context) {
                 const findResult = findJoin(tables, table, rows);
 
                 if (!findResult) {
-                    // All attempts at joining failed, intead we're going to do a
+                    // All attempts at joining failed, instead we're going to do a
                     // CROSS JOIN!
                     const results = await getPrimaryResults(context, table);
 

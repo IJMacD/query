@@ -35,7 +35,7 @@ const { isValidDate } = require('./util');
  * @typedef {import('..').QueryContext} QueryContext
  */
 
- /** @typedef {string|number|boolean|Date} Primative */
+ /** @typedef {string|number|boolean|Date} Primitive */
 
 /**
  * Execute an expresion from AST nodes
@@ -43,7 +43,7 @@ const { isValidDate } = require('./util');
  * @param {ResultRow} row
  * @param {Node} node
  * @param {ResultRow[]} [rows]
- * @returns {Primative|Primative[]}
+ * @returns {Primitive|Primitive[]}
  */
 function evaluate (row, node, rows=null) {
     switch (node.type) {
@@ -96,7 +96,7 @@ function evaluate (row, node, rows=null) {
                         throw Error("Window functions require ORDER BY in OVER clause");
                     }
 
-                    /** @type {(index: number, order: Primative[], rows: ResultRow[], evaluator, ...nodes: Node[]) => Primative} */
+                    /** @type {(index: number, order: Primitive[], rows: ResultRow[], evaluator, ...nodes: Node[]) => Primitive} */
                     const fn = WINDOW_FUNCTIONS[node.id];
 
                     const orderVals = group.map(getRowEvaluator(this, window.order, rows));
@@ -108,7 +108,7 @@ function evaluate (row, node, rows=null) {
                         throw new Error(`Function ${node.id} requires at least one paramater.`);
                     }
 
-                    /** @type {(values: any[]) => Primative} */
+                    /** @type {(values: any[]) => Primitive} */
                     const fn = AGGREGATE_FUNCTIONS[node.id];
 
                     // Aggregate values could have '*' as a child (paramater) node
@@ -130,7 +130,7 @@ function evaluate (row, node, rows=null) {
                     // though, namely a brand new aggregate function named
                     // in a HAVING clase. It gets evaluated here.
 
-                    /** @type {(values: any[]) => Primative} */
+                    /** @type {(values: any[]) => Primitive} */
                     const fn = AGGREGATE_FUNCTIONS[fnName];
 
                     return fn(aggregateValues(this, row['group'], node.children[0]));
@@ -138,7 +138,7 @@ function evaluate (row, node, rows=null) {
                 return;
             }
 
-            /** @type {(...args) => Primative} */
+            /** @type {(...args) => Primitive} */
             const fn = (typeof this.userFunctions !== "undefined" && this.userFunctions[fnName]) || VALUE_FUNCTIONS[fnName];
 
             if (!fn) {

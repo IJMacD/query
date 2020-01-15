@@ -10,6 +10,12 @@ describe("Constants", () => {
         });
     });
 
+    test("String with escape", () => {
+        return runQuery("SELECT 'fish\\'n\\'chips'").then(r => {
+            expect(r[1][0]).toBe("fish'n'chips");
+        });
+    });
+
     test("Number", () => {
         return runQuery("SELECT 42").then(r => {
             expect(r[1][0]).toBe(42);

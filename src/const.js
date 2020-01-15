@@ -65,6 +65,7 @@ const VALUE_FUNCTIONS = {
         switch (part) {
             case 'CENTURY': return Math.ceil(m.year() / 100);
             case 'DAY': return m.date();
+            // Should be ceil, no? Postgres uses floor
             case 'DECADE': return Math.floor(m.year() / 10);
             case 'DOW': return m.day();
             case 'DOY': return m.dayOfYear();

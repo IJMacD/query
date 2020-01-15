@@ -45,11 +45,14 @@ module.exports = {
                 out.push({ type: TOKEN_TYPES.COMMA, start: i });
                 i++;
             } else if (c === "'") {
-                const end = string.indexOf("'", i + 1);
+                let end = string.indexOf("'", i + 1);
                 if (end < 0) {
                     throw new Error("Unterminated String: " + string.substring(i));
                 }
-                const str = string.substring(i + 1, end);
+                while (string[end-1] === "\\") {
+                    end = string.indexOf("'", end + 1);
+                }
+                const str = string.substring(i + 1, end).replace(/\\'/g, "'");
                 out.push({ type: TOKEN_TYPES.STRING, value: str, start: i });
                 i = end + 1;
             } else if (c === "\"") {

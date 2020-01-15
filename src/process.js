@@ -289,7 +289,7 @@ async function populateValue (context, row, colNum, node, rows) {
     }
 
     if (node === null) {
-        // This occurs when there were no rows to extract poperties from as columns
+        // This occurs when there were no rows to extract properties from as columns
         //  e.g. Tutor.*
         row[colNum] = null;
         return;

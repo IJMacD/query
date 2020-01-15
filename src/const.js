@@ -7,6 +7,8 @@ momentDurationFormatSetup(moment);
 
 const { isNullDate, toUTF8Array } = require('./util');
 
+const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
 const VALUE_FUNCTIONS = {
     // Conditional functions
     COALESCE: (...vs) => vs.find(OPERATORS['IS NOT NULL']),
@@ -48,15 +50,15 @@ const VALUE_FUNCTIONS = {
     },
 
     // Date functions
-    WEEKDAY: v => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][v],
+    WEEKDAY: v => DAYS_OF_WEEK[v],
     DATE: d => moment(d).format("YYYY-MM-DD"),
     TIME: d => moment(d).format("HH:mm:ss"),
     DATETIME: d => moment(d).format("YYYY-MM-DD HH:mm:ss"),
     CURRENT_DATE: () => new Date(),
     // @ts-ignore
     DURATION: m => moment.duration(m, "milliseconds").format(),
-    DATEADD: (part, v, date) => moment(date).add(v, part).toDate(),
-    DATEDIFF: (dateA, dateB, part) => moment(dateA).diff(dateB, part),
+    DATE_ADD: (date, v, part) => moment(date).add(v, part).toDate(),
+    DATE_DIFF: (dateA, dateB, part) => moment(dateA).diff(dateB, part),
     AGE: (date, part) => moment().diff(date, part),
     EXTRACT (part, v) {
         const m = moment(v);
@@ -68,6 +70,7 @@ const VALUE_FUNCTIONS = {
             case 'DOY': return m.dayOfYear();
             case 'EPOCH': return Math.floor(+m / 1000);
             case 'HOUR': return m.hour();
+            case 'ISO': return m.toISOString();
             case 'ISODOW': return m.isoWeekday();
             case 'ISOYEAR': return m.isoWeekYear();
             case 'MICROSECONDS': return m.second() * 1000000 + m.millisecond() * 1000;
@@ -81,6 +84,7 @@ const VALUE_FUNCTIONS = {
             case 'TIMEZONE_HOUR': return Math.floor(m.utcOffset() / 60);
             case 'TIMEZONE_MINUTE': return m.utcOffset() % 60;
             case 'WEEK': return m.isoWeek();
+            case 'WEEKDAY': return DAYS_OF_WEEK[m.day()];
             case 'YEAR': return m.year();
         }
     },
@@ -88,7 +92,7 @@ const VALUE_FUNCTIONS = {
     // Geo Functions
     /**
      * Haversine formula for calculating distance between two points.
-     * 
+     *
      * Assumes a spherical Earth.
      * @see https://www.movable-type.co.uk/scripts/latlong.html
      * @param {number} lat1 Latitude of first point in degrees
@@ -111,7 +115,7 @@ const VALUE_FUNCTIONS = {
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
         return R * c;
-      
+
         function toRadians (deg) {
             return deg * (Math.PI/180)
         }
@@ -239,7 +243,7 @@ const TABLE_VALUED_FUNCTIONS = {
             Array(count).fill(0).map((n,i) => ({ value: start - i * step }));
     },
 
-    /** 
+    /**
      * Load JSON
      * @type {(url: string) => Promise}
      */
@@ -256,14 +260,14 @@ const TABLE_VALUED_FUNCTIONS = {
         const r = await fetch(url);
         const dom = new DOMParser().parseFromString(await r.text(), "text/html");
         const fragment = new URL(url).hash.replace("#", "") || "1";
-        
-        let table = isNumeric(fragment) ? dom.getElementsByTagName("table")[+fragment-1] : dom.getElementById(fragment);
+
+        const table = isNumeric(fragment) ? dom.getElementsByTagName("table")[+fragment-1] : dom.getElementById(fragment);
 
         if (!(table instanceof HTMLTableElement)) {
             throw Error(`Could not find table ${fragment} in ${url}`)
         }
-        
-        return queryResultToObjectArray(Array.from(table.getElementsByTagName("tr")).map(tr => 
+
+        return queryResultToObjectArray(Array.from(table.getElementsByTagName("tr")).map(tr =>
             Array.from(tr.querySelectorAll("th,td")).map(td => td.textContent)
         ));
     },

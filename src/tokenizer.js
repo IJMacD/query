@@ -100,7 +100,7 @@ module.exports = {
                 }
 
                 // These constants can be treated like strings
-                m = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|DOY|DOW|EPOCH|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING)\b/i.exec(ss);
+                m = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|WEEKDAY|DOY|DOW|EPOCH|ISO|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING)\b/i.exec(ss);
                 if (m) {
                     out.push({ type: TOKEN_TYPES.STRING, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;

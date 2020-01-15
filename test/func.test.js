@@ -158,6 +158,19 @@ describe("Value Functions", () => {
     });
   });
 
+  test("DATE_ADD()", () => {
+    return demoQuery("SELECT DATE_ADD('2018-07-18T14:27:29Z', 1, 'day')").then(r => {
+      expect(r[1][0]).toBeInstanceOf(Date);
+      expect(r[1][0].toISOString()).toBe('2018-07-19T14:27:29.000Z');
+    });
+  });
+
+  test("DATE_DIFF()", () => {
+    return demoQuery("SELECT DATE_DIFF('2018-07-18T14:27:29','2018-07-16T14:27:29','day')").then(r => {
+      expect(r[1][0]).toBe(2);
+    });
+  });
+
   describe("DURATION", () => {
     test("1s", () => {
       return demoQuery("SELECT DURATION(1000)").then(r => {
@@ -197,6 +210,12 @@ describe("Value Functions", () => {
       });
     });
 
+    test("WEEKDAY", () => {
+      return demoQuery("SELECT EXTRACT(WEEKDAY FROM '2018-07-18T14:27:29')").then(r=> {
+        expect(r[1][0]).toBe('Wednesday');
+      });
+    });
+
     test("DOY", () => {
       return demoQuery("SELECT EXTRACT(DOY FROM '2018-07-18T14:27:29')").then(r=> {
         expect(r[1][0]).toBe(199);
@@ -206,6 +225,12 @@ describe("Value Functions", () => {
     test("WEEK", () => {
       return demoQuery("SELECT EXTRACT(WEEK FROM '2018-07-18T14:27:29')").then(r=> {
         expect(r[1][0]).toBe(29);
+      });
+    });
+
+    test("ISO", () => {
+      return demoQuery("SELECT EXTRACT(ISO FROM '2018-07-18T14:27:29Z')").then(r=> {
+        expect(r[1][0]).toBe('2018-07-18T14:27:29.000Z');
       });
     });
   });

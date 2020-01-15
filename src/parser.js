@@ -26,7 +26,11 @@ module.exports = {
     parseTokenList: parseFromTokenList,
 
     parse (sql) {
-        return parseFromTokenList(tokenize(sql), sql);
+        const preProcessors = [ stringsThatAreReallyFunctionCalls ];
+
+        const tokens = preProcessors.reduce((tokens, processor) => processor(tokens), tokenize(sql));
+
+        return parseFromTokenList(tokens, sql);
     },
 
     NODE_TYPES,
@@ -533,17 +537,6 @@ function parseFromTokenList (tokenList, source="") {
             case TOKEN_TYPES.STRING:
                 next();
                 out = { type: NODE_TYPES.STRING, id: t.value };
-
-                // Whoops Tokenizer thought it was a string but it appears to be
-                // a name which is actually a function call. We need to adjust
-                // the token, then backtrack, and re-descend.
-                if (suspect(TOKEN_TYPES.BRACKET, "(")) {
-                    t.type = TOKEN_TYPES.NAME;
-                    prev(); // backtrack '(' (suspect moves forward)
-                    prev(); // backtrack STRING
-                    return descendNode();
-                }
-
                 break;
             case TOKEN_TYPES.NUMBER:
                 next();
@@ -866,4 +859,20 @@ function getPrecedence (node) {
         default:
             return 100;
     }
+}
+
+// The tokenizer recognizes certain "keywords" as strings
+// however that might not be correct.
+// An example of this is when the token is followed by an
+// open bracket because it means it must be a function call.
+function stringsThatAreReallyFunctionCalls (tokens) {
+    for (let i = 0; i < tokens.length - 1; i++) {
+        if (tokens[i].type === TOKEN_TYPES.STRING &&
+            tokens[i+1].type === TOKEN_TYPES.BRACKET &&
+            tokens[i+1].value === "(")
+        {
+            tokens[i].type = TOKEN_TYPES.NAME;
+        }
+    }
+    return tokens;
 }

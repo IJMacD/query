@@ -43,17 +43,20 @@ async function run () {
     let name;
 
     for (let opt of opts) {
-        switch (opt[1]) {
-            case "f":
-                if (opt.startsWith("-f=plain")) mime = "text/plain";
-                else if (opt.startsWith("-f=csv")) mime = "text/csv";
-                else if (opt.startsWith("-f=json")) mime = "application/json";
-                else if (opt.startsWith("-f=html")) mime = "text/html";
-                else if (opt.startsWith("-f=sql")) {
+        console.log(opt);
+        if (opt.startsWith('-f=') || opt.startsWith("--format=")) {
+            const tail = opt.startsWith('-f=') ? opt.substr(3) : opt.substr(9);
+            switch (tail) {
+                case "plain": mime = "text/plain"; break;
+                case "csv": mime = "text/csv"; break;
+                case "json": mime = "application/json"; break;
+                case "html": mime = "text/html"; break;
+                case "sql": {
                     mime = "application/sql";
                     name = opt.split(":")[1];
+                    break;
                 }
-                break;
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 const moment = require('moment');
 const columnify = require('columnify');
-const { repeat } = require('./util');
+const { repeat, queryResultToObjectArray } = require('./util');
 
 module.exports = {
   format
@@ -9,18 +9,20 @@ module.exports = {
 /**
  *
  * @param {any[][]} data
- * @param {{ mime?: string, locale?: string, name?: string }} options
+ * @param {{ mime?: string, locale?: string, option?: string }} options
  */
-function format (data, { mime = "text/plain", locale = undefined, name = undefined } = {}) {
+function format (data, { mime = "text/plain", locale = undefined, option = undefined } = {}) {
   switch (mime) {
     case "application/json":
+      if (option === "object")
+        return JSON.stringify(queryResultToObjectArray(data));
       return JSON.stringify(data);
     case "text/csv":
       return data.map(row => row.map(d => csvSafe(formatVal(d))).join(",")).join("\n");
     case "text/html":
       return `${renderStyle()}${renderTable({ rows: data, locale })}`;
     case "application/sql":
-      return renderSQLInsert(data, { tableName: name });
+      return renderSQLInsert(data, { tableName: option });
     case "text/plain":
     default: {
       const rows = data.map(row => row.map(formatPlainTextVal));

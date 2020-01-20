@@ -14,7 +14,6 @@ module.exports = {
 
 const { NODE_TYPES } = require('./parser');
 const { resolveConstant } = require('./resolve');
-const evaluateQuery = require('./evaluate-query');
 
 const {
     OPERATORS,

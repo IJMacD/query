@@ -33,12 +33,9 @@ function resolveConstant (str) {
         return; // undefined
     }
 
-    if (str === "true") return true;
-    if (str === "false") return false;
-    if (str === "TRUE") return true;
-    if (str === "FALSE") return false;
-
-    if (str === "null") return null;
+    if (str.toLowerCase() === "true") return true;
+    if (str.toLowerCase() === "false") return false;
+    if (str.toLowerCase() === "null") return null;
 
     // Check for quoted string
     if ((str.startsWith("'") && str.endsWith("'")) ||

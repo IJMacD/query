@@ -25,6 +25,8 @@ const {
 
 const { isValidDate } = require('./util');
 
+const KEYWORD_CONSTANTS = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|WEEKDAY|DOY|DOW|EPOCH|ISO|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING)\b/i;
+
 /**
  * @typedef {import('..').Node} Node
  * @typedef {import('..').ParsedTable} ParsedTable
@@ -165,13 +167,28 @@ function evaluate (row, node, rows=null) {
 
         }
         case NODE_TYPES.SYMBOL: {
-            if (!(this.resolveValue instanceof Function)) {
-                const const_val = resolveConstant(String(node.id));
-                if (typeof const_val !== "undefined") return const_val;
-                throw new Error(`Symbol detected in Constant Expression: "${node.id}"`);
-            }
+            const id = String(node.id);
+            try {                
+                // resolveValue won't be defined for constant expressions
+                // if it is defined then do normal symbol resolution
+                if (this.resolveValue instanceof Function) {
+                    return this.resolveValue(row, id, rows);
+                }
 
-            return this.resolveValue(row, String(node.id), rows);
+                // We must be in a constant expression
+                const const_val = resolveConstant(id);
+                if (typeof const_val !== "undefined") return const_val;
+
+                throw new Error(`Symbol detected in Constant Expression: "${node.id}"`);
+            } catch (e) {
+                // If no symbol in the result set matched then it might be one of these keywords
+                if (id.match(KEYWORD_CONSTANTS)) {
+                    return id.toUpperCase();
+                }
+
+                // if not, rethrow the exception
+                throw e;
+            }
         }
         case NODE_TYPES.STRING: {
             // We need to check for date here and convert if necessary
@@ -332,5 +349,7 @@ function isConstantExpression (expr) {
         return expr.children.every(c => isConstantExpression(c));
     }
 
-    return false;
+    // The last thing to check is keywords like MILLENIUM which have 
+    // a node type of symbol
+    return KEYWORD_CONSTANTS.test(String(expr.id));
 }

@@ -1,4 +1,4 @@
-const { queryResultToObjectArray } = require('./util');
+const { queryResultToObjectArray, zip } = require('./util');
 
 const moment = require('moment');
 const momentDurationFormatSetup = require('moment-duration-format');
@@ -26,7 +26,7 @@ const VALUE_FUNCTIONS = {
 
     // String functions
     SUBSTR: (v, from, length) => isStrictNull(v) ? null : String(v).substr(from, length),
-    REPLACE: (v, from, to) => isStrictNull(v) ? null : String(v).replace(from, to),
+    REPLACE: (v, from, to) => isStrictNull(v) ? null : String(v).split(from).join(to),
     REVERSE: v => isStrictNull(v) ? null : String(v).split("").reverse().join(""),
     LOWER: v => isStrictNull(v) ? null : String(v).toLowerCase(),
     UPPER: v => isStrictNull(v) ? null : String(v).toUpperCase(),
@@ -163,7 +163,10 @@ const AGGREGATE_FUNCTIONS = {
         if (Array.isArray(s)) s = s[0];
         return a.join(s);
     },
-    JSON_ARRAYAGG: VALUE_FUNCTIONS.JSON_STRINGIFY,
+    /** @type {(a: any[]) => string} */
+    JSON_ARRAYAGG: JSON.stringify,
+    /** @type {(a: string[], b: any[]) => string} */
+    JSON_OBJECTAGG: (a,b) => JSON.stringify(zip(a, b)),
     /** @type {(a: number[]) => number} */
     STDDEV_POP: a => Math.sqrt(AGGREGATE_FUNCTIONS.VAR_POP(a)),
     /** @type {(a: number[]) => number} */

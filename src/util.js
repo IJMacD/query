@@ -10,6 +10,7 @@ module.exports = {
   queryResultToObjectArray,
   toUTF8Array,
   split,
+  zip,
 };
 
 /**

@@ -96,9 +96,31 @@ describe("Aggregate Functions", () => {
       expect(r[1][0]).toBe('0:1:2:3:4:5:6:7:8:9');
     });
   });
+
+  test("JSON_ARRAYAGG", () => {
+    return demoQuery("FROM Test SELECT JSON_ARRAYAGG(n)").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe('[0,1,2,3,4,5,6,7,8,9]');
+    });
+  });
+
+  test("JSON_OBJECTAGG", () => {
+    return demoQuery("FROM Test SELECT JSON_OBJECTAGG(n,n2)").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe('{"0":0,"1":0,"2":1,"3":1,"4":2,"5":2,"6":3,"7":3,"8":4,"9":4}');
+    });
+  });
 });
 
 describe("Value Functions", () => {
+  test("REPLACE()", () => {
+    return demoQuery("SELECT REPLACE('ababa','a','c')").then(r => {
+      expect(r[1][0]).toBe("cbcbc");
+    });
+  });
+
   test("WEEKDAY()", () => {
     return demoQuery("SELECT WEEKDAY(2)").then(r => {
       expect(r[1][0]).toBe("Tuesday");

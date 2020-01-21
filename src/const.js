@@ -63,30 +63,43 @@ const VALUE_FUNCTIONS = {
     EXTRACT (part, v) {
         const m = moment(v);
         switch (part) {
-            case 'CENTURY': return Math.ceil(m.year() / 100);
-            case 'DAY': return m.date();
+            case 'CENTURY':
+            case 'CENTURIES': return Math.ceil(m.year() / 100);
+            case 'DAY':
+            case 'DAYS': return m.date();
             // Should be ceil, no? Postgres uses floor
-            case 'DECADE': return Math.floor(m.year() / 10);
+            case 'DECADE':
+            case 'DECADES': return Math.floor(m.year() / 10);
             case 'DOW': return m.day();
             case 'DOY': return m.dayOfYear();
             case 'EPOCH': return Math.floor(+m / 1000);
-            case 'HOUR': return m.hour();
+            case 'HOUR':
+            case 'HOURS': return m.hour();
             case 'ISO': return m.toISOString();
             case 'ISODOW': return m.isoWeekday();
             case 'ISOYEAR': return m.isoWeekYear();
+            case 'MICROSECOND':
             case 'MICROSECONDS': return m.second() * 1000000 + m.millisecond() * 1000;
+            case 'MILLENNIA':
             case 'MILLENNIUM': return Math.ceil(m.year() / 1000);
+            case 'MILLISECOND':
             case 'MILLISECONDS': return m.second() * 1000 + m.millisecond();
-            case 'MINUTE': return m.minute();
-            case 'MONTH': return m.month() + 1;
-            case 'QUARTER': return m.quarter();
-            case 'SECOND': return m.second() + m.millisecond() / 1000;
+            case 'MINUTE':
+            case 'MINUTES': return m.minute();
+            case 'MONTH':
+            case 'MONTHS': return m.month() + 1;
+            case 'QUARTER':
+            case 'QUARTERS': return m.quarter();
+            case 'SECOND':
+            case 'SECONDS': return m.second() + m.millisecond() / 1000;
             case 'TIMEZONE': return m.utcOffset() * 60;
             case 'TIMEZONE_HOUR': return Math.floor(m.utcOffset() / 60);
             case 'TIMEZONE_MINUTE': return m.utcOffset() % 60;
-            case 'WEEK': return m.isoWeek();
+            case 'WEEK':
+            case 'WEEKS': return m.isoWeek();
             case 'WEEKDAY': return DAYS_OF_WEEK[m.day()];
-            case 'YEAR': return m.year();
+            case 'YEAR':
+            case 'YEARS': return m.year();
         }
     },
 
@@ -146,7 +159,10 @@ const AGGREGATE_FUNCTIONS = {
     /** @type {(a: number[]) => number} */
     MAX: a => Math.max(...a),
     /** @type {(a: string[], s?: string) => string} */
-    LISTAGG: (a,s) => a.join(s),
+    LISTAGG: (a,s) => {
+        if (Array.isArray(s)) s = s[0];
+        return a.join(s);
+    },
     JSON_ARRAYAGG: VALUE_FUNCTIONS.JSON_STRINGIFY,
     /** @type {(a: number[]) => number} */
     STDDEV_POP: a => Math.sqrt(AGGREGATE_FUNCTIONS.VAR_POP(a)),

@@ -43,7 +43,11 @@ function explain (tables, analyse) {
 }
 
 function formatExplainCol (col) {
-    return col && (col.source || col);
+    if (typeof col === "undefined" || col === null) return null;
+    if (Array.isArray(col)) return `${col[0].alias}.${col[1]}`; // Join
+    if (col.source) return col.source;
+    if (typeof col === "object") return JSON.stringify(col);
+    return col;
 }
 
 function setAnalysis(table, startupTime, totalTime, planRows, actualRows) {

@@ -436,6 +436,8 @@ function parseFromTokenList (tokenList, source="") {
                 }
                 else if (suspect(TOKEN_TYPES.NAME, "AST")) {
                     out.children.push({ type: NODE_TYPES.SYMBOL, id: "AST" });
+                } else {
+                    out.children.push({ type: NODE_TYPES.SYMBOL, id: "QUERY" });
                 }
                 break;
             default:

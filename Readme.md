@@ -39,6 +39,10 @@ You can use expressions in table valued functions.
 
 `FROM RANGE(-7,0), LOAD('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=' || DATE(DATE_ADD(CURRENT_DATE(), value, DAY))) AS nasa WHERE media_type = 'image' SELECT nasa.*` [⯈](https://ijmacd.github.io/query/#q=FROM%20RANGE(-7%2C0)%2C%20LOAD('https%3A%2F%2Fapi.nasa.gov%2Fplanetary%2Fapod%3Fapi_key%3DDEMO_KEY%26date%3D'%20%7C%7C%20DATE(DATE_ADD(CURRENT_DATE()%2C%20value%2C%20DAY)))%20AS%20nasa%20WHERE%20media_type%20%3D%20'image'%20SELECT%20nasa.*)
 
+Going deeper...
+
+`FROM (FROM LOAD('https://xkcd.com/info.0.json') SELECT num), RANGE(num,num - 10), LOAD('https://xkcd.com/'||value||'/info.0.json')` (won't work in browser due to XKCD CORS issues but works on server)
+
 CTEs are supported.
 
 `WITH cte AS (FROM Test_2 WHERE c > 'd') FROM Test, cte ON CHAR(n+97) = c` [⯈](https://ijmacd.github.io/query/#q=WITH%20cte%20AS%20(FROM%20Test_2%20WHERE%20c%20%3E%20'd')%20FROM%20Test%2C%20cte%20ON%20CHAR(n%2B98)%20%3D%20c)

@@ -100,7 +100,7 @@ function handleQuery (req, res, query, type, name) {
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];
         res.header("Content-Type", mime);
-        res.send(Formatter.format(result, { mime, locale, name }));
+        res.send(Formatter.format(result, { mime, locale, option: name }));
     }).catch(e => {
         res.status(400);
         res.header("Content-Type", "text/plain");

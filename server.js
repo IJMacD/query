@@ -4,7 +4,7 @@ const express = require('express');
 const app = express();
 const path = require('path');
 
-const port = 3000;
+const port = process.env.PORT || process.env.DOCKER_EXPOSED_PORT || 3000;
 
 const Query = require('./src/query')
 const demoProvider = require('./src/providers/demo');

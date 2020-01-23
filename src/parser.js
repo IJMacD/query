@@ -479,10 +479,12 @@ function parseFromTokenList (tokenList, source="") {
                             // Consume a comma if needed
                             !suspect(TOKEN_TYPES.COMMA) &&
 
-                            // This is special treatment for `EXTRACT(x FROM y)` or `CAST(x AS y)`
+                            // This is special treatment for
+                            //      `EXTRACT(x FROM y)`
+                            //      `CAST(x AS y)`
+                            //      `CAST(x AS y FORMAT z)`
                             // They can be treated like a comma.
-                            !suspect(TOKEN_TYPES.KEYWORD, "FROM") &&
-                            !suspect(TOKEN_TYPES.KEYWORD, "AS")
+                            !suspect(TOKEN_TYPES.KEYWORD)
                         )
                         {
                             // We didn't have a comma (or FROM/AS) so we can't have

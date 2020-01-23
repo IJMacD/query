@@ -25,7 +25,7 @@ const {
 
 const { isValidDate } = require('./util');
 
-const KEYWORD_CONSTANTS = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|WEEKDAY|DOY|DOW|EPOCH|ISO|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING)\b/i;
+const KEYWORD_CONSTANTS = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|WEEKDAY|DOY|DOW|EPOCH|ISO|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING|NUM|DATE)\b/i;
 
 /**
  * @typedef {import('..').Node} Node
@@ -168,7 +168,7 @@ function evaluate (row, node, rows=null) {
         }
         case NODE_TYPES.SYMBOL: {
             const id = String(node.id);
-            try {                
+            try {
                 // resolveValue won't be defined for constant expressions
                 // if it is defined then do normal symbol resolution
                 if (this.resolveValue instanceof Function) {
@@ -349,7 +349,7 @@ function isConstantExpression (expr) {
         return expr.children.every(c => isConstantExpression(c));
     }
 
-    // The last thing to check is keywords like MILLENIUM which have 
+    // The last thing to check is keywords like MILLENIUM which have
     // a node type of symbol
     return KEYWORD_CONSTANTS.test(String(expr.id));
 }

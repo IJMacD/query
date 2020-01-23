@@ -283,6 +283,18 @@ describe("Value Functions", () => {
         expect(r[1][0]).toBe("42.547");
       });
     });
+
+    test("DATE", () => {
+      return demoQuery("SELECT CAST(1579765601394 AS DATE)").then(r => {
+        expect(r[1][0]).toBe("2020-01-23T07:46:41Z");
+      });
+    });
+
+    test("DATE FORMAT", () => {
+      return demoQuery("SELECT CAST(1579765601394 AS DATE FORMAT '~YYYY~MM~DD~')").then(r => {
+        expect(r[1][0]).toBe("~2020~01~23~");
+      });
+    });
   });
 
   test("COALESCE", () => {

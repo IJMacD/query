@@ -58,8 +58,20 @@ describe("Constants", () => {
         });
     });
 
-    test("True", () => {
+    test("true", () => {
         return runQuery("SELECT true").then(r => {
+            expect(r[1][0]).toBe(true);
+        });
+    });
+
+    test("True", () => {
+        return runQuery("SELECT True").then(r => {
+            expect(r[1][0]).toBe(true);
+        });
+    });
+
+    test("TRUE", () => {
+        return runQuery("SELECT TRUE").then(r => {
             expect(r[1][0]).toBe(true);
         });
     });
@@ -70,9 +82,33 @@ describe("Constants", () => {
         });
     });
 
-    test("Null", () => {
+    test("null", () => {
         return runQuery("SELECT null").then(r => {
             expect(r[1][0]).toBe(null);
+        });
+    });
+
+    test("Null", () => {
+        return runQuery("SELECT Null").then(r => {
+            expect(r[1][0]).toBe(null);
+        });
+    });
+
+    test("NULL", () => {
+        return runQuery("SELECT NULL").then(r => {
+            expect(r[1][0]).toBe(null);
+        });
+    });
+
+    test("Date", () => {
+        return runQuery("SELECT '2020-12-12'").then(r => {
+            expect(r[1][0]).toBeInstanceOf(Date);
+        });
+    });
+
+    test("DateTime", () => {
+        return runQuery("SELECT '2020-12-12T10:11:12'").then(r => {
+            expect(r[1][0]).toBeInstanceOf(Date);
         });
     });
 });

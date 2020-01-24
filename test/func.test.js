@@ -284,9 +284,21 @@ describe("Value Functions", () => {
       });
     });
 
-    test("DATE", () => {
+    test("DATE to INT", () => {
+      return demoQuery("SELECT CAST('2020-01-23T07:46:41.394Z' AS INT)").then(r => {
+        expect(r[1][0]).toBe(1579765601394);
+      });
+    });
+
+    test("DATE (number)", () => {
       return demoQuery("SELECT CAST(1579765601394 AS DATE)").then(r => {
         expect(r[1][0]).toBe("2020-01-23T07:46:41Z");
+      });
+    });
+
+    test("DATE (string)", () => {
+      return demoQuery("SELECT CAST('2020-12-12' AS DATE)").then(r => {
+        expect(r[1][0]).toBe("2020-12-12T00:00:00Z");
       });
     });
 

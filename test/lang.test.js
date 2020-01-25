@@ -92,6 +92,22 @@ describe("FROM", () => {
                 expect(r[1][0]).not.toBeNull();
             });
         });
+
+        test("Shadowed keyword by name", () => {
+            // Bug fix: num (a name) was being interpreted like the keyword NUM
+            return demoQuery("FROM (VALUES (1),(2),(3)) AS bob (num), RANGE(num)").then(r => {
+                // Remember header row
+                expect(r.length - 1).toBe(6);
+                expect(r.slice(1)).toEqual([
+                    [1,0],
+                    [2,0],
+                    [2,1],
+                    [3,0],
+                    [3,1],
+                    [3,2],
+                ]);
+            });
+        });
     });
 });
 

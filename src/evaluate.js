@@ -12,7 +12,7 @@ module.exports = {
     SymbolError,
 };
 
-const { NODE_TYPES } = require('./parser');
+const { NODE_TYPES, KEYWORD_CONSTANTS } = require('./parser');
 const { resolveConstant } = require('./resolve');
 
 const {
@@ -24,8 +24,6 @@ const {
 } = require('./const');
 
 const { isValidDate } = require('./util');
-
-const KEYWORD_CONSTANTS = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|WEEKDAY|DOY|DOW|EPOCH|ISO|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING|NUM|DATE)\b/i;
 
 /**
  * @typedef {import('..').Node} Node
@@ -349,7 +347,5 @@ function isConstantExpression (expr) {
         return expr.children.every(c => isConstantExpression(c));
     }
 
-    // The last thing to check is keywords like MILLENIUM which have
-    // a node type of symbol
-    return KEYWORD_CONSTANTS.test(String(expr.id));
+    return false;
 }

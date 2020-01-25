@@ -22,6 +22,8 @@ const NODE_TYPES = {
 
 const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
 
+const KEYWORD_CONSTANTS = /^(?:MILLENNIUM|MILLENNIA|CENTURY|CENTURIES|(?:DECADE|YEAR|QUARTER|MONTH|WEEK|DAY|HOUR|MINUTE|SECOND|MILLISECOND|MICROSECOND)S?|WEEKDAY|DOY|DOW|EPOCH|ISO|ISOWEEK|ISOYEAR|TIMEZONE(?:_HOUR|_MINUTE)?|INT|FLOAT|STRING|NUM|DATE)\b/i;
+
 module.exports = {
     parseTokenList: parseFromTokenList,
 
@@ -30,11 +32,14 @@ module.exports = {
 
         const tokens = preProcessors.reduce((tokens, processor) => processor(tokens), tokenize(sql));
 
-        return parseFromTokenList(tokens, sql);
+        const postProcessors = [ castKeywordStrings, extractKeywordStrings ];
+
+        return postProcessors.reduce((ast, processor) => processor(ast), parseFromTokenList(tokens, sql));
     },
 
     NODE_TYPES,
     DEBUG_NODE_TYPES,
+    KEYWORD_CONSTANTS,
 };
 
 class TokenError extends Error {
@@ -879,4 +884,49 @@ function stringsThatAreReallyFunctionCalls (tokens) {
         }
     }
     return tokens;
+}
+
+
+/**
+ * CAST (X AS ____)
+ * @param {Node} ast 
+ */
+function castKeywordStrings (ast) {
+    ast = walk(ast, node => {
+        if (node.type === NODE_TYPES.FUNCTION_CALL && /^CAST$/i.test(node.id)) {
+            const c2 = node.children[1];
+            if (/^(INT|REAL|FLOAT|NUM|DATE|STRING)$/.test(c2.id)) {
+                c2.type = NODE_TYPES.STRING;
+            }
+        }
+        return node;
+    });
+    return ast;
+}
+
+/**
+ * EXTRACT (____ FROM )
+ * @param {Node} ast 
+ */
+function extractKeywordStrings (ast) {
+    ast = walk(ast, node => {
+        if (node.type === NODE_TYPES.FUNCTION_CALL && /^EXTRACT$/i.test(node.id)) {
+            const c1 = node.children[0];
+            if (KEYWORD_CONSTANTS.test(c1.id)) {
+                c1.type = NODE_TYPES.STRING;
+            }
+        }
+        return node;
+    });
+    return ast;
+}
+
+function walk (node, callback) {
+    node = callback(node);
+    if (node.children) {
+        for (let i = 0; i < node.children.length; i++) {
+            node.children[i] = walk(node.children[i], callback);
+        }
+    }
+    return node;
 }

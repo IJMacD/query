@@ -16,11 +16,18 @@ const VALUE_FUNCTIONS = {
     // Number functions - Also all from Math.*
     RAND: Math.random,
     CAST (v, type, format=undefined) {
-        if (/^int|^float|^real/i.test(type) && v instanceof Date) return +v;
+        if (v instanceof Date) {
+            if (/^int|^float|^real/i.test(type)) return +v;
+            if (/^string/i.test(type)) return moment(v).utc().format(format);
+            return v;
+        }
         if (/^int/i.test(type)) return parseInt(v);
         if (/^float|^real/i.test(type)) return parseFloat(v);
         if (/^num/i.test(type)) return +v;
-        if (/^date$/i.test(type)) return moment(v).utc().format(format);
+        if (/^date$/i.test(type)) {
+            if (typeof v === "number") return moment(v).toDate();
+            if (typeof v === "string") return moment(v, format).toDate();
+        }
         return String(v);
     },
     HEX: v => `0x${(+v).toString(16)}`,

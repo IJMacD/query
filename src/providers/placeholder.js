@@ -91,8 +91,8 @@ async function primaryTable (table) {
     }
 }
 
-/** @typedef {import ('../query').ResultRow} ResultRow */
-/** @typedef {import ('../query').QueryContext} QueryContext */
+/** @typedef {import ('../..').ResultRow} ResultRow */
+/** @typedef {import ('../..').QueryContext} QueryContext */
 
 /**
  * @this {QueryContext}

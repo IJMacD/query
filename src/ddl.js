@@ -72,6 +72,11 @@ async function performDDL (query) {
             [ schemaName, tableName ] = split(name, ".", 2);
         }
 
+        const { callbacks } = this.providers[schemaName] || this.schema;
+        if (!callbacks.insertIntoTable) {
+            throw Error("Schema does not support insertion");
+        }
+
         let insertQuery = query.substring(insertMatch[0].length);
         /** @type {"error"|"ignore"|"update"} */
         let duplicate = "error";
@@ -87,15 +92,8 @@ async function performDDL (query) {
         let results = await this.runSelect(insertQuery);
 
         const objArray = queryResultToObjectArray(results, cols);
-
-        const { callbacks } = this.providers[schemaName] || this.schema;
-
-        if (callbacks.insertIntoTable) {
-            await Promise.all(objArray.map(r => callbacks.insertIntoTable(tableName, r, duplicate)));
-            return true;
-        } else {
-            throw Error("Schema does not support insertion");
-        }
+        await callbacks.insertIntoTable(tableName, objArray, duplicate);
+        return true;
     }
 
     const updateMatch = /^UPDATE ([a-zA-Z0-9_\.]+)\s+SET ([a-zA-Z0-9_]+)\s*=\s*(.*)\s+WHERE ([a-zA-Z0-9_]+)\s*=\s*(.*)/.exec(query);
@@ -132,12 +130,12 @@ async function performDDL (query) {
         }
     }
 
-    const deleteMatch = /^DELETE FROM ([a-zA-Z0-9_\.]+)\s+WHERE ([a-zA-Z0-9_]+)\s*=\s*(.*)/.exec(query);
+    const deleteMatch = /^DELETE FROM ([a-zA-Z0-9_\.]+)\s+WHERE (?:"([a-zA-Z0-9_ ]+)"|([a-zA-Z0-9_]+))\s*=\s*(.*)/.exec(query);
     if (deleteMatch)
     {
         const name = deleteMatch[1];
-        const whereCol = deleteMatch[2];
-        const whereExpr = deleteMatch[3];
+        const whereCol = deleteMatch[2] || deleteMatch[3];
+        const whereExpr = deleteMatch[4];
 
         let tableName = name;
         let schemaName;
@@ -158,6 +156,10 @@ async function performDDL (query) {
         } else {
             throw Error("Schema does not support update");
         }
+    }
+
+    if (/^DELETE FROM/.test(query)) {
+        throw Error("Only able to perform simple deletes i.e. DELETE FROM table WHERE col = val");
     }
 
     const dropMatch = /^DROP TABLE ([a-zA-Z0-9_\.]+)/.exec(query);

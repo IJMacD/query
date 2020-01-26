@@ -1,16 +1,11 @@
 #!/usr/bin/env node
+
 const path = require('path');
 const getStdin = require('get-stdin');
 require('fetch-everywhere');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const MIME_TYPES = {
-    plain: "text/plain",
-    csv: "text/csv",
-    json: "application/json",
-    html: "text/html",
-    sql: "application/sql",
-};
+const { MIME_TYPES } = require('../src/mime');
 
 const Query = require('../src/query')
 const demoProvider = require('../src/providers/demo');

@@ -6,6 +6,8 @@ const path = require('path');
 
 const port = process.env.PORT || process.env.DOCKER_EXPOSED_PORT || 3000;
 
+const { MIME_TYPES } = require("./src/mime");
+
 const Query = require('./src/query')
 const demoProvider = require('./src/providers/demo');
 const placeholderProvider = require('./src/providers/placeholder');
@@ -51,40 +53,26 @@ app.get('/main.js', (req, res) => res.sendFile(path.join(__dirname, "./frontend/
 
 app.post('/query', (req, res) => {
     const query = req.body['query'];
+    const option = req.body['option'];
+    const type = req.body['type'];
 
-    handleQuery(req, res, query);
+    handleQuery(req, res, query, type, option);
 });
 
 app.get('/query.:type', (req, res) => {
     const query = req.query['q'];
-    const insert = req.query['insert'];
+    const option = req.query['option'];
     const type = req.params['type'];
-    let mime;
-    switch (type) {
-        case "json":
-            mime = "application/json";
-            break;
-        case "csv":
-            mime = "text/csv";
-            break;
-        case "html":
-            mime = "text/html";
-            break;
-        case "sql":
-            mime = "application/sql";
-            break;
-        case "txt":
-            mime = "text/plain";
-            break;
-    }
 
-    handleQuery(req, res, query, mime, insert);
+    handleQuery(req, res, query, type, option);
 });
 
 app.get('/query', (req, res) => {
     const query = req.query['q'];
+    const type = req.query['type'];
+    const option = req.query['option'];
 
-    handleQuery(req, res, query);
+    handleQuery(req, res, query, type, option);
 });
 
 function handleQuery (req, res, query, type, name) {
@@ -96,7 +84,7 @@ function handleQuery (req, res, query, type, name) {
     }
 
     QueryExecutor.run(query).then(result => {
-        const mime = type || determineMimeType(req.header("accept"));
+        const mime = type ? MIME_TYPES[type] : determineMimeType(req.header("accept"));
         const acceptLanguage = req.header("Accept-Language");
         const locale = acceptLanguage && acceptLanguage.split(",")[0];
         res.header("Content-Type", mime);
@@ -117,9 +105,7 @@ app.listen(port, () => console.log(`Query server listening on port ${port}!`));
  * @returns {string}
  */
 function determineMimeType (mime) {
-    const accepted = ["application/json", "text/csv", "text/html", "application/sql", "text/plain"];
-
-    for (const type of accepted) {
+    for (const type of Object.values(MIME_TYPES)) {
         if (mime.includes(type)) {
             return type;
         }

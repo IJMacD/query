@@ -202,6 +202,14 @@ function evaluate (row, node, rows=null) {
         case NODE_TYPES.NUMBER: {
             return +node.id;
         }
+        case NODE_TYPES.CONSTANT: {
+            if (node.id === "TRUE") return true;
+            if (node.id === "FALSE") return false;
+            if (node.id === "NULL") return null;
+            if (node.id === "NOW") return new Date;
+            if (node.id === "PI") return Math.PI;
+            throw Error("Unrecognised constant: " + node.id);
+        }
         case NODE_TYPES.OPERATOR: {
             // Special treatment for AND and OR because we don't need to evaluate all
             // operands beforehand
@@ -336,7 +344,8 @@ function aggregateValues (context, rows, expr, distinct = false) {
  */
 function isConstantExpression (expr) {
     if (expr.type === NODE_TYPES.NUMBER ||
-        expr.type === NODE_TYPES.STRING)
+        expr.type === NODE_TYPES.STRING ||
+        expr.type === NODE_TYPES.CONSTANT)
     {
         return true;
     }

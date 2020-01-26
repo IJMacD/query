@@ -2,13 +2,11 @@ const PendingValue = Symbol("Pending Value");
 
 module.exports = {
     PendingValue,
-    resolveConstant,
     resolvePath,
     resolveValue,
     setTableAliases,
     getTableAliasMap,
 };
-const { isValidDate } = require('./util');
 const { SymbolError } = require('./evaluate');
 const { getRowData } = require('./joins');
 const { populateValue } = require('./process');
@@ -21,51 +19,6 @@ const { populateValue } = require('./process');
  * @typedef {import('..').ParsedTable} ParsedTable
  */
 
-
-/**
- * Returns a string or a number if the value is a constant.
- * Returns undefined otherwise.
- * @param {string} str
- * @returns {string|number|boolean|Date}
- */
-function resolveConstant (str) {
-    if (!str) { // null, undefined, ""
-        return; // undefined
-    }
-
-    if (str.toLowerCase() === "true") return true;
-    if (str.toLowerCase() === "false") return false;
-    if (str.toLowerCase() === "null") return null;
-
-    // Check for quoted string
-    if ((str.startsWith("'") && str.endsWith("'")) ||
-            (str.startsWith('"') && str.endsWith('"'))) {
-
-
-        const stripped = str.substring(1, str.length-1);
-
-        // Check for date
-        if (/^\d/.test(stripped)) {
-            // Must start with a number - for some reason
-            // 'Room 2' parses as a valid date
-            const d = new Date(stripped);
-            if (isValidDate(d)) {
-                return d;
-            }
-        }
-
-        return stripped;
-    }
-
-    // Check for numbers
-    if (!isNaN(+str)) {
-        return +str;
-    }
-
-    return; // undefined
-}
-
-
 /**
  * Resolve a col into a concrete value (constant or from object)
  * @this {QueryContext}
@@ -76,13 +29,6 @@ function resolveConstant (str) {
  */
 function resolveValue (row, col, rows=null) {
     const { tables, colAlias, cols } = this;
-
-    // Check for constant values first
-    const constant = resolveConstant(col);
-
-    if (typeof constant !== "undefined") {
-        return constant;
-    }
 
     // If row is null, there's nothing we can do
     if (row === null) {

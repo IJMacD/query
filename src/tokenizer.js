@@ -12,6 +12,7 @@ const TOKEN_TYPES = {
     NUMBER: 6,
     OPERATOR: 7,
     QUERY_OPERATOR: 8,
+    CONSTANT: 9,
 };
 
 const DEBUG_TOKEN_TYPES = Object.keys(TOKEN_TYPES);
@@ -63,7 +64,7 @@ module.exports = {
                 const str = string.substring(i + 1, end);
                 out.push({ type: TOKEN_TYPES.NAME, value: str, start: i });
                 i = end + 1;
-            } else if (/[-\d]/.test(c)) {
+            } else if (/^[-\d]/.test(c)) {
                 const r = /^(?:0x[0-9a-f]+|-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)/i;
                 const ss = string.substr(i);
                 const m = r.exec(ss);
@@ -117,6 +118,13 @@ module.exports = {
                     }
 
                     out.push({ type, value: m[0], start: i });
+                    i += m[0].length;
+                    continue;
+                }
+
+                m = /^(TRUE|FALSE|NULL|NOW|PI)/i.exec(ss);
+                if (m) {
+                    out.push({ type: TOKEN_TYPES.CONSTANT, value: m[0].toUpperCase(), start: i });
                     i += m[0].length;
                     continue;
                 }

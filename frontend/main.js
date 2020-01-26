@@ -461,6 +461,7 @@ function renderNode (node) {
         OPERATOR: 7,
         LIST: 8,
         COMPOUND_QUERY: 9,
+        CONSTANT: 10,
     };
     const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
 

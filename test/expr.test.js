@@ -111,6 +111,18 @@ describe("Constants", () => {
             expect(r[1][0]).toBeInstanceOf(Date);
         });
     });
+
+    test("Now", () => {
+        return runQuery("SELECT NOW").then(r => {
+            expect(r[1][0]).toBeInstanceOf(Date);
+        });
+    });
+
+    test("Pi", () => {
+        return runQuery("SELECT PI").then(r => {
+            expect(r[1][0]).toBe(Math.PI);
+        });
+    });
 });
 
 describe("Maths", () => {

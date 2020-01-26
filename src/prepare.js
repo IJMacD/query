@@ -34,6 +34,10 @@ function nodeToQueryObject (node) {
         throw new Error("You must specify FROM or SELECT or VALUES");
     }
 
+    if (out.values && (out.from || out.select)) {
+        throw Error("VALUES cannot be used with FROM or SELECT");
+    }
+
     if (!out.from) {
         out.from = [];
     }

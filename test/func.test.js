@@ -97,6 +97,14 @@ describe("Aggregate Functions", () => {
     });
   });
 
+  test("LISTAGG Empty Separator", () => {
+    return demoQuery("FROM Test SELECT LISTAGG(n, '')").then(r => {
+      // Don't forget header row
+      expect(r.length - 1).toBe(1);
+      expect(r[1][0]).toBe('0123456789');
+    });
+  });
+
   test("JSON_ARRAYAGG", () => {
     return demoQuery("FROM Test SELECT JSON_ARRAYAGG(n)").then(r => {
       // Don't forget header row

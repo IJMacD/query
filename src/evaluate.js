@@ -1,4 +1,3 @@
-
 class SymbolError extends Error { }
 
 module.exports = {
@@ -21,6 +20,7 @@ const {
     WINDOW_FUNCTIONS,
     AGGREGATE_FUNCTIONS,
     TABLE_VALUED_FUNCTIONS,
+    isStrictNull,
 } = require('./const');
 
 const { isValidDate } = require('./util');
@@ -328,7 +328,7 @@ function aggregateValues (context, rows, expr, distinct = false) {
   // All aggregate functions ignore null except COUNT(*)
   // We'll use our convenient 'IS NOT NULL' function to do the
   // filtering for us.
-  values = values.filter(OPERATORS['IS NOT NULL']);
+  values = values.filter(v => !isStrictNull(v));
 
   if (distinct) {
       values = Array.from(new Set(values));

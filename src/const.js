@@ -420,4 +420,5 @@ module.exports = {
     OPERATORS,
     TABLE_VALUED_FUNCTIONS,
     WINDOW_FUNCTIONS,
+    isStrictNull,
 };

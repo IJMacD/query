@@ -12,6 +12,7 @@ const Query = require('./src/query')
 const demoProvider = require('./src/providers/demo');
 const placeholderProvider = require('./src/providers/placeholder');
 // const indexedDBProvider = require('./src/providers/indexeddb');
+const fileProvider = require('./src/providers/file');
 const Formatter = require('./src/formatter');
 
 const [ node, script, ...rest ] = process.argv;
@@ -32,6 +33,7 @@ if (args.includes("--placeholder")) {
     providers++;
 }
 
+QueryExecutor.addProvider(fileProvider);
 
 // if (args.includes("--idb")) {
 //     QueryExecutor.addProvider(indexedDBProvider, "IDB");

@@ -237,6 +237,20 @@ describe("ORDER BY", () => {
         });
     });
 
+    test("Negative column number", () => {
+        return demoQuery("FROM Test_2 ORDER BY -2").then(r => {
+            expect(r[1][1]).toBe('a');
+            expect(r[10][1]).toBe('j');
+        });
+    });
+
+    test("Negative column number (Descending)", () => {
+        return demoQuery("FROM Test_2 ORDER BY -2 DESC").then(r => {
+            expect(r[1][1]).toBe('j');
+            expect(r[10][1]).toBe('a');
+        });
+    });
+
     test("Multiple Column", () => {
         return demoQuery("FROM Test ORDER BY n2 DESC, n").then(r => {
             expect(r[1][0]).toBe(8);

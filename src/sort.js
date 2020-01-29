@@ -61,8 +61,8 @@ function getOrderingValue (evaluate, row, parsedOrder, depth, rows=null) {
         // If we have a literal number it means we should
         // sort by nth column
         if (parsedOrder.type === NODE_TYPES.NUMBER) {
-            // Column numbers are 1-indexed
-            v = row[+parsedOrder.id - 1];
+            // If the column index is less than 0 then count from right.    Column numbers are 1-indexed
+            v = row[+parsedOrder.id < 0 ? (row.length + +parsedOrder.id) : (+parsedOrder.id - 1)];
         }
         else {
             v = evaluate(row, parsedOrder, rows);

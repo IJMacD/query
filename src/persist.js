@@ -19,7 +19,7 @@ if (process.env.APP_ENV === "browser") {
   const fs = require('fs');
   const pkg = require('../package.json');
 
-  const dir = `.${pkg.name}/persist`;
+  const dir = `${process.env.IL_DATA_DIR || "." + pkg.name}/persist`;
   const filename = key => `${dir}/${key}.json`;
 
   fs.mkdirSync(dir, { recursive: true });

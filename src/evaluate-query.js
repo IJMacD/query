@@ -25,13 +25,21 @@ const { getQueryContext } = require('./context');
  * @typedef {import('..').QueryContext} QueryContext
  */
 
+/**
+ * @typedef OuterContext
+ * @prop {QueryContext} context 
+ * @prop {ResultRow} row 
+ * @prop {ResultRow[]} rows
+ */
 
 /**
  * @param {Query} query
  * @param {Node} statementNode
+ * @param {OuterContext} [outer]
+ * @param {{ [name: string]: any }} [params]
  * @return {Promise<any[]>}
  */
-async function evaluateQuery (query, statementNode, outer = null) {
+async function evaluateQuery (query, statementNode, outer = null, params = null) {
     const { providers, views } = query;
 
     // TODO: Only uses first provider
@@ -77,6 +85,7 @@ async function evaluateQuery (query, statementNode, outer = null) {
         providers,
         views,
         outer,
+        params,
     });
 
     const evaluate = context.evaluate;

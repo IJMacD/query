@@ -19,6 +19,7 @@ const NODE_TYPES = {
     LIST: 8,
     COMPOUND_QUERY: 9,
     CONSTANT: 10,
+    PARAM: 11,
 };
 
 const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
@@ -555,6 +556,10 @@ function parseFromTokenList (tokenList, source="") {
             case TOKEN_TYPES.CONSTANT:
                 next();
                 out = { type: NODE_TYPES.CONSTANT, id: t.value };
+                break;
+            case TOKEN_TYPES.PARAM:
+                next();
+                out = { type: NODE_TYPES.PARAM, id: t.value };
                 break;
             case TOKEN_TYPES.OPERATOR:
                 next();

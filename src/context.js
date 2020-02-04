@@ -25,7 +25,7 @@ module.exports = {
  * @param {*} options
  * @returns {QueryContext}
  */
-function getQueryContext(query, { tables, clauses, windows, subqueries, CTEs, schema, views, providers, outer }) {
+function getQueryContext(query, { tables, clauses, windows, subqueries, CTEs, schema, views, providers, outer, params }) {
     /** @type {QueryContext} */
     const context = {
         query,
@@ -64,6 +64,8 @@ function getQueryContext(query, { tables, clauses, windows, subqueries, CTEs, sc
         userFunctions: schema.userFunctions || {},
 
         outer,
+
+        params,
     };
 
     context.evaluate = evaluate.bind(context);

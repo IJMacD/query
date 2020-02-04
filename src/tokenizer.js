@@ -13,6 +13,7 @@ const TOKEN_TYPES = {
     OPERATOR: 7,
     QUERY_OPERATOR: 8,
     CONSTANT: 9,
+    PARAM: 10,
 };
 
 const DEBUG_TOKEN_TYPES = Object.keys(TOKEN_TYPES);
@@ -86,6 +87,13 @@ module.exports = {
                     i += 1;
                 }
                 else throw new Error(`Unrecognised number: '${ss.substr(0, 10)}' at ${i}`);
+            } else if (c === ":") {
+                const re = /[a-z0-9]+/;
+                re.lastIndex = i;
+                const match = re.exec(string);
+                if (!match) throw Error("Tokenizer thought it was getting a param");
+                out.push({ type: TOKEN_TYPES.PARAM, value: match[0], start: i });
+                i += match[0].length + 1;
             } else {
                 const ss = string.substr(i);
 

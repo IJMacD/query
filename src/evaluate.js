@@ -210,6 +210,11 @@ function evaluate (row, node, rows=null) {
             if (node.id === "PI") return Math.PI;
             throw Error("Unrecognised constant: " + node.id);
         }
+        case NODE_TYPES.PARAM: {
+            if (typeof this.params === "undefined" || this.params === null || typeof this.params[node.id] === "undefined")
+                throw Error("Named parameter not found '" + node.id + "'");
+            return this.params[node.id];
+        }
         case NODE_TYPES.OPERATOR: {
             // Special treatment for AND and OR because we don't need to evaluate all
             // operands beforehand

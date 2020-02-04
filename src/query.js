@@ -7,6 +7,7 @@ const { performDDL, VIEW_KEY } = require('./ddl');
 
 /**
  * @typedef {import('..').Schema} Schema
+ * @typedef {import('..').Node} Node
  */
 
 class Query {
@@ -74,15 +75,20 @@ class Query {
         return this.runSelect(query);
     }
 
-    runSelect (query) {
-        const parsedQuery = Parser.parse(query);
+    /**
+     * 
+     * @param {string|Node} query 
+     * @param {object} [params] 
+     */
+    runSelect (query, params) {
+        const parsedQuery = typeof query === "string" ? Parser.parse(query) : query;
 
         if (parsedQuery.type === NODE_TYPES.COMPOUND_QUERY) {
-            return evaluateCompoundQuery(this, parsedQuery);
+            return evaluateCompoundQuery(this, parsedQuery, params);
         }
 
         if (parsedQuery.type === NODE_TYPES.STATEMENT) {
-            return evaluateQuery(this, parsedQuery);
+            return evaluateQuery(this, parsedQuery, null, params);
         }
 
         throw new Error(`Cannot evaluate node type ${DEBUG_NODE_TYPES[parsedQuery.type]} as Query`);
@@ -94,8 +100,8 @@ class Query {
      * @returns {Promise<any[][][]>}
      */
     runQueries (queries) {
-      return Promise.all(queries.map(q => this.run(q)));
-  }
+        return Promise.all(queries.map(q => this.run(q)));
+    }
 }
 
 module.exports = Query;

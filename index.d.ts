@@ -19,6 +19,8 @@ declare namespace Query {
     NUMBER = 6,
     OPERATOR = 7,
     QUERY_OPERATOR = 8,
+    CONSTANT = 9,
+    PARAM = 10,
   }
 
   enum NodeTypes {
@@ -32,6 +34,8 @@ declare namespace Query {
     OPERATOR = 7,
     LIST = 8,
     COMPOUND_QUERY = 9,
+    CONSTANT = 10,
+    PARAM = 11,
   }
 
   interface Token {
@@ -97,6 +101,8 @@ declare namespace Query {
       row: ResultRow;
       rows: ResultRow[];
     }
+
+    params: { [name: string]: any };
 
     evaluate: (row: ResultRow, node: Node, rows?: ResultRow[]) => string|number|boolean|Date;
 

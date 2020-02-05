@@ -1,4 +1,5 @@
 const input =  /** @type {HTMLInputElement} */ (document.getElementById("input"));
+const paramsDiv = document.getElementById("params");
 const output = document.getElementById("output");
 const queryForm = document.getElementById("query-form");
 const querySuggest = document.getElementById("query-suggest");
@@ -13,7 +14,10 @@ const HISTORY_SAVE_COUNT = 100;
 let queryHistory = loadHistory();
 const FLOATING_EXPLORER = false;
 
+const { NODE_TYPES } = require("../src/types");
+
 let isInputExpanded = false;
+let params = {};
 
 /**
  * Use <object> instead of <img>
@@ -63,7 +67,7 @@ document.addEventListener("keydown", e => {
 if (FLOATING_EXPLORER) {
     document.addEventListener("click", e => {
         hideSuggestions();
-        if (!explorer.contains(e.target)) {
+        if (e.target instanceof HTMLElement && !explorer.contains(e.target)) {
             explorer.style.display = "none";
         }
     });
@@ -291,37 +295,59 @@ function sendQuery () {
     const start = Date.now();
     location.hash = "#q=" + encodeURIComponent(value);
     document.title = "Query: " + value;
-    query(value)
-        .then(data => {
-            const duration = (Date.now() - start) / 1000;
-            saveHistory(value);
-
-            if (data.length === 2 && data[0][0] === "AST") {
-                output.innerHTML = renderAST(data[1][0]);
-                return;
+    let promise;
+    if (query.prepare) {
+        paramsDiv.innerHTML = "";
+        try {
+            const stmt = query.prepare(value);
+            for (const p of stmt.namedParams) {
+                if (typeof params[p] === "undefined") params[p] = "";
+                const el = document.createElement("input");
+                el.value = params[p];
+                el.title = p;
+                el.placeholder = p;
+                el.onchange = () => params[p] = isNaN(+el.value) ? el.value : +el.value;
+                paramsDiv.appendChild(el);
             }
+            promise = stmt.execute(params);
+        } catch (e) {
+            promise = query(value);
+        }
+    } else {
+        promise = query(value);
+    }
+    promise.then(data => {
+        const duration = (Date.now() - start) / 1000;
+        saveHistory(value);
 
-            output.innerHTML = renderTable({ rows: data.slice(), duration });
+        console.log(data);
 
-            if (data.length >= 3 && data[0].length >= 2 &&
-                typeof data[1][0] === "number" && typeof data[1][1] === "number")
-            {
-                const btn = document.createElement("button");
-                btn.innerHTML = "Graph " + data[0][1] + " vs. " + data[0][0];
-                btn.addEventListener("click", () => {
-                    output.removeChild(btn);
-                    output.appendChild(renderGraph(data.slice()));
-                });
-                output.appendChild(btn);
-            }
-        })
-        .catch(e => {
-            output.innerHTML = `<p style="color: red; margin: 20px; font-family: monospace;">${e}</p>`;
-        })
-        .then(() => {
-            input.disabled = false;
-            expandedInput.disabled = false;
-        });
+        if (data.length === 2 && data[0][0] === "AST") {
+            output.innerHTML = renderAST(data[1][0]);
+            return;
+        }
+
+        output.innerHTML = renderTable({ rows: data.slice(), duration });
+
+        if (data.length >= 3 && data[0].length >= 2 &&
+            typeof data[1][0] === "number" && typeof data[1][1] === "number")
+        {
+            const btn = document.createElement("button");
+            btn.innerHTML = "Graph " + data[0][1] + " vs. " + data[0][0];
+            btn.addEventListener("click", () => {
+                output.removeChild(btn);
+                output.appendChild(renderGraph(data.slice()));
+            });
+            output.appendChild(btn);
+        }
+    })
+    .catch(e => {
+        output.innerHTML = `<p style="color: red; margin: 20px; font-family: monospace;">${e}</p>`;
+    })
+    .then(() => {
+        input.disabled = false;
+        expandedInput.disabled = false;
+    });
 }
 
 /**
@@ -446,23 +472,6 @@ function renderAST (json) {
 
 
 function renderNode (node) {
-    /**
-     * Shouldn't really be copied!
-     * @enum {number}
-     */
-    const NODE_TYPES = {
-        UNKNOWN: 0,
-        STATEMENT: 1,
-        CLAUSE: 2,
-        FUNCTION_CALL: 3,
-        SYMBOL: 4,
-        STRING: 5,
-        NUMBER: 6,
-        OPERATOR: 7,
-        LIST: 8,
-        COMPOUND_QUERY: 9,
-        CONSTANT: 10,
-    };
     const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
 
     const type = DEBUG_NODE_TYPES[node.type].toLowerCase().replace(/[ _]/g, "-");

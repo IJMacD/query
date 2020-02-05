@@ -1,21 +1,4 @@
-/**
- * TOKENS
- * @enum {number}
- */
-const TOKEN_TYPES = {
-    UNKNOWN: 0,
-    BRACKET: 1,
-    COMMA: 2,
-    KEYWORD: 3,
-    NAME: 4,
-    STRING: 5,
-    NUMBER: 6,
-    OPERATOR: 7,
-    QUERY_OPERATOR: 8,
-    CONSTANT: 9,
-    PARAM: 10,
-};
-
+const { TOKEN_TYPES } = require('./types');
 const DEBUG_TOKEN_TYPES = Object.keys(TOKEN_TYPES);
 
 /** @typedef {import('..').Token} Token */
@@ -88,7 +71,7 @@ module.exports = {
                 }
                 else throw new Error(`Unrecognised number: '${ss.substr(0, 10)}' at ${i}`);
             } else if (c === ":") {
-                const re = /[a-z0-9]+/;
+                const re = /[a-z0-9_]+/gi;
                 re.lastIndex = i;
                 const match = re.exec(string);
                 if (!match) throw Error("Tokenizer thought it was getting a param");

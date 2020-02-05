@@ -89,5 +89,5 @@ function findWhere (symbol, operator="=") {
         return; // undefined
     }
 
-    return traverseWhereTree(this.where, symbol, operator);
+    return traverseWhereTree(this.where, symbol, operator, this.params);
 }

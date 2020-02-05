@@ -61,7 +61,7 @@ function filterRow(context, row, condition, rows, strict) {
  * @param {string|string[]} operator
  * @returns {string|number}
  */
-function traverseWhereTree (node, symbol, operator="=") {
+function traverseWhereTree (node, symbol, operator="=", params=null) {
   if (node.type !== NODE_TYPES.OPERATOR) {
       return; // undefined
   }
@@ -89,12 +89,12 @@ function traverseWhereTree (node, symbol, operator="=") {
       }
   }
   else if (node.id === "AND") {
-      const child1 = traverseWhereTree(node.children[0], symbol, operator);
+      const child1 = traverseWhereTree(node.children[0], symbol, operator, params);
       if (typeof child1 !== "undefined") {
           return child1;
       }
 
-      const child2 = traverseWhereTree(node.children[1], symbol, operator);
+      const child2 = traverseWhereTree(node.children[1], symbol, operator, params);
       return child2;
   } else {
       return; // undefined

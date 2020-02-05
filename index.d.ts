@@ -9,42 +9,17 @@ declare class Query {
 }
 
 declare namespace Query {
-  enum TokenTypes {
-    UNKNOWN = 0,
-    BRACKET = 1,
-    COMMA = 2,
-    KEYWORD = 3,
-    NAME = 4,
-    STRING = 5,
-    NUMBER = 6,
-    OPERATOR = 7,
-    QUERY_OPERATOR = 8,
-    CONSTANT = 9,
-    PARAM = 10,
-  }
+  export { NODE_TYPES as NodeTypes } from './src/types';
 
-  enum NodeTypes {
-    UNKNOWN = 0,
-    STATEMENT = 1,
-    CLAUSE = 2,
-    FUNCTION_CALL = 3,
-    SYMBOL = 4,
-    STRING = 5,
-    NUMBER = 6,
-    OPERATOR = 7,
-    LIST = 8,
-    COMPOUND_QUERY = 9,
-    CONSTANT = 10,
-    PARAM = 11,
-  }
+  export { TOKEN_TYPES as TokenTypes } from './src/types';
 
-  interface Token {
+  export interface Token {
     type: TokenTypes;
     value?: string;
     start: number;
   }
 
-  interface Node {
+  export interface Node {
     type: NodeTypes;
     id: string | number;
     alias?: string;
@@ -61,7 +36,7 @@ declare namespace Query {
     headers?: string[];
   }
 
-  interface WindowSpec {
+  export interface WindowSpec {
     partition?: Node;
     order?: Node;
     frameUnit?: "rows"|"range"|"groups";
@@ -69,12 +44,12 @@ declare namespace Query {
     following?: number;
   }
 
-  class ResultRow extends Array {
+  export class ResultRow extends Array {
     data?: { [join: string]: any };
     ROWID?: string;
   }
 
-  interface QueryContext {
+  export interface QueryContext {
     query: Query;
 
     cols: Node[];
@@ -120,13 +95,13 @@ declare namespace Query {
     setRowData: (row: ResultRow, table: ParsedTable, data: any) => void;
   }
 
-  interface Schema {
+  export interface Schema {
     name?: string;
     callbacks?: QueryCallbacks;
     userFunctions?: { [name: string]: (...params) => any };
   }
 
-  interface QueryCallbacks {
+  export interface QueryCallbacks {
     primaryTable?: (ParsedFrom) => Promise<any[]>|any[];
     beforeJoin?: (ParsedFrom, results: any[]) => Promise<void>;
     afterJoin?: (ParsedFrom, results: any[]) => Promise<void>;
@@ -139,7 +114,7 @@ declare namespace Query {
     dropTable?: (name: string) => Promise,
   }
 
-  interface ParsedTable {
+  export interface ParsedTable {
     name: string;
     join?: string|[ParsedTable, string];
     predicate?: Node;

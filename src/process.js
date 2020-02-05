@@ -83,7 +83,7 @@ async function getRows(context) {
                 const isConstant = table.params.every(p => isConstantExpression(p));
 
                 // If the function call is purely constant, just evaluate it once
-                const constantResults = isConstant && await fn(...table.params.map(p => evaluateConstantExpression(p)));
+                const constantResults = isConstant && await fn(...table.params.map(p => evaluateConstantExpression(p, context.params)));
 
                 await Promise.all(rows.map(async row => {
                     const results = constantResults || await fn(...table.params.map(p => context.evaluate(row, p, rows)));
@@ -220,7 +220,7 @@ function processColumns (context, rawCols, rows) {
  * @returns {Promise<any[]>}
  */
 async function getPrimaryResults(context, table) {
-    const { views, CTEs, query } = context;
+    const { views, CTEs, query, params } = context;
 
     let schemaName;
     let tableName = table.name;
@@ -230,7 +230,7 @@ async function getPrimaryResults(context, table) {
     }
 
     if (table.subquery) {
-        return queryResultToObjectArray(await evaluateCompound(query, table.subquery), table.subquery.headers);
+        return queryResultToObjectArray(await evaluateCompound(query, table.subquery, params), table.subquery.headers);
     }
 
     if (table.name in CTEs) {
@@ -246,7 +246,7 @@ async function getPrimaryResults(context, table) {
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {
-        return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateConstantExpression(c)));
+        return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateConstantExpression(c, context.params)));
     }
 
     const { callbacks } = context.providers[schemaName] || context.schema;

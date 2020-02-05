@@ -7,20 +7,7 @@ const { repeat } = require('./util');
 /** @typedef {import('..').NodeTypes} NodeTypes */
 /** @typedef {import('..').TokenTypes} TokenTypes */
 
-const NODE_TYPES = {
-    UNKNOWN: 0,
-    STATEMENT: 1,
-    CLAUSE: 2,
-    FUNCTION_CALL: 3,
-    SYMBOL: 4,
-    STRING: 5,
-    NUMBER: 6,
-    OPERATOR: 7,
-    LIST: 8,
-    COMPOUND_QUERY: 9,
-    CONSTANT: 10,
-    PARAM: 11,
-};
+const { NODE_TYPES } = require('./types');
 
 const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
 

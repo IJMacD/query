@@ -62,7 +62,7 @@ async function evaluateQuery (query, statementNode, outer = null, params = null)
 
     if (clauses.values) {
         // VALUES clause trumps everything else
-        return evaluateValues(clauses.values);
+        return evaluateValues(clauses.values, params);
     }
 
     const select = clauses.select;
@@ -171,7 +171,7 @@ async function evaluateQuery (query, statementNode, outer = null, params = null)
     /******************
      * Limit and Offset
      ******************/
-    rows = applyLimit(rows, clauses.limit, clauses.offset);
+    rows = applyLimit(rows, clauses.limit, clauses.offset, params);
 
     /*****************
      * Output

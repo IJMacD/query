@@ -12,7 +12,6 @@ module.exports = {
 };
 
 const { NODE_TYPES, KEYWORD_CONSTANTS } = require('./parser');
-const { resolveConstant } = require('./resolve');
 
 const {
     OPERATORS,
@@ -173,10 +172,6 @@ function evaluate (row, node, rows=null) {
                     return this.resolveValue(row, id, rows);
                 }
 
-                // We must be in a constant expression
-                const const_val = resolveConstant(id);
-                if (typeof const_val !== "undefined") return const_val;
-
                 throw new Error(`Symbol detected in Constant Expression: "${node.id}"`);
             } catch (e) {
                 // If no symbol in the result set matched then it might be one of these keywords
@@ -277,8 +272,8 @@ function getRowEvaluator(context, node, rows=null) {
     };
 }
 
-function evaluateConstantExpression(node) {
-    const dummyContext = { evaluate };
+function evaluateConstantExpression(node, params=null) {
+    const dummyContext = { evaluate, params };
     return evaluate.call(dummyContext, null, node);
 }
 
@@ -350,7 +345,8 @@ function aggregateValues (context, rows, expr, distinct = false) {
 function isConstantExpression (expr) {
     if (expr.type === NODE_TYPES.NUMBER ||
         expr.type === NODE_TYPES.STRING ||
-        expr.type === NODE_TYPES.CONSTANT)
+        expr.type === NODE_TYPES.CONSTANT ||
+        expr.type === NODE_TYPES.PARAM)
     {
         return true;
     }

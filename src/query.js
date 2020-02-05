@@ -80,7 +80,7 @@ class Query {
      * @param {string|Node} query 
      * @param {object} [params] 
      */
-    runSelect (query, params) {
+    runSelect (query, params) {        
         const parsedQuery = typeof query === "string" ? Parser.parse(query) : query;
 
         if (parsedQuery.type === NODE_TYPES.COMPOUND_QUERY) {

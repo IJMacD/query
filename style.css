@@ -23,7 +23,7 @@ form {
     right: 0;
     top: 0;
 }
-input,
+#input,
 textarea {
     flex: 1;
     font-size: 1.1em;
@@ -51,6 +51,9 @@ button  {
 .input-left {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
+}
+#params {
+    margin: 8px;
 }
 .link {
     background: none;
@@ -293,8 +296,16 @@ canvas {
 .node-type-symbol {
     background: white;
     border: #999 1px solid;
-    padding: 2px 4px;
+    padding: 2px 8px 4px;
     border-radius: 13px;
+}
+
+.node-type-constant {
+    border: 1px solid hsl(36, 82%, 26%);
+    background: hsl(36, 82%, 95%);
+    color: hsl(36, 82%, 26%);
+    padding: 4px 8px;
+    margin: 4px;
 }
 
 .node-id {

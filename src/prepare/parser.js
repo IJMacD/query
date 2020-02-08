@@ -252,7 +252,7 @@ function parseFromTokenList (tokenList, source="") {
                             while(isList()) {
                                 const id = expect(TOKEN_TYPES.NAME).value;
                                 child.headers.push(id);
-                                }
+                            }
 
                             expect(TOKEN_TYPES.BRACKET, ")");
                         }
@@ -276,8 +276,8 @@ function parseFromTokenList (tokenList, source="") {
                     }
 
                     child.source = source.substring(c.start, current() && current().start).trim();
-                    }
-                break;
+                }
+            break;
             case "SELECT":
                 if (suspect(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
                     out.distinct = true;
@@ -296,27 +296,27 @@ function parseFromTokenList (tokenList, source="") {
                     }
 
                     child.source = source.substring(c.start, current() && current().start).trim();
-                    }
-                break;
+                }
+            break;
             case "ORDER BY":
                 while (isList()) {
                     // Consume each item in the list following the keyword
                     out.children.push(descendOrder());
-                    }
-                break;
+                }
+            break;
             case "GROUP BY":
                 while (isList()) {
                     // Consume each item in the list following the keyword
                     out.children.push(descendExpression());
                 }
-                break;
+            break;
             case "WHERE":
             case "HAVING":
             case "LIMIT":
             case "OFFSET":
                 // Single expression child
                 out.children.push(descendExpression());
-                break;
+            break;
             case "WITH":
                 while (isList()) {
                     const c = current();
@@ -332,7 +332,7 @@ function parseFromTokenList (tokenList, source="") {
                         while(isList()) {
                             const id = expect(TOKEN_TYPES.NAME).value;
                             child.headers.push(id);
-                            }
+                        }
 
                         expect(TOKEN_TYPES.BRACKET, ")");
                     }
@@ -346,7 +346,7 @@ function parseFromTokenList (tokenList, source="") {
 
                     child.source = source.substring(c.start, current() && current().start).trim();
                 }
-                break;
+            break;
             case "WINDOW":
                 while (isList()) {
                     const c = current();
@@ -366,7 +366,7 @@ function parseFromTokenList (tokenList, source="") {
 
                     child.source = source.substring(c.start, current() && current().start).trim();
                 }
-                break;
+            break;
             case "VALUES":
                 while (isList()) {
                     const c = current();
@@ -380,8 +380,8 @@ function parseFromTokenList (tokenList, source="") {
                     expect(TOKEN_TYPES.BRACKET, ")");
 
                     child.source = source.substring(c.start, current() && current().start).trim();
-                    }
-                break;
+                }
+            break;
             case "EXPLAIN":
                 if (suspect(TOKEN_TYPES.NAME, "ANALYSE")) {
                     out.children.push({ type: NODE_TYPES.SYMBOL, id: "ANALYSE" });
@@ -391,7 +391,45 @@ function parseFromTokenList (tokenList, source="") {
                 } else {
                     out.children.push({ type: NODE_TYPES.SYMBOL, id: "QUERY" });
                 }
-                break;
+            break;
+            case "CREATE TABLE":
+            case "DROP TABLE": {
+                const id = expect(TOKEN_TYPES.NAME).value;
+                // Abuse alias field to save table name
+                out.alias = id;
+            }
+            break;
+            case "INSERT INTO": 
+            case "DELETE FROM": {
+                const id = expect(TOKEN_TYPES.NAME).value;
+                out.children.push({ type: NODE_TYPES.SYMBOL, id });
+            }
+            break;
+            case "UPDATE": {
+                const id = expect(TOKEN_TYPES.NAME).value;
+                // Abuse alias field to save table name
+                out.alias = id;
+
+                expect(TOKEN_TYPES.KEYWORD, "SET");
+
+                while (isList()) {
+                    const name = expect(TOKEN_TYPES.NAME).value;
+
+                    expect(TOKEN_TYPES.OPERATOR, "=");
+
+                    const value = descendExpression();
+
+                    out.children.push({
+                        type: NODE_TYPES.OPERATOR,
+                        id: "=",
+                        children: [
+                            { type: NODE_TYPES.SYMBOL, id: name },
+                            value,
+                        ],
+                    });
+                }
+            }
+            break;
             default:
                 throw new TokenError(t, source, TOKEN_TYPES.KEYWORD);
         }

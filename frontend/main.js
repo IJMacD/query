@@ -501,8 +501,8 @@ function renderNode (node) {
             const source = (c.source || "");
             const aliasSource = source.match(/ +AS +"?[a-zA-Z0-9_.]+"? *$/);
             return `<li title="${source.replace(/"/g, '&quot;')}">
-                ${c.alias?`<span class="node-alias" title="${aliasSource ? aliasSource[0].replace(/"/g, '&quot;') : ''}">${c.alias}</span>`:''}
                 ${renderNode(c)}
+                ${c.alias?`<span class="node-alias" title="${aliasSource ? aliasSource[0].replace(/"/g, '&quot;') : ''}">${c.alias} ${c.headers?`(${c.headers.join()})`:""}</span>`:''}
             </li>`
         }).join('')}</ul>` : ''}
     </div>`;

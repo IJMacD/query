@@ -322,6 +322,7 @@ canvas {
     height: 24px;
     right: 0;
 }
+
 .node-alias::before {
     content: "";
     border: 12px solid transparent;
@@ -331,6 +332,7 @@ canvas {
     top: -1px;
     height: 0;
 }
+
 .node-alias::after {
     content: "";
     border: 11px solid transparent;
@@ -359,4 +361,18 @@ canvas {
 .node-type-string .node-id::before,
 .node-type-string .node-id::after {
     content: "'";
+}
+
+.node-type-list {
+    border: 1px solid #f7e694;
+    background: #ffe7a5;
+    padding: 8px;
+    margin: 4px;
+}
+
+.node-type-param {
+    border: 1px dashed #4c3100;
+    background: #ece9c5;
+    padding: 0 0 2px 8px;
+    border-radius: 5px;
 }

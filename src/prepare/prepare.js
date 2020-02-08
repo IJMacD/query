@@ -12,6 +12,9 @@ module.exports = {
 
 const { NODE_TYPES } = require('./parser');
 
+// One of these clauses must be present in the query
+const REQUIRED_CLAUSES = ['FROM','SELECT','VALUES','INSERT INTO','UPDATE','DELETE FROM','CREATE TABLE','DROP TABLE'];
+
 function nodeToQueryObject (node) {
     if (node.type !== NODE_TYPES.STATEMENT) {
         throw TypeError("Not a statement node")
@@ -30,8 +33,8 @@ function nodeToQueryObject (node) {
         }
     }
 
-    if (!out.from && !out.select && !out.values) {
-        throw new Error("You must specify FROM or SELECT or VALUES");
+    if (!REQUIRED_CLAUSES.some(rq => typeof out[rq.toLowerCase()] !== "undefined")) {
+        throw new Error("You must specify FROM, SELECT or VALUES");
     }
 
     if (out.values && (out.from || out.select)) {

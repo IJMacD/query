@@ -14,7 +14,23 @@ const HISTORY_SAVE_COUNT = 100;
 let queryHistory = loadHistory();
 const FLOATING_EXPLORER = false;
 
-const { NODE_TYPES } = require("../src/types");
+// Needs to be duplicated here because in server mode
+// this file is not built and is sent as-is
+// i.e. require() does not exist in browser
+const NODE_TYPES = {
+    UNKNOWN: 0,
+    STATEMENT: 1,
+    CLAUSE: 2,
+    FUNCTION_CALL: 3,
+    SYMBOL: 4,
+    STRING: 5,
+    NUMBER: 6,
+    OPERATOR: 7,
+    LIST: 8,
+    COMPOUND_QUERY: 9,
+    CONSTANT: 10,
+    PARAM: 11,
+};
 
 let isInputExpanded = false;
 let params = {};

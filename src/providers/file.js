@@ -114,21 +114,32 @@ async function deleteFromTable (name, where) {
     }
 }
 
-function dropTable () {}
+async function dropTable (name) {
+    const file = filename(name);
+    try {
+        await fs.unlink(file);
+    } catch (e) {
+        throw Error(`Unable to DROP TABLE '${name}'`);
+    }
+}
 
 
 async function readTable(name) {
     const file = filename(name);
-    const buf = await fs.readFile(file);
-    let data;
-    if (buf.length === 0) {
-        data = [];
-    }
-    else {
-        data = JSON.parse(buf.toString());
-        if (!Array.isArray(data)) {
-            data = [ data ];
+        try {
+        const buf = await fs.readFile(file);
+        let data;
+        if (buf.length === 0) {
+            data = [];
         }
+        else {
+            data = JSON.parse(buf.toString());
+            if (!Array.isArray(data)) {
+                data = [ data ];
+            }
+        }
+        return data;
+    } catch (e) {
+        throw Error(`Table '${name}' does not exist`);
     }
-    return data;
 }

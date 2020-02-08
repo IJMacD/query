@@ -166,7 +166,9 @@ function parseFromTokenList (tokenList, source="") {
     }
 
     function isList () {
-        return (!end() && !peek(TOKEN_TYPES.KEYWORD) && !peek(TOKEN_TYPES.BRACKET, ")"));
+        // This implementation will allow a leading comma in a list
+        suspect(TOKEN_TYPES.COMMA);
+        return (!end() && !peek(TOKEN_TYPES.KEYWORD) && !peek(TOKEN_TYPES.QUERY_OPERATOR) && !peek(TOKEN_TYPES.BRACKET, ")"));
     }
 
     function descendQueryExpression () {
@@ -202,7 +204,7 @@ function parseFromTokenList (tokenList, source="") {
             children: [],
         };
 
-        while (!end() && !peek(TOKEN_TYPES.BRACKET, ")") && !peek(TOKEN_TYPES.QUERY_OPERATOR)) {
+        while (peek(TOKEN_TYPES.KEYWORD)) {
             out.children.push(descendClause());
         }
 
@@ -250,11 +252,7 @@ function parseFromTokenList (tokenList, source="") {
                             while(isList()) {
                                 const id = expect(TOKEN_TYPES.NAME).value;
                                 child.headers.push(id);
-
-                                if (!suspect(TOKEN_TYPES.COMMA)) {
-                                    break;
                                 }
-                            }
 
                             expect(TOKEN_TYPES.BRACKET, ")");
                         }
@@ -278,11 +276,7 @@ function parseFromTokenList (tokenList, source="") {
                     }
 
                     child.source = source.substring(c.start, current() && current().start).trim();
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
                     }
-                }
                 break;
             case "SELECT":
                 if (suspect(TOKEN_TYPES.KEYWORD, "DISTINCT")) {
@@ -302,30 +296,18 @@ function parseFromTokenList (tokenList, source="") {
                     }
 
                     child.source = source.substring(c.start, current() && current().start).trim();
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
                     }
-                }
                 break;
             case "ORDER BY":
                 while (isList()) {
                     // Consume each item in the list following the keyword
                     out.children.push(descendOrder());
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
                     }
-                }
                 break;
             case "GROUP BY":
                 while (isList()) {
                     // Consume each item in the list following the keyword
                     out.children.push(descendExpression());
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
-                    }
                 }
                 break;
             case "WHERE":
@@ -350,11 +332,7 @@ function parseFromTokenList (tokenList, source="") {
                         while(isList()) {
                             const id = expect(TOKEN_TYPES.NAME).value;
                             child.headers.push(id);
-
-                            if (!suspect(TOKEN_TYPES.COMMA)) {
-                                break;
                             }
-                        }
 
                         expect(TOKEN_TYPES.BRACKET, ")");
                     }
@@ -365,10 +343,6 @@ function parseFromTokenList (tokenList, source="") {
                     child.children = [ descendQueryExpression() ];
 
                     expect(TOKEN_TYPES.BRACKET, ")");
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
-                    }
 
                     child.source = source.substring(c.start, current() && current().start).trim();
                 }
@@ -391,10 +365,6 @@ function parseFromTokenList (tokenList, source="") {
                     out.children.push(child);
 
                     child.source = source.substring(c.start, current() && current().start).trim();
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
-                    }
                 }
                 break;
             case "VALUES":
@@ -406,19 +376,11 @@ function parseFromTokenList (tokenList, source="") {
                     expect(TOKEN_TYPES.BRACKET, "(");
                     while (isList()) {
                         child.children.push(descendExpression());
-
-                        if (!suspect(TOKEN_TYPES.COMMA)) {
-                            break;
-                        }
                     }
                     expect(TOKEN_TYPES.BRACKET, ")");
 
                     child.source = source.substring(c.start, current() && current().start).trim();
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
                     }
-                }
                 break;
             case "EXPLAIN":
                 if (suspect(TOKEN_TYPES.NAME, "ANALYSE")) {
@@ -561,10 +523,6 @@ function parseFromTokenList (tokenList, source="") {
 
                 while(isList()) {
                     out.children.push(descendExpression());
-
-                    if (!suspect(TOKEN_TYPES.COMMA)) {
-                        break;
-                    }
                 }
 
                 expect(TOKEN_TYPES.BRACKET, ")");

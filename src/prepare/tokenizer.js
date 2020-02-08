@@ -1,7 +1,7 @@
-const { TOKEN_TYPES } = require('./types');
+const { TOKEN_TYPES } = require('../types');
 const DEBUG_TOKEN_TYPES = Object.keys(TOKEN_TYPES);
 
-/** @typedef {import('..').Token} Token */
+/** @typedef {import('../..').Token} Token */
 
 module.exports = {
     /**

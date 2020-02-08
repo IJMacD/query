@@ -2,7 +2,7 @@ module.exports = evaluateValues;
 
 const { evaluateConstantExpression } = require('./evaluate');
 
-/** @typedef {import('..').Node} Node */
+/** @typedef {import('../..').Node} Node */
 
 /**
  * Evaluate VALUES clause

@@ -11,7 +11,7 @@ module.exports = {
     SymbolError,
 };
 
-const { NODE_TYPES, KEYWORD_CONSTANTS } = require('./parser');
+const { NODE_TYPES, KEYWORD_CONSTANTS } = require('../prepare/parser');
 
 const {
     OPERATORS,
@@ -22,15 +22,15 @@ const {
     isStrictNull,
 } = require('./const');
 
-const { isValidDate } = require('./util');
+const { isValidDate } = require('../util');
 
 /**
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ParsedTable} ParsedTable
- * @typedef {import('..').WindowSpec} WindowSpec
- * @typedef {import('..').ResultRow} ResultRow
- * @typedef {import('..').QueryCallbacks} QueryCallbacks
- * @typedef {import('..').QueryContext} QueryContext
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ParsedTable} ParsedTable
+ * @typedef {import('../..').WindowSpec} WindowSpec
+ * @typedef {import('../..').ResultRow} ResultRow
+ * @typedef {import('../..').QueryCallbacks} QueryCallbacks
+ * @typedef {import('../..').QueryContext} QueryContext
  */
 
  /** @typedef {string|number|boolean|Date} Primitive */

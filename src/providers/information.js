@@ -3,16 +3,16 @@ const {
   AGGREGATE_FUNCTIONS,
   WINDOW_FUNCTIONS,
   TABLE_VALUED_FUNCTIONS
-} = require('./const');
+} = require('../evaluate/const');
 
-const Query = require('./query');
+const Query = require('../query');
 
 module.exports = {
   informationSchema,
 };
 
-/** @typedef {import('..')} Query */
-/** @typedef {import('..').QueryContext} QueryContext */
+/** @typedef {import('../..')} Query */
+/** @typedef {import('../..').QueryContext} QueryContext */
 
 /**
  * @param {QueryContext} context

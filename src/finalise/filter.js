@@ -1,5 +1,5 @@
-const { NODE_TYPES } = require('./parser');
-const { SymbolError, evaluateConstantExpression } = require('./evaluate');
+const { NODE_TYPES } = require('../types');
+const { SymbolError, evaluateConstantExpression } = require('../evaluate/evaluate');
 
 module.exports = {
   filterRow,
@@ -8,11 +8,11 @@ module.exports = {
 };
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').QueryContext} QueryContext
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ResultRow} ResultRow
- * @typedef {import('..').ParsedTable} ParsedTable
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').QueryContext} QueryContext
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ResultRow} ResultRow
+ * @typedef {import('../..').ParsedTable} ParsedTable
  */
 
 /**

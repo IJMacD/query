@@ -1,11 +1,11 @@
-const { queryResultToObjectArray, zip } = require('./util');
+const { queryResultToObjectArray, zip } = require('../util');
 
 const moment = require('moment');
 const momentDurationFormatSetup = require('moment-duration-format');
 // @ts-ignore
 momentDurationFormatSetup(moment);
 
-const { isNullDate, toUTF8Array } = require('./util');
+const { isNullDate, toUTF8Array } = require('../util');
 
 const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -297,8 +297,8 @@ const TABLE_VALUED_FUNCTIONS = {
 
 function isNumeric (n) { return +n == n; }
 
-/** @typedef {import('..').ResultRow} ResultRow */
-/** @typedef {import('..').Node} Node */
+/** @typedef {import('../..').ResultRow} ResultRow */
+/** @typedef {import('../..').Node} Node */
 /** @typedef {(index: number, values: number[], rows?: ResultRow[], executor?: (row: ResultRow, node: Node) => any, ...other: any) => any} WindowFunction */
 
 /**

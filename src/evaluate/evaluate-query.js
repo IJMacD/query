@@ -1,28 +1,28 @@
 module.exports = evaluateQuery;
 
-const { scalar } = require('./util');
+const { scalar } = require('../util');
 const { getRows, processColumns, populateValues } = require('./process');
 const { setTableAliases } = require('./resolve');
-const { filterRows } = require('./filter');
+const { filterRows } = require('../finalise/filter');
 const { groupRows, populateAggregates } = require ('./aggregates');
-const { sortRows } = require('./sort');
-const { explain } = require('./explain');
+const { sortRows } = require('../finalise/sort');
+const { explain } = require('../explain');
 const { distinctResults } = require('./compound');
-const { getCTEsMap } = require('./subquery');
-const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('./prepare');
+const { getCTEsMap } = require('../prepare/subquery');
+const { nodeToQueryObject, nodesToTables, getWindowsMap } = require('../prepare/prepare');
 const evaluateValues = require('./evaluate-values');
-const { applyLimit } = require('./limit');
-const { getQueryContext } = require('./context');
+const { applyLimit } = require('../finalise/limit');
+const { getQueryContext } = require('../prepare/context');
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').Schema} Schema
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ParsedTable} ParsedTable
- * @typedef {import('..').WindowSpec} WindowSpec
- * @typedef {import('..').ResultRow} ResultRow
- * @typedef {import('..').QueryCallbacks} QueryCallbacks
- * @typedef {import('..').QueryContext} QueryContext
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').Schema} Schema
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ParsedTable} ParsedTable
+ * @typedef {import('../..').WindowSpec} WindowSpec
+ * @typedef {import('../..').ResultRow} ResultRow
+ * @typedef {import('../..').QueryCallbacks} QueryCallbacks
+ * @typedef {import('../..').QueryContext} QueryContext
  */
 
 /**

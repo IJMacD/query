@@ -5,9 +5,9 @@ module.exports = {
 };
 
 /**
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ParsedTable} ParsedTable
- * @typedef {import('..').WindowSpec} WindowSpec
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ParsedTable} ParsedTable
+ * @typedef {import('../..').WindowSpec} WindowSpec
  */
 
 const { NODE_TYPES } = require('./parser');

@@ -1,5 +1,5 @@
 const { OPERATORS, AGGREGATE_FUNCTIONS } = require('./const');
-const { NODE_TYPES } = require('./parser');
+const { NODE_TYPES } = require('../prepare/parser');
 
 const {
   getRowEvaluator,
@@ -13,9 +13,9 @@ module.exports = {
 };
 
 /**
- * @typedef {import('..').QueryContext} QueryContext
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ResultRow} ResultRow
+ * @typedef {import('../..').QueryContext} QueryContext
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ResultRow} ResultRow
  */
 
 /**

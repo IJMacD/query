@@ -1,13 +1,13 @@
-const { NODE_TYPES } = require('./parser');
-const { comparator } = require('./evaluate');
+const { NODE_TYPES } = require('../types');
+const { comparator } = require('../evaluate/evaluate');
 
 module.exports = {
   sortRows,
 };
 
 /**
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ResultRow} ResultRow
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ResultRow} ResultRow
  */
 
 /**

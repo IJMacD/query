@@ -1,8 +1,8 @@
-const Parser = require('./parser');
+const Parser = require('./prepare/parser');
 const persist = require('./persist');
-const evaluateQuery = require('./evaluate-query');
-const evaluateCompoundQuery = require('./evaluate-compound');
-const { NODE_TYPES, DEBUG_NODE_TYPES } = require('./parser');
+const evaluateQuery = require('./evaluate/evaluate-query');
+const evaluateCompoundQuery = require('./evaluate/evaluate-compound');
+const { NODE_TYPES, DEBUG_NODE_TYPES } = require('./prepare/parser');
 const { performDDL, VIEW_KEY } = require('./ddl');
 
 /**

@@ -7,25 +7,25 @@ module.exports = {
 };
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ResultRow} ResultRow
- * @typedef {import('..').ParsedTable} ParsedTable
- * @typedef {import('..').QueryContext} QueryContext
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ResultRow} ResultRow
+ * @typedef {import('../..').ParsedTable} ParsedTable
+ * @typedef {import('../..').QueryContext} QueryContext
  */
 
-const Query = require('./query');
-const { NODE_TYPES } = require('./parser');
-const { informationSchema } = require('./information');
-const { TABLE_VALUED_FUNCTIONS } = require('./const');
-const { findJoin, applyJoin, setRowData, getRowData,  } = require('./joins');
-const { filterRows } = require('./filter');
-const { setAnalysis } = require('./explain');
-const { getTableAliasMap, PendingValue } = require('./resolve');
-const { scalar, queryResultToObjectArray, split } = require('./util');
-const { evaluateConstantExpression, SymbolError, isConstantExpression } = require('./evaluate');
-const evaluateStatement = require('./evaluate-query');
-const evaluateCompound = require('./evaluate-compound');
+const Query = require('../query');
+const { NODE_TYPES } = require('../prepare/parser');
+const { informationSchema } = require('../providers/information');
+const { TABLE_VALUED_FUNCTIONS } = require('../evaluate/const');
+const { findJoin, applyJoin, setRowData, getRowData,  } = require('../prepare/joins');
+const { filterRows } = require('../finalise/filter');
+const { setAnalysis } = require('../explain');
+const { getTableAliasMap, PendingValue } = require('../evaluate/resolve');
+const { scalar, queryResultToObjectArray, split } = require('../util');
+const { evaluateConstantExpression, SymbolError, isConstantExpression } = require('../evaluate/evaluate');
+const evaluateStatement = require('../evaluate/evaluate-query');
+const evaluateCompound = require('../evaluate/evaluate-compound');
 
 /**
  * @param {QueryContext} context

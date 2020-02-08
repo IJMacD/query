@@ -1,13 +1,13 @@
 const { tokenize, TOKEN_TYPES, DEBUG_TOKEN_TYPES } = require('./tokenizer');
-const { repeat } = require('./util');
+const { repeat } = require('../util');
 
-/** @typedef {import('..').Token} Token */
-/** @typedef {import('..').Node} Node */
-/** @typedef {import('..').WindowSpec} WindowSpec */
-/** @typedef {import('..').NodeTypes} NodeTypes */
-/** @typedef {import('..').TokenTypes} TokenTypes */
+/** @typedef {import('../..').Token} Token */
+/** @typedef {import('../..').Node} Node */
+/** @typedef {import('../..').WindowSpec} WindowSpec */
+/** @typedef {import('../..').NodeTypes} NodeTypes */
+/** @typedef {import('../..').TokenTypes} TokenTypes */
 
-const { NODE_TYPES } = require('./types');
+const { NODE_TYPES } = require('../types');
 
 const DEBUG_NODE_TYPES = Object.keys(NODE_TYPES);
 

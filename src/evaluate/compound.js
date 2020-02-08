@@ -8,7 +8,7 @@ module.exports = {
   distinctResults,
 };
 
-/** @typedef {import('..').ResultRow} ResultRow */
+/** @typedef {import('../..').ResultRow} ResultRow */
 
 /**
  * @param {ResultRow[][]} resultsL

@@ -8,15 +8,15 @@ module.exports = {
     getTableAliasMap,
 };
 const { SymbolError } = require('./evaluate');
-const { getRowData } = require('./joins');
+const { getRowData } = require('../prepare/joins');
 const { populateValue } = require('./process');
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').QueryContext} QueryContext
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ResultRow} ResultRow
- * @typedef {import('..').ParsedTable} ParsedTable
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').QueryContext} QueryContext
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ResultRow} ResultRow
+ * @typedef {import('../..').ParsedTable} ParsedTable
  */
 
 /**

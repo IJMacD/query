@@ -1,6 +1,6 @@
 const Query = require('../src/query');
 const { NODE_TYPES } = require('../src/types');
-const { parse } = require('../src/parser');
+const { parse } = require('../src/prepare/parser');
 const demoProvider = require('../src/providers/demo');
 const idbProvider = require('../src/providers/indexeddb');
 

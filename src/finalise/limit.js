@@ -1,4 +1,4 @@
-const { evaluateConstantExpression, isConstantExpression } = require('./evaluate');
+const { evaluateConstantExpression, isConstantExpression } = require('../evaluate/evaluate');
 
 module.exports = {
     applyLimit,

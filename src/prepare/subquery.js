@@ -3,12 +3,12 @@ module.exports = {
 }
 
 const { NODE_TYPES } = require('./parser');
-const evaluateCompound = require('./evaluate-compound');
-const { queryResultToObjectArray } = require('./util');
+const evaluateCompound = require('../evaluate/evaluate-compound');
+const { queryResultToObjectArray } = require('../util');
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').Node} Node
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').Node} Node
  */
 
 /**

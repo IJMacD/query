@@ -1,5 +1,5 @@
-const Tokenizer = require("../src/tokenizer");
-const Parser = require("../src/parser");
+const Tokenizer = require("../src/prepare/tokenizer");
+const Parser = require("../src/prepare/parser");
 
 const { TOKEN_TYPES } = Tokenizer;
 const { NODE_TYPES } = Parser;

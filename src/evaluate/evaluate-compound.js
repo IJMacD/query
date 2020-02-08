@@ -1,14 +1,14 @@
 module.exports = evaluateCompound;
 
 const evaluateQuery = require('./evaluate-query');
-const { NODE_TYPES, DEBUG_NODE_TYPES } = require('./parser');
+const { NODE_TYPES, DEBUG_NODE_TYPES } = require('../prepare/parser');
 const { COMPOUND_OPERATORS } = require('./compound');
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').Node} Node
- * @typedef {import('..').NodeTypes} NodeTypes
- * @typedef {import('..').ResultRow} ResultRow
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').NodeTypes} NodeTypes
+ * @typedef {import('../..').ResultRow} ResultRow
  */
 
 /**

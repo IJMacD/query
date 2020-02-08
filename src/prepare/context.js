@@ -1,22 +1,22 @@
 const { setJoin, setJoinPredicate, getRowData, setRowData } = require('./joins');
-const { resolveConstant, resolvePath } = require('./resolve');
-const { resolveValue } = require('./resolve');
-const { evaluate } = require('./evaluate');
-const { traverseWhereTree } = require('./filter');
+const { resolveConstant, resolvePath } = require('../evaluate/resolve');
+const { resolveValue } = require('../evaluate/resolve');
+const { evaluate } = require('../evaluate/evaluate');
+const { traverseWhereTree } = require('../finalise/filter');
 
 module.exports = {
   getQueryContext,
 };
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').Schema} Schema
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ParsedTable} ParsedTable
- * @typedef {import('..').WindowSpec} WindowSpec
- * @typedef {import('..').ResultRow} ResultRow
- * @typedef {import('..').QueryCallbacks} QueryCallbacks
- * @typedef {import('..').QueryContext} QueryContext
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').Schema} Schema
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ParsedTable} ParsedTable
+ * @typedef {import('../..').WindowSpec} WindowSpec
+ * @typedef {import('../..').ResultRow} ResultRow
+ * @typedef {import('../..').QueryCallbacks} QueryCallbacks
+ * @typedef {import('../..').QueryContext} QueryContext
  */
 
 

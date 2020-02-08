@@ -9,16 +9,16 @@ module.exports = {
 
 const { parseExpression } = require('./parser');
 
-const { filterRow } = require('./filter');
+const { filterRow } = require('../finalise/filter');
 
-const { resolvePath } = require('./resolve');
+const { resolvePath } = require('../evaluate/resolve');
 
 /**
- * @typedef {import('..')} Query
- * @typedef {import('..').QueryContext} QueryContext
- * @typedef {import('..').Node} Node
- * @typedef {import('..').ResultRow} ResultRow
- * @typedef {import('..').ParsedTable} ParsedTable
+ * @typedef {import('../..')} Query
+ * @typedef {import('../..').QueryContext} QueryContext
+ * @typedef {import('../..').Node} Node
+ * @typedef {import('../..').ResultRow} ResultRow
+ * @typedef {import('../..').ParsedTable} ParsedTable
  */
 
 /**

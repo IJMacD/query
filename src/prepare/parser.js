@@ -142,7 +142,7 @@ function parseFromTokenList (tokenList, source="") {
             throw new TokenError(null, source, type, value);
         }
 
-        if ((type !== current.type) && (typeof value === "undefined" || value !== current.value)) {
+        if ((type !== current.type) || (typeof value !== "undefined" && value !== current.value)) {
             throw new TokenError(current, source, type, value);
         }
 
@@ -330,6 +330,8 @@ function parseFromTokenList (tokenList, source="") {
                 break;
             case "WHERE":
             case "HAVING":
+            case "LIMIT":
+            case "OFFSET":
                 // Single expression child
                 out.children.push(descendExpression());
                 break;
@@ -417,12 +419,6 @@ function parseFromTokenList (tokenList, source="") {
                         break;
                     }
                 }
-                break;
-            case "LIMIT":
-                out.children.push(descendExpression());
-                break;
-            case "OFFSET":
-                out.children.push(descendExpression());
                 break;
             case "EXPLAIN":
                 if (suspect(TOKEN_TYPES.NAME, "ANALYSE")) {

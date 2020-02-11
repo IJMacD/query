@@ -393,12 +393,7 @@ function parseFromTokenList (tokenList, source="") {
                 }
             break;
             case "CREATE TABLE":
-            case "DROP TABLE": {
-                const id = expect(TOKEN_TYPES.NAME).value;
-                // Abuse alias field to save table name
-                out.alias = id;
-            }
-            break;
+            case "DROP TABLE":
             case "INSERT INTO": 
             case "DELETE FROM": {
                 const id = expect(TOKEN_TYPES.NAME).value;

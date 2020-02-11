@@ -17,11 +17,11 @@ form {
     display: flex;
     flex-direction: row;
     padding: 10px;
-    /* position: relative; */
     background: white;
     left: 0;
     right: 0;
     top: 0;
+    z-index: 2;
 }
 #input,
 textarea {
@@ -244,13 +244,13 @@ canvas {
 [class^=node-type-] li {
     position: relative;
     display: flex;
+    padding: 4px;
 }
 
 .node-type-statement {
     border: 1px solid #666;
     background: white;
     padding: 8px;
-    margin: 4px;
     white-space: normal;
 }
 
@@ -263,7 +263,6 @@ canvas {
     border: 1px solid #C66;
     background: #FCC;
     padding: 8px;
-    margin: 4px;
 }
 
 /* These clauses only take a single node rather than a list */
@@ -283,14 +282,13 @@ canvas {
     border: 1px solid #6C6;
     background: #CFC;
     padding: 8px;
-    margin: 4px;
 }
 
 .node-type-function-call {
     border: 1px solid #66C;
     background: #CCF;
     padding: 8px;
-    margin: 4px;
+    border-radius: 13px;
 }
 
 .node-type-symbol {
@@ -305,7 +303,6 @@ canvas {
     background: hsl(36, 82%, 95%);
     color: hsl(36, 82%, 26%);
     padding: 4px 8px;
-    margin: 4px;
 }
 
 .node-id {
@@ -317,28 +314,29 @@ canvas {
     border:  1px solid #999;
     padding:  0px 8px;
     background-color: #f0f0f0;
-    position: absolute;
+    position: relative;
     display: inline-block;
-    height: 24px;
-    right: 0;
+    height: 30px;
+    left: -12px;
+    line-height: 28px;
 }
 
 .node-alias::before {
     content: "";
-    border: 12px solid transparent;
+    border: 15px solid transparent;
     border-right-color: #aaa;
     position: absolute;
-    left: -25px;
+    left: -30px;
     top: -1px;
     height: 0;
 }
 
 .node-alias::after {
     content: "";
-    border: 11px solid transparent;
+    border: 14px solid transparent;
     border-right-color: #f0f0f0;
     position: absolute;
-    left: -22px;
+    left: -28px;
     top: 0;
     height: 0;
 }
@@ -364,15 +362,23 @@ canvas {
 }
 
 .node-type-list {
-    border: 1px solid #f7e694;
+    border-left: 5px double rgba(0,0,0,0.2);
     background: #ffe7a5;
     padding: 8px;
-    margin: 4px;
 }
+
+.node-type-list > .node-id {
+    display: none;
+}
+
+.node-type-list > ul {
+    padding: 0;
+}
+
 
 .node-type-param {
     border: 1px dashed #4c3100;
     background: #ece9c5;
     padding: 0 0 2px 8px;
-    border-radius: 5px;
+    border-radius: 13px;
 }

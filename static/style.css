@@ -236,6 +236,10 @@ canvas {
     background-image: url(img/aggregate-function.svg);
 }
 
+[class^=node-type-] {
+    display: flex;
+}
+
 [class^=node-type-] ul {
     list-style: none;
     padding-left: 1em;
@@ -282,6 +286,7 @@ canvas {
     border: 1px solid #6C6;
     background: #CFC;
     padding: 8px;
+    align-items: center;
 }
 
 .node-type-function-call {
@@ -289,6 +294,7 @@ canvas {
     background: #CCF;
     padding: 8px;
     border-radius: 13px;
+    align-items: center;
 }
 
 .node-type-symbol {
@@ -317,8 +323,12 @@ canvas {
     position: relative;
     display: inline-block;
     height: 30px;
-    left: -12px;
     line-height: 28px;
+}
+
+.node-type-symbol + .node-alias ,
+.node-type-param + .node-alias {
+    left: -12px;
 }
 
 .node-alias::before {

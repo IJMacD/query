@@ -1,6 +1,6 @@
 {
   "name": "ijmacd-query",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "description": "SQL for JSON objects/APIs",
   "repository": {
     "type": "git",

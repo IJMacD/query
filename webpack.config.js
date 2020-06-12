@@ -5,9 +5,10 @@ const CopyWebpackPlugin = require('copy-webpack-plugin')
 module.exports = [
 // Re-usable library
 {
-    entry: [ "./src/query" ],
+    entry: [ "regenerator-runtime", "./src/query" ],
     output: {
         library: "Query",
+        libraryTarget: "umd",
         path: path.resolve(__dirname, 'dist'),
         filename: 'ijmacd-query.min.js',
     },

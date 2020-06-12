@@ -12,12 +12,25 @@ const { queryResultToObjectArray } = require('./util');
  */
 
 class Query {
-    constructor () {
+    constructor (minimalSchema = null) {
         /** @type {{ [name: string]: Schema }} */
         this.providers = {};
 
         /** @type {Schema} */
-        this.schema = null;
+        this.schema = null
+
+        if (minimalSchema) {
+            const name = "SCHEMA_BASIC";
+            /** @type {Schema} */
+            const basicSchema = {
+                name,
+                callbacks: {
+                    primaryTable: ({ name }) => minimalSchema[name],
+                },
+            };
+            this.providers[name] = basicSchema;
+            this.schema = basicSchema;
+        }
 
         /** @type {{ [name: string]: string }} */
         this.views = persist.getItem(VIEW_KEY) || {};

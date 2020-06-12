@@ -1,11 +1,15 @@
 export = Query;
 
+declare interface OptionsObject {
+  output: "arrays"|"objects";
+}
+
 declare class Query {
   schema: Query.Schema;
   providers: { [name: string]: Query.Schema };
   views: { [name: string]: string };
   addProvider (schema: Query.Schema, name?: string);
-  run (query: string): Promise<Query.ResultRow[]>;
+  run (query: string, options?: OptionsObject): Promise<Query.ResultRow[]>;
 }
 
 declare namespace Query {

@@ -4,6 +4,7 @@ const evaluateQuery = require('./evaluate/evaluate-query');
 const evaluateCompoundQuery = require('./evaluate/evaluate-compound');
 const { NODE_TYPES, DEBUG_NODE_TYPES } = require('./prepare/parser');
 const { performDDL, VIEW_KEY } = require('./ddl');
+const { queryResultToObjectArray } = require('./util');
 
 /**
  * @typedef {import('..').Schema} Schema
@@ -42,7 +43,7 @@ class Query {
      * @param {string} query
      * @returns {Promise<any[][]>}
      */
-    async run (query) {
+    async run (query, options={}) {
         if (await performDDL.call(this, query)) {
             // TODO: Should probably come up with a method of returning useful information
             // such as inserted row count;
@@ -72,7 +73,13 @@ class Query {
         }
 
         // If we got to this point we're executing a "SELECT"
-        return this.runSelect(query);
+        const results = await this.runSelect(query);
+
+        if (options.output === "objects") {
+            return queryResultToObjectArray(results);
+        }
+
+        return results;
     }
 
     /**

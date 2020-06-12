@@ -83,10 +83,10 @@ async function getRows(context) {
                 const isConstant = table.params.every(p => isConstantExpression(p));
 
                 // If the function call is purely constant, just evaluate it once
-                const constantResults = isConstant && await fn(...table.params.map(p => evaluateConstantExpression(p, context.params)));
+                const constantResults = isConstant && await fn(...await Promise.all(table.params.map(p => evaluateConstantExpression(p, context.params))));
 
                 await Promise.all(rows.map(async row => {
-                    const results = constantResults || await fn(...table.params.map(p => context.evaluate(row, p, rows)));
+                    const results = constantResults || await fn(...await Promise.all(table.params.map(p => context.evaluate(row, p, rows))));
 
                     setRowData(row, table, results);
                 }));
@@ -122,7 +122,7 @@ async function getRows(context) {
         const initialCount = rows.length;
 
         // Filter out any rows we can early to avoid extra processing
-        rows = filterRows(context, rows, where, false);
+        rows = await filterRows(context, rows, where, false);
 
         table.rowCount = rows.length;
 
@@ -246,7 +246,7 @@ async function getPrimaryResults(context, table) {
     }
 
     if (table.name in TABLE_VALUED_FUNCTIONS) {
-        return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateConstantExpression(c, context.params)));
+        return TABLE_VALUED_FUNCTIONS[table.name](...await Promise.all(table.params.map(c => evaluateConstantExpression(c, context.params))));
     }
 
     const { callbacks } = context.providers[schemaName] || context.schema;
@@ -317,7 +317,7 @@ async function populateValue (context, row, colNum, node, rows) {
     try {
         // Use PendingValue flag to avoid infinite recursion
         row[colNum] = PendingValue;
-        row[colNum] = context.evaluate(row, node, rows);
+        row[colNum] = await context.evaluate(row, node, rows);
     } catch (e) {
         if (e instanceof SymbolError) {
             row[colNum] = null;

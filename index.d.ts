@@ -79,7 +79,7 @@ declare namespace Query {
 
     params: { [name: string]: any };
 
-    evaluate: (row: ResultRow, node: Node, rows?: ResultRow[]) => string|number|boolean|Date;
+    evaluate: (row: ResultRow, node: Node, rows?: ResultRow[]) => Promise<string|number|boolean|Date>;
 
     resolveConstant: (path: string) => string|number|boolean|Date;
     resolvePath: (data: any, path: string) => any;

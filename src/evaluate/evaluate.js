@@ -1,3 +1,5 @@
+const evaluateQuery = require('./evaluate-query');
+
 class SymbolError extends Error { }
 
 module.exports = {
@@ -41,12 +43,15 @@ const { isValidDate } = require('../util');
  * @param {ResultRow} row
  * @param {Node} node
  * @param {ResultRow[]} [rows]
- * @returns {Primitive|Primitive[]}
+ * @returns {Promise<Primitive|Primitive[]>}
  */
-function evaluate (row, node, rows=null) {
+async function evaluate (row, node, rows=null) {
     switch (node.type) {
         case NODE_TYPES.STATEMENT: {
-            throw Error("Statements can only be evaluated as one of the explicit column values.");
+            // throw Error("Statements can only be evaluated as one of the explicit column values.");
+            // evaluating queries requires promisifying a lot of code 
+            const outerContext = { context: this, row, rows };
+            return evaluateQuery(this.query, node, outerContext, this.params);
         }
         case NODE_TYPES.FUNCTION_CALL: {
             const fnName = node.id;
@@ -57,8 +62,9 @@ function evaluate (row, node, rows=null) {
                 const window = typeof node.window === "string" ? this.windows[node.window] : node.window;
 
                 if (window.partition) {
-                    const partitionVal = this.evaluate(row, window.partition, group);
-                    group = group.filter(r => OPERATORS['='](this.evaluate(r, window.partition, group), partitionVal));
+                    const partitionVal = await this.evaluate(row, window.partition, group);
+                    const values = await Promise.all(group.map(r => this.evaluate(r, window.partition, group)));
+                    group = group.filter((r, i) => OPERATORS['='](values[i], partitionVal));
                 }
 
                 if (window.order) {
@@ -78,14 +84,12 @@ function evaluate (row, node, rows=null) {
                         group = group.slice(start, index + window.following + 1);
 
                     } else if (window.frameUnit === "range") {
-                        const currentVal = +this.evaluate(row, window.order, rows);
+                        const currentVal = +await this.evaluate(row, window.order, rows);
                         const min = currentVal - window.preceding;
                         const max = currentVal + window.following;
 
-                        group = group.filter(r => {
-                            const v = this.evaluate(r, window.order, rows);
-                            return min <= v && v <= max;
-                        });
+                        const values = await Promise.all(group.map(r => this.evaluate(r, window.partition, group)));
+                        group = group.filter((r, i) => min <= values[i] && values[i] <= max);
                     }
                 }
 
@@ -97,7 +101,7 @@ function evaluate (row, node, rows=null) {
                     /** @type {(index: number, order: Primitive[], rows: ResultRow[], evaluator, ...nodes: Node[]) => Primitive} */
                     const fn = WINDOW_FUNCTIONS[node.id];
 
-                    const orderVals = group.map(getRowEvaluator(this, window.order, rows));
+                    const orderVals = await Promise.all(group.map(getRowEvaluator(this, window.order, rows)));
                     return fn(index, orderVals, group, this.evaluate, ...node.children);
                 }
 
@@ -148,13 +152,13 @@ function evaluate (row, node, rows=null) {
 
             // We need to wrap each function call paramater in try/catch in case
             // we have some function like COALESCE
-            const args = node.children.map(c => {
+            const args = await Promise.all(node.children.map(c => {
                 try {
                     return this.evaluate(row, c, rows);
                 } catch (e) {
                     return null;
                 }
-            });
+            }));
 
             try {
                 return fn(...args);
@@ -214,10 +218,10 @@ function evaluate (row, node, rows=null) {
             // Special treatment for AND and OR because we don't need to evaluate all
             // operands beforehand
             if (node.id === "AND") {
-                return Boolean(this.evaluate(row, node.children[0], rows) && this.evaluate(row, node.children[1], rows));
+                return Boolean(await this.evaluate(row, node.children[0], rows) && await this.evaluate(row, node.children[1], rows));
             }
             if (node.id === "OR") {
-                return Boolean(this.evaluate(row, node.children[0], rows) || this.evaluate(row, node.children[1], rows));
+                return Boolean(await this.evaluate(row, node.children[0], rows) || await this.evaluate(row, node.children[1], rows));
             }
 
             /** @type {(...operands) => string|number|boolean} */
@@ -227,12 +231,12 @@ function evaluate (row, node, rows=null) {
                 throw new Error(`Unsupported operator '${node.id}'`);
             }
 
-            return op(...node.children.map(c => this.evaluate(row, c, rows)));
+            return op(...await Promise.all(node.children.map(c => this.evaluate(row, c, rows))));
         }
         case NODE_TYPES.CLAUSE: {
             if (node.id === "WHERE" || node.id === "ON") {
                 if (node.children.length > 0) {
-                    return Boolean(this.evaluate(row, node.children[0], rows));
+                    return Boolean(await this.evaluate(row, node.children[0], rows));
                 } else {
                     throw new Error(`Empty predicate clause: ${node.id}`);
                 }
@@ -240,7 +244,7 @@ function evaluate (row, node, rows=null) {
             throw Error(`Cannot evaluate ${node.id} clause`);
         }
         case NODE_TYPES.LIST: {
-            return node.children.map(c => this.evaluate(row, c, rows));
+            return Promise.all(node.children.map(c => this.evaluate(row, c, rows)));
         }
         default: {
             throw new Error(`Can't execute node type ${node.type}: ${node.id}`);
@@ -254,7 +258,7 @@ function evaluate (row, node, rows=null) {
  * @param {QueryContext} context
  * @param {Node} node
  * @param {ResultRow[]} rows
- * @returns {(row: ResultRow) => any}
+ * @returns {(row: ResultRow) => Promise<any>}
  */
 function getRowEvaluator(context, node, rows=null) {
     return row => {
@@ -272,6 +276,12 @@ function getRowEvaluator(context, node, rows=null) {
     };
 }
 
+/**
+ * 
+ * @param {Node} node 
+ * @param {{ [key: string]: any }} params 
+ * @return {Promise<string|number|boolean|Date>}
+ */
 function evaluateConstantExpression(node, params=null) {
     const dummyContext = { evaluate, params };
     return evaluate.call(dummyContext, null, node);

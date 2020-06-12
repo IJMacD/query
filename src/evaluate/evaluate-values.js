@@ -8,7 +8,7 @@ const { evaluateConstantExpression } = require('./evaluate');
  * Evaluate VALUES clause
  * @param {Node[]} values
  */
-function evaluateValues (values, params) {
+async function evaluateValues (values, params) {
     const firstRow = values[0];
 
     if (!firstRow) {
@@ -18,7 +18,7 @@ function evaluateValues (values, params) {
     const width = firstRow.children.length;
     const headers = Array(width).fill(0).map((_, i) => `Col ${i + 1}`);
 
-    const out = values.map(row => row.children.map(n => evaluateConstantExpression(n, params)));
+    const out = await Promise.all(values.map(row => Promise.all(row.children.map(n => evaluateConstantExpression(n, params)))));
 
     out.unshift(headers);
 

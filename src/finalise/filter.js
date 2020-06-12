@@ -20,15 +20,19 @@ module.exports = {
  * @param {QueryContext} context
  * @param {ResultRow[]} rows
  * @param {Node} condition
- * @return {ResultRow[]}
+ * @return {Promise<ResultRow[]>}
  */
-function filterRows (context, rows, condition, strict = true) {
+async function filterRows (context, rows, condition, strict = true) {
     if (condition) {
-        return rows.filter(r => filterRow(context, r, condition, rows, strict));
+        const values = await Promise.all(rows.map(r => filterRow(context, r, condition, rows, strict)));
+        return rows.filter((r, i) => values[i]);
     }
     return rows;
 }
 
+/**
+ * @returns {Promise}
+ */
 function filterRow(context, row, condition, rows, strict) {
     // Optimisation.
     // If we're not in strict mode we can return a fail earlier if either
@@ -59,7 +63,7 @@ function filterRow(context, row, condition, rows, strict) {
  * @param {Node} node
  * @param {string} symbol
  * @param {string|string[]} operator
- * @returns {string|number}
+ * @returns {Promise<string|number|boolean|Date>}
  */
 function traverseWhereTree (node, symbol, operator="=", params=null) {
   if (node.type !== NODE_TYPES.OPERATOR) {

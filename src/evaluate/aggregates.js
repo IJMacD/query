@@ -112,13 +112,13 @@ function computeAggregates (context, cols, rows) {
  * @param {QueryContext} context
  * @param {any[][]} rows
  * @param {Node[]} groupBy
- * @returns {any[]}
+ * @returns {Promise<any[]>}
  */
-function groupRows (context, rows, groupBy) {
+async function groupRows (context, rows, groupBy) {
     const groupByMap = {};
 
     for(const row of rows) {
-        const key = JSON.stringify(groupBy.map(g => context.evaluate(row, g, rows)));
+        const key = JSON.stringify(await Promise.all(groupBy.map(g => context.evaluate(row, g, rows))));
 
         if (!groupByMap[key]) {
             groupByMap[key] = [];

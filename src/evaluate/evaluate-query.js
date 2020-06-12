@@ -121,7 +121,7 @@ async function evaluateQuery (query, statementNode, outer = null, params = null)
 
     // One last filter, this time strict because there shouldn't be
     // anything slipping through since we have all the data now.
-    rows = filterRows(context, rows, clauses.where);
+    rows = await filterRows(context, rows, clauses.where);
 
     /******************
      * Columns
@@ -137,7 +137,7 @@ async function evaluateQuery (query, statementNode, outer = null, params = null)
      * Grouping
      *************/
     if (clauses['group by']) {
-        rows = groupRows(context, rows, clauses['group by']);
+        rows = await groupRows(context, rows, clauses['group by']);
     }
 
     /**********************
@@ -150,7 +150,7 @@ async function evaluateQuery (query, statementNode, outer = null, params = null)
      * query.Having Filtering
      ******************/
     if (clauses.having) {
-        rows = filterRows(context, rows, clauses.having);
+        rows = await filterRows(context, rows, clauses.having);
     }
 
     /*******************
@@ -165,13 +165,13 @@ async function evaluateQuery (query, statementNode, outer = null, params = null)
      ***************/
     if (clauses['order by']) {
         // Parse the orderBy clause into an array of objects
-        rows = sortRows(evaluate, rows, clauses['order by']);
+        rows = await sortRows(evaluate, rows, clauses['order by']);
     }
 
     /******************
      * Limit and Offset
      ******************/
-    rows = applyLimit(rows, clauses.limit, clauses.offset, params);
+    rows = await applyLimit(rows, clauses.limit, clauses.offset, params);
 
     /*****************
      * Output

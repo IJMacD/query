@@ -5,6 +5,7 @@ declare interface OptionsObject {
 }
 
 declare class Query {
+  constructor (minimalSchema);
   schema: Query.Schema;
   providers: { [name: string]: Query.Schema };
   views: { [name: string]: string };

@@ -293,7 +293,35 @@ const TABLE_VALUED_FUNCTIONS = {
             Array.from(tr.querySelectorAll("th,td")).map(td => td.textContent)
         ));
     },
+
+    /**
+     * Load CSV
+     * @type {(url: string) => Promise}
+     */
+    async CSV (url, skipLines = 0) {
+        const r = await fetch(url);
+        if (r.ok) {
+            const text = await r.text();
+            const lines = text.split("\n");
+            while (skipLines-- > 0) lines.shift();
+            const headerline = lines.shift();
+            const headers = parseCSVLine(headerline);
+
+            return lines.map(l => zip(headers, parseCSVLine(l)));
+        }
+
+        console.error(`${r.statusText}: ${url}`);
+        return null;
+    },
 };
+
+/**
+ * @param {string} line
+ */
+function parseCSVLine (line) {
+    const values = line.split(",");
+    return values.map(v => v.replace(/^"|"$/g, "").trim());
+}
 
 function isNumeric (n) { return +n == n; }
 

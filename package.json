@@ -16,7 +16,8 @@
     "dev": "webpack --mode development --watch",
     "build": "webpack --mode production",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "deploy:gcloud": "deploy_gcloud.bat"
   },
   "author": "",
   "license": "ISC",

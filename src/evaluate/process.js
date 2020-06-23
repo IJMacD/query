@@ -199,7 +199,7 @@ function processColumns (context, rawCols, rows) {
             }
         } else {
             cols.push(node);
-            colHeaders.push(node.alias || node.source || `Col ${cols.length}`);
+            colHeaders.push(node.alias || node.id || `Col ${cols.length}`);
 
             if (node.alias && typeof colAlias[node.alias] !== "undefined") {
                 throw new Error("Alias already in use: " + node.alias);

@@ -66,7 +66,18 @@ describe("FROM", () => {
             expect(r[1][0]).toBe(2);
             expect(r[1][1]).toBe(1);
         })
-    })
+    });
+
+    test("Column rename with space", () => {
+        return demoQuery("FROM (VALUES (1,2)) AS v (number, \"number 2\") SELECT \"number 2\", number").then(r => {
+            expect(r.length - 1).toBe(1);
+            expect(r[0][0]).toBe("number 2");
+            expect(r[0][1]).toBe("number");
+
+            expect(r[1][0]).toBe(2);
+            expect(r[1][1]).toBe(1);
+        })
+    });
 
     describe("Table Valued Functions", () => {
         test("in FROM", () => {
@@ -123,6 +134,13 @@ describe("SELECT", () => {
             return demoQuery("SELECT 'hello' AS greeting").then(r => {
                 expect(r[0][0]).toBe("greeting");
                 expect(r[1][0]).toBe("hello");
+            });
+        });
+
+        test("Alias with a space", () => {
+            return demoQuery("SELECT 'hey' AS \"earth greeting\"").then(r => {
+                expect(r[0][0]).toBe("earth greeting");
+                expect(r[1][0]).toBe("hey");
             });
         });
 

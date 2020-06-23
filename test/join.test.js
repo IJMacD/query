@@ -22,7 +22,7 @@ test("SELECT columns FROM JOIN on object", () => {
   });
 });
 
-test("JOIN on array", () => {
+test("Implicit INNER JOIN on array", () => {
   return demoQuery("FROM Test_4, A").then(r => {
     // Don't forget header row
     expect(r.length - 1).toBe(20);

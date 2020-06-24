@@ -1,6 +1,6 @@
 module.exports = evaluateQuery;
 
-const { scalar } = require('../util');
+const { formatScalar } = require('../util');
 const { getRows, processColumns, populateValues } = require('./process');
 const { setTableAliases } = require('./resolve');
 const { filterRows } = require('../finalise/filter');
@@ -178,7 +178,7 @@ async function evaluateQuery (query, statementNode, outer = null, params = null)
      ****************/
 
     output(context.colHeaders);
-    rows.forEach(r => output(r.map(scalar)));
+    rows.forEach(r => output(r.map(formatScalar)));
     // Print to stderr
     // console.warn(`${initialResultCount} results initally retrieved. ${rows.length} rows returned.`);
 

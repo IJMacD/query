@@ -136,6 +136,10 @@ const VALUE_FUNCTIONS = {
             return deg * (Math.PI/180)
         }
     },
+
+    KEYS (v) {
+        return Object.keys(v)
+    },
 };
 
 // Alias

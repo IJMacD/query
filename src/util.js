@@ -1,5 +1,6 @@
 module.exports = {
   scalar,
+  formatScalar,
   getColumnTypes,
   repeat,
   isNullDate,
@@ -29,6 +30,27 @@ function scalar (data) {
   }
   if (Array.isArray(data)) {
       return; // undefined
+  }
+  return data;
+}
+
+/**
+ * Convert scalar values for presentation
+ *
+ * If passed an object returns string representation
+ * If passed an array returns scalar elements joined together
+ * @param {any} data
+ * @return {number|string|boolean|Date}
+ */
+function formatScalar (data) {
+  if (data === null || typeof data === "undefined") {
+      return null;
+  }
+  if (data.toString() === "[object Object]") {
+      return `<Object {${Object.keys(data)}}>`;
+  }
+  if (Array.isArray(data)) {
+      return `<List [${data.map(formatScalar).join()}]>`;
   }
   return data;
 }

@@ -17,7 +17,7 @@ module.exports = {
     parseTokenList: parseFromTokenList,
 
     parse (sql) {
-        const preProcessors = [ stringsThatAreReallyFunctionCalls ];
+        const preProcessors = [ stringsThatAreReallyFunctionCalls, keywordsThatAreReallyFunctionCalls ];
 
         const tokens = preProcessors.reduce((tokens, processor) => processor(tokens), tokenize(sql));
 
@@ -60,24 +60,6 @@ class TokenError extends Error {
 
 class ClauseError extends Error {}
 
-
-/**
- * Implement token exceptions
- * @param {Token[]} tokenList
- */
-function preParse (tokenList) {
-    for (let i = 0; i < tokenList.length; i++) {
-        const t = tokenList[i];
-
-        // RANGE() is a function not a keyword
-        if (t.type === TOKEN_TYPES.KEYWORD && t.value === "RANGE"
-            && i < tokenList.length - 1 && tokenList[i+1].type === TOKEN_TYPES.BRACKET)
-        {
-            t.type = TOKEN_TYPES.NAME;
-        }
-    }
-}
-
 /**
  * @param {Token[]} tokenList
  * @param {string} source
@@ -85,9 +67,6 @@ function preParse (tokenList) {
  */
 function parseFromTokenList (tokenList, source="") {
     let i = 0;
-
-    // Pre parsing token substitutions
-    preParse(tokenList);
 
     /**
      * Peek ahead but don't consume the next token
@@ -853,13 +832,38 @@ function getPrecedence (node) {
     }
 }
 
-// The tokenizer recognizes certain "keywords" as strings
-// however that might not be correct.
-// An example of this is when the token is followed by an
-// open bracket because it means it must be a function call.
+/**
+ * The tokenizer recognizes certain "keywords" as strings
+ * however that might not be correct.
+ * An example of this is when the token is followed by an
+ * open bracket because it means it must be a function call.
+ * @param {Token[]} tokens
+ */
 function stringsThatAreReallyFunctionCalls (tokens) {
     for (let i = 0; i < tokens.length - 1; i++) {
         if (tokens[i].type === TOKEN_TYPES.STRING &&
+            tokens[i+1].type === TOKEN_TYPES.BRACKET &&
+            tokens[i+1].value === "(")
+        {
+            tokens[i].type = TOKEN_TYPES.NAME;
+        }
+    }
+    return tokens;
+}
+
+/**
+ * 
+ * The tokenizer recognizes certain function names as keywords
+ * however that might not be correct.
+ * An example of this is when the token is followed by an
+ * open bracket because it means it must be a function call.
+ * e.g. RANGE()
+ * @param {Token[]} tokens 
+ */
+function keywordsThatAreReallyFunctionCalls (tokens) {
+    for (let i = 0; i < tokens.length - 1; i++) {
+        if (tokens[i].type === TOKEN_TYPES.KEYWORD &&
+            tokens[i].value === "RANGE" &&
             tokens[i+1].type === TOKEN_TYPES.BRACKET &&
             tokens[i+1].value === "(")
         {

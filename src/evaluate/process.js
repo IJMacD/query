@@ -139,6 +139,7 @@ async function getRows(context) {
 
 /**
  * @param {QueryContext} context
+ * @param {Node[]} rawCols
  * @param {ResultRow[]} rows
  */
 function processColumns (context, rawCols, rows) {
@@ -199,7 +200,8 @@ function processColumns (context, rawCols, rows) {
             }
         } else {
             cols.push(node);
-            colHeaders.push(node.alias || node.id || `Col ${cols.length}`);
+            let colName = node.alias || (node.type === NODE_TYPES.SYMBOL ? node.id : node.source) || `Col ${cols.length}`;
+            colHeaders.push(colName);
 
             if (node.alias && typeof colAlias[node.alias] !== "undefined") {
                 throw new Error("Alias already in use: " + node.alias);

@@ -166,6 +166,15 @@ describe("SELECT", () => {
             expect(r[2][1]).toBe(0);
         });
     });
+
+    test("SELECT 1 + 1", () => {
+        return demoQuery("SELECT 1 + 1").then(r => {
+            // Remember header row
+            expect(r.length - 1).toBe(1);
+            expect(r[0][0]).toBe("1 + 1");
+            expect(r[1][0]).toBe(2);
+        });
+    });
 });
 
 describe("WHERE", () => {

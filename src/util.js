@@ -184,8 +184,8 @@ function queryResultToObjectArray (result, newHeaders = null) {
 */
 function zip (keys, values) {
   const out = {};
-  for (let i = 0; i < keys.length; i++) {
-      out[keys[i]] = values[i];
+  for (let i = 0; i < Math.max(keys.length, values.length); i++) {
+      out[keys[i] || i] = values[i];
   }
   return out;
 }

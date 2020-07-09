@@ -5,6 +5,13 @@ const momentDurationFormatSetup = require('moment-duration-format');
 // @ts-ignore
 momentDurationFormatSetup(moment);
 
+/** @type {import('jsdom')} */
+let jsdom;
+
+if (process.env.APP_ENV !== "browser") {
+    jsdom = require('jsdom');
+}
+
 const { isNullDate, toUTF8Array } = require('../util');
 
 const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -284,12 +291,16 @@ const TABLE_VALUED_FUNCTIONS = {
      */
     async HTML (url) {
         const r = await fetch(url);
-        const dom = new DOMParser().parseFromString(await r.text(), "text/html");
+        const html = await r.text();
+        const dom = typeof DOMParser !== "undefined" ? 
+            new DOMParser().parseFromString(html, "text/html")
+            :
+            (new jsdom.JSDOM(html)).window.document;
         const fragment = new URL(url).hash.replace("#", "") || "1";
 
         const table = isNumeric(fragment) ? dom.getElementsByTagName("table")[+fragment-1] : dom.getElementById(fragment);
 
-        if (!(table instanceof HTMLTableElement)) {
+        if (!table) {
             throw Error(`Could not find table ${fragment} in ${url}`)
         }
 

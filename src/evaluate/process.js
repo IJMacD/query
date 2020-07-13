@@ -235,32 +235,53 @@ async function getPrimaryResults(context, table) {
         return queryResultToObjectArray(await evaluateCompound(query, table.subquery, params), table.subquery.headers);
     }
 
-    if (table.name in CTEs) {
-        return CTEs[table.name];
-    }
-
     if (table.name in views) {
         return queryResultToObjectArray(await context.query.run(views[table.name]), table.headers);
     }
 
-    if (schemaName === "information_schema") {
-        return informationSchema(context, tableName);
+    let results;
+
+    if (table.name in CTEs) {
+        results = CTEs[table.name];
+    }
+    else if (schemaName === "information_schema") {
+        results = await informationSchema(context, tableName);
+    }
+    else if (table.name in TABLE_VALUED_FUNCTIONS) {
+        results = await TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateConstantExpression(c, context.params)));
+    }
+    else {
+        const { callbacks } = context.providers[schemaName] || context.schema;
+
+        if (typeof callbacks.primaryTable === "undefined") {
+            throw new Error("PrimaryTable callback not defined");
+        }
+
+        // Just in case we've stripped off a schema name
+        table.name = tableName;
+
+        results = await callbacks.primaryTable.call(context, table) || [];
     }
 
-    if (table.name in TABLE_VALUED_FUNCTIONS) {
-        return TABLE_VALUED_FUNCTIONS[table.name](...table.params.map(c => evaluateConstantExpression(c, context.params)));
+    // Support column rename in FROM clause
+    if (table.headers) {
+        results = results.map(result => {
+            const keys = Object.keys(result);
+
+            if (keys.length !== table.headers.length) 
+                throw Error(`Tried to rename columns in table '${table.name}' but wrong number of columns were provided (${table.headers.length} vs. ${keys.length})`);
+
+            const newResult = {};
+
+            for (let i = 0; i < keys.length; i++) {
+                newResult[table.headers[i]] = result[keys[i]];
+            }
+
+            return newResult;
+        });
     }
 
-    const { callbacks } = context.providers[schemaName] || context.schema;
-
-    if (typeof callbacks.primaryTable === "undefined") {
-        throw new Error("PrimaryTable callback not defined");
-    }
-
-    // Just in case we've stripped off a schema name
-    table.name = tableName;
-
-    return callbacks.primaryTable.call(context, table) || [];
+    return results;
 }
 
 /**

@@ -58,6 +58,17 @@ describe("FROM", () => {
     });
 
     test("Column rename", () => {
+        return demoQuery("FROM Test AS v (m, m2, m3) SELECT m2, m").then(r => {
+            expect(r.length - 1).toBe(10);
+            expect(r[0][0]).toBe("m2");
+            expect(r[0][1]).toBe("m");
+
+            expect(r[3][0]).toBe(1);
+            expect(r[3][1]).toBe(2);
+        })
+    });
+
+    test("Nested Column rename", () => {
         return demoQuery("FROM (VALUES (1,2)) AS v (number, number2) SELECT number2, number").then(r => {
             expect(r.length - 1).toBe(1);
             expect(r[0][0]).toBe("number2");

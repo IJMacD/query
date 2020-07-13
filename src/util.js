@@ -10,8 +10,10 @@ module.exports = {
   matchInBrackets,
   queryResultToObjectArray,
   toUTF8Array,
+  fromUTF8Array,
   split,
   zip,
+  chunks,
 };
 
 /**
@@ -194,6 +196,7 @@ function zip (keys, values) {
  *
  * @param {string} str
  * @returns {number[]}
+ * @see https://stackoverflow.com/a/18729931
  */
 function toUTF8Array (str) {
   /** @type {number[]} */
@@ -229,6 +232,45 @@ function toUTF8Array (str) {
 
 /**
  *
+ * @param {number[]} data
+ * @returns {string}
+ * @see https://weblog.rogueamoeba.com/2017/02/27/javascript-correctly-converting-a-byte-array-to-a-utf-8-string/
+ */
+function fromUTF8Array (data)
+{
+  const extraByteMap = [ 1, 1, 1, 1, 2, 2, 3, 0 ];
+  var count = data.length;
+  var str = "";
+  
+  for (var index = 0;index < count;)
+  {
+    var ch = data[index++];
+    if (ch & 0x80)
+    {
+      var extra = extraByteMap[(ch >> 3) & 0x07];
+      if (!(ch & 0x40) || !extra || ((index + extra) > count))
+        return null;
+      
+      ch = ch & (0x3F >> extra);
+      for (;extra > 0;extra -= 1)
+      {
+        var chx = data[index++];
+        if ((chx & 0xC0) != 0x80)
+          return null;
+        
+        ch = (ch << 6) | (chx & 0x3F);
+      }
+    }
+    
+    // Bug in original code
+    str += String.fromCodePoint(ch);
+  }
+  
+  return str;
+}
+
+/**
+ *
  * @param {string} input
  * @param {string} splitter
  * @param {number} limit
@@ -245,4 +287,16 @@ function split (input, splitter, limit) {
     }
 
     return [ input.substr(0, index), input.substr(index + 1) ];
+}
+
+/**
+ * 
+ * @param {string} input 
+ * @param {number} size 
+ * @returns {string[]}
+ */
+function chunks (input, size) {
+  if ((input.length / size) % 1) throw Error("Input length is not a multiple of size");
+
+  return Array.from(input.matchAll(new RegExp(`.{${size}}`, "g"))).map(m => m[0]);
 }

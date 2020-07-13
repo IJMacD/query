@@ -1,4 +1,4 @@
-const { queryResultToObjectArray, zip } = require('../util');
+const { queryResultToObjectArray, zip, chunks } = require('../util');
 
 const moment = require('moment');
 const momentDurationFormatSetup = require('moment-duration-format');
@@ -12,7 +12,7 @@ if (process.env.APP_ENV !== "browser") {
     jsdom = require('jsdom');
 }
 
-const { isNullDate, toUTF8Array } = require('../util');
+const { isNullDate, toUTF8Array, fromUTF8Array } = require('../util');
 
 const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -44,6 +44,7 @@ const VALUE_FUNCTIONS = {
     UNICODE: s => isStrictNull(s) ? null : String(s).codePointAt(0),
     JSON_STRINGIFY: JSON.stringify,
     TO_UTF8_HEX: v => toUTF8Array(v).map(n => n.toString(16).padStart(2, "0")).join(" "),
+    FROM_UTF8_HEX: v => fromUTF8Array(chunks(v.replace(/\s/g, ""), 2).map(s => parseInt(s, 16))),
     LPAD: (v, n, c="") => String(v).padStart(n, c),
     RPAD: (v, n, c="") => String(v).padEnd(n, c),
     TRIM: (v) => isStrictNull(v) ? null : String(v).trim(),

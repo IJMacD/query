@@ -269,15 +269,17 @@ function populateExplorer () {
     const routinesList = document.createElement("ul");
     explorer.appendChild(routinesList);
 
-    query("FROM information_schema.routines WHERE data_type != 'table'").then(/** @param {any[][]} r */ r => {
+    query("FROM information_schema.routines WHERE data_type != 'table' ORDER BY routine_name").then(/** @param {any[][]} r */ r => {
         /** @type {string[]} */
         const headers = r.shift();
         const nameCol = headers.indexOf("routine_name");
         const typeCol = headers.indexOf("routine_type");
 
         const out = r.map(t => {
-            const className = t[typeCol] === "AGGREGATE FUNCTION" || t[typeCol] === "WINDOW FUNCTION" ? "aggregate-function" : "function";
-            return `<li class="${className}" data-insert-before="${t[nameCol]}(" data-insert-after=")" title="${t[typeCol]}">${t[nameCol]}</li>`;
+            const type = t[typeCol];
+            const name = t[nameCol];
+            const className = type === "AGGREGATE FUNCTION" || type === "WINDOW FUNCTION" ? "aggregate-function" : "function";
+            return `<li class="${className}" data-insert-before="${name}(" data-insert-after=")" title="${type}">${name}</li>`;
         }).join("");
 
         routinesList.innerHTML = out;

@@ -9,15 +9,17 @@ module.exports = {
 /**
  *
  * @param {any[][]} data
- * @param {{ mime?: string, locale?: string, option?: string }} options
+ * @param {{ mime?: string, locale?: string, option?: string, headers?: boolean }} options
  */
-function format (data, { mime = "text/plain", locale = undefined, option = undefined } = {}) {
+function format (data, { mime = "text/plain", locale = undefined, option = undefined, headers = true } = {}) {
   switch (mime) {
     case "application/json":
       if (option === "object")
         return JSON.stringify(queryResultToObjectArray(data));
+      if (!headers) data.shift();
       return JSON.stringify(data);
     case "text/csv":
+      if (!headers) data.shift();
       return data.map(row => row.map(d => csvSafe(formatVal(d))).join(",")).join("\n");
     case "text/html":
       return `${renderStyle()}${renderTable({ rows: data, locale })}`;
@@ -26,14 +28,19 @@ function format (data, { mime = "text/plain", locale = undefined, option = undef
     case "text/plain":
     default: {
       const rows = data.map(row => row.map(formatPlainTextVal));
-      const headers = rows.shift();
-      const lines = headers.map(c => repeat("-", c.length));
+      const headerRow = rows.shift();
 
-      rows.unshift(lines);
-      rows.unshift(headers);
+      if (headers) {
+        const lines = headerRow.map(c => repeat("-", c.length));
 
+        rows.unshift(lines);
+        rows.unshift(headerRow);
+      }
+
+      // columnify would show array indices as 'headers' so we take care of it
+      // ousrselves above.
       const options = {
-          showHeaders: false,
+        showHeaders: false,
       };
 
       return columnify(rows, options);
@@ -136,23 +143,23 @@ function renderStyle () {
     tfoot td {
         font-weight: bold;
     }
-    </style>`;
+</style>
+`;
 }
 
 function renderTable({ rows, locale }) {
   const headerRow = rows.shift();
 
   return `<table>
-          <thead>
-              <tr>${headerRow.map(cell => `<th>${cell}</th>`).join("")}</tr>
-          </thead>
-          <tbody>
-              ${rows.map(row => `
-                  <tr>${row.map(cell => `<td>${formatHTML({ cell, locale })}</td>`).join("")}</tr>
-              `).join("")}
-          </tbody>
-          <tfoot><tr><td colspan="${headerRow.length}">${rows.length} rows</td></tr></tfoot>
-      </table>`;
+    <thead>
+        <tr>${headerRow.map(cell => `<th>${cell}</th>`).join("")}</tr>
+    </thead>
+    <tbody>
+        ${rows.map(row => `<tr>${row.map(cell => `<td>${formatHTML({ cell, locale })}</td>`).join("")}</tr>
+        `).join("")}
+    </tbody>
+    <tfoot><tr><td colspan="${headerRow.length}">${rows.length} rows</td></tr></tfoot>
+</table>`;
 }
 
 /**

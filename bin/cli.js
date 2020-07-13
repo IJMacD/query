@@ -12,6 +12,29 @@ const demoProvider = require('../src/providers/demo');
 const placeholderProvider = require('../src/providers/placeholder');
 const Formatter = require('../src/formatter');
 
+const helpText = `IJMacD Query
+Usage: ${process.argv[1]} [OPTIONS] QUERY
+
+QUERY can also be provided on stdin
+
+Options:
+
+-h,--help                   Show this help text
+
+-fFORMAT[:OPTION],
+--format=FORMAT[:OPTION]    Set output to specific format. Currently supported formats:
+                                plain, csv, sql, html, json
+                            Supported format options:
+                                sql:NAME        set name for table in INSERT clause
+                                json:array      json output as array of arrays (default)
+                                json:object     json output as array of objects
+
+--no-headers                Don't show headers for plain, csv, or json:array output formats
+
+--demo                      Use Demo provider (default)
+--placeholder               Use Placeholder provider
+`;
+
 run();
 
 async function run () {
@@ -19,6 +42,11 @@ async function run () {
 
     const opts = rest.filter(a => a[0] === "-");
     let query = rest.filter(a => a[0] !== "-").join(" ").trim();
+
+    if (opts.includes("-h") || opts.includes("--help")) {
+        console.log(helpText);
+        return;
+    }
 
     const QueryExecutor = new Query();
 
@@ -45,9 +73,11 @@ async function run () {
     let mime = "text/plain";
     let option;
 
+    const headers = !opts.includes("--no-headers");
+
     for (let opt of opts) {
-        if (opt.startsWith('-f=') || opt.startsWith("--format=")) {
-            const tail = opt.startsWith('-f=') ? opt.substr(3) : opt.substr(9);
+        if (opt.startsWith('-f') || opt.startsWith("--format=")) {
+            const tail = opt.startsWith('-f=') ? opt.substr(3) : (opt.startsWith('-f') ? opt.substr(2) : opt.substr(9));
             const parts = tail.split(":");
             const fmt = parts[0];
             if (parts.length > 1) {
@@ -58,6 +88,6 @@ async function run () {
     }
 
     QueryExecutor.run(query).then(result => {
-        console.log(Formatter.format(result, { mime, option }));
+        console.log(Formatter.format(result, { mime, option, headers }));
     }).catch(e => console.error(e));
 }

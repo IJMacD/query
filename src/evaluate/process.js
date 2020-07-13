@@ -156,7 +156,7 @@ function processColumns (context, rawCols, rows) {
             if (rows.length === 0) {
                 // We don't have any results so we can't determine the cols
                 cols.push(node);
-                colHeaders.push(node.id);
+                colHeaders.push(String(node.id));
                 continue;
             }
 
@@ -201,7 +201,7 @@ function processColumns (context, rawCols, rows) {
         } else {
             cols.push(node);
             let colName = node.alias || (node.type === NODE_TYPES.SYMBOL ? node.id : node.source) || `Col ${cols.length}`;
-            colHeaders.push(colName);
+            colHeaders.push(String(colName));
 
             if (node.alias && typeof colAlias[node.alias] !== "undefined") {
                 throw new Error("Alias already in use: " + node.alias);

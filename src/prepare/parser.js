@@ -669,6 +669,12 @@ function parseFromTokenList (tokenList, source="") {
             suspect(TOKEN_TYPES.KEYWORD, "ASC");
         }
 
+        if (suspect(TOKEN_TYPES.KEYWORD, "NULLS FIRST")) {
+            out.nulls = "first";
+        } else if (suspect(TOKEN_TYPES.KEYWORD, "NULLS LAST")) {
+            out.nulls = "last";
+        }
+
         return out;
     }
 
@@ -687,9 +693,6 @@ function parseFromTokenList (tokenList, source="") {
             window.order = descendOrder();
         }
 
-        // These probably should be keywords rather than names.
-        // However when they're added to the tokenizer it clashes with
-        // the RANGE() table valued function.
         if (peek(TOKEN_TYPES.KEYWORD, "ROWS") ||
             peek(TOKEN_TYPES.KEYWORD, "RANGE") ||
             peek(TOKEN_TYPES.KEYWORD, "GROUPS")

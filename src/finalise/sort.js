@@ -1,5 +1,6 @@
 const { NODE_TYPES } = require('../types');
 const { comparator } = require('../evaluate/evaluate');
+const { isStrictNull } = require('../evaluate/const');
 
 module.exports = {
   sortRows,
@@ -29,6 +30,17 @@ function sortRows(evaluate, rows, orderBy) {
 
             const valA = getOrderingValue(evaluate, a, orderNode, depth);
             const valB = getOrderingValue(evaluate, b, orderNode, depth);
+
+            if (orderNode.nulls === "first") {
+                if (isStrictNull(valA) && isStrictNull(valB)) continue;
+                if (isStrictNull(valA)) return -1;
+                if (isStrictNull(valB)) return 1;
+            }
+            else if (orderNode.nulls === "last") {
+                if (isStrictNull(valA) && isStrictNull(valB)) continue;
+                if (isStrictNull(valA)) return 1;
+                if (isStrictNull(valB)) return -1;
+            }
 
             const sort = comparator(valA, valB) * (orderNode.desc ? -1 : 1);
 

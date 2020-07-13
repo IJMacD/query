@@ -39,6 +39,7 @@ declare namespace Query {
     desc?: boolean;
     distinct?: boolean;
     headers?: string[];
+    nulls?: string;
   }
 
   export interface WindowSpec {

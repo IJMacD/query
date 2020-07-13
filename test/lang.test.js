@@ -392,6 +392,75 @@ describe("ORDER BY", () => {
             expect(r[10][0].getDate()).toBe(21);
         });
     });
+
+    test("NULLS FIRST", () => {
+        return Promise.all([
+            demoQuery("FROM Test_3, O ORDER BY O.n NULLS FIRST").then(r => {
+                expect(r.length - 1).toBe(10);
+                expect(r[1][0]).toBe("I");
+                expect(r[1][1]).toBeNull();
+                expect(r[2][0]).toBe("J");
+                expect(r[2][1]).toBeNull();
+                expect(r[3][0]).toBe("H");
+                expect(r[3][1]).toBe(-8);
+            }),
+            demoQuery("FROM Test_3, O ORDER BY O.n DESC NULLS FIRST").then(r => {
+                expect(r.length - 1).toBe(10);
+                expect(r[1][0]).toBe("I");
+                expect(r[1][1]).toBeNull();
+                expect(r[2][0]).toBe("J");
+                expect(r[2][1]).toBeNull();
+                expect(r[3][0]).toBe("A");
+                expect(r[3][1]).toBe(-1);
+            })
+        ]);
+    });
+
+    test("NULLS LAST", () => {
+        return Promise.all([
+            demoQuery("FROM Test_3, O ORDER BY O.n NULLS LAST").then(r => {
+                expect(r.length - 1).toBe(10);
+                expect(r[1][0]).toBe("H");
+                expect(r[1][1]).toBe(-8);
+                expect(r[9][0]).toBe("I");
+                expect(r[9][1]).toBeNull();
+                expect(r[10][0]).toBe("J");
+                expect(r[10][1]).toBeNull();
+            }),
+            demoQuery("FROM Test_3, O ORDER BY O.n DESC NULLS LAST").then(r => {
+                expect(r.length - 1).toBe(10);
+                expect(r[1][0]).toBe("A");
+                expect(r[1][1]).toBe(-1);
+                expect(r[9][0]).toBe("I");
+                expect(r[9][1]).toBeNull();
+                expect(r[10][0]).toBe("J");
+                expect(r[10][1]).toBeNull();
+            })
+        ]);
+    });
+
+    test("NULLS FIRST additional sort", () => {
+        return Promise.all([
+            demoQuery("FROM Test_3, O ORDER BY O.n NULLS FIRST, c ASC").then(r => {
+                expect(r.length - 1).toBe(10);
+                expect(r[1][0]).toBe("I");
+                expect(r[1][1]).toBeNull();
+                expect(r[2][0]).toBe("J");
+                expect(r[2][1]).toBeNull();
+                expect(r[3][0]).toBe("H");
+                expect(r[3][1]).toBe(-8);
+            }),
+            demoQuery("FROM Test_3, O ORDER BY O.n NULLS FIRST, c DESC").then(r => {
+                expect(r.length - 1).toBe(10);
+                expect(r[1][0]).toBe("J");
+                expect(r[1][1]).toBeNull();
+                expect(r[2][0]).toBe("I");
+                expect(r[2][1]).toBeNull();
+                expect(r[3][0]).toBe("H");
+                expect(r[3][1]).toBe(-8);
+            })
+        ]);
+    });
 });
 
 describe("GROUP BY", () => {

@@ -32,6 +32,8 @@ const VALUE_FUNCTIONS = {
     },
     HEX: v => `0x${(+v).toString(16)}`,
     BIN: v => `0b${(+v).toString(2)}`,
+    RADIANS: v => v * Math.PI / 180,
+    DEGREES: v => v / Math.PI * 180,
 
     // String functions
     SUBSTR: (v, from, length) => isStrictNull(v) ? null : String(v).substr(from, length),
@@ -48,6 +50,8 @@ const VALUE_FUNCTIONS = {
     LPAD: (v, n, c="") => String(v).padStart(n, c),
     RPAD: (v, n, c="") => String(v).padEnd(n, c),
     TRIM: (v) => isStrictNull(v) ? null : String(v).trim(),
+    BASE64_ENCODE: typeof btoa === "function" ? btoa : v => Buffer.from(v).toString('base64'),
+    BASE64_DECODE: typeof atob === "function" ? atob : v => Buffer.from(v, 'base64').toString(),
 
     REGEXP_EXTRACT (value, regexp) {
         try {

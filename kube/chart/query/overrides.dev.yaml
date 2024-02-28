@@ -1,0 +1,8 @@
+hostname: query.localhost
+web:
+  repository:
+    image: k3d-registry.localhost:5111/ijmacd/query
+  tls:
+    enabled: true
+  local:
+    enabled: true

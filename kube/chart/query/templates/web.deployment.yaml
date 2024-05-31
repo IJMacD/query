@@ -31,6 +31,8 @@ spec:
           volumeMounts:
             - mountPath: /data
               name: web-data
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
       volumes:
         - name: web-data
           {{- if  .Values.web.persistence.enabled }}

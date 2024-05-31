@@ -1,0 +1,18 @@
+{{ if .Values.web.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: '{{ .Release.Name }}-web-data-{{ .Values.web.persistence.storage_class }}'
+  labels:
+    app.kubernetes.io/name: '{{ .Chart.Name }}'
+    app.kubernetes.io/instance: '{{ .Release.Name }}'
+    app.kubernetes.io/version: '{{ .Chart.Version }}'
+    app.kubernetes.io/component: web
+spec:
+  storageClassName: '{{ .Values.web.persistence.storage_class }}'
+  resources:
+    requests:
+      storage: '{{ .Values.web.persistence.capacity }}'
+  accessModes:
+    - ReadWriteOnce
+{{- end -}}

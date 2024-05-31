@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: '{{ .Release.Name }}-web'
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+    {{- if not .Values.web.local.enabled }}
+    traefik.ingress.kubernetes.io/router.middlewares: default-cloudflarewarp@kubernetescrd
+    {{- end }}
+spec:
+  rules:
+  - host: '{{ .Values.hostname }}'
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: '{{ .Release.Name }}-web'
+            port:
+              name: "web"
+  {{- if .Values.web.tls.enabled }}
+  tls:
+  - hosts:
+    - '{{ .Values.hostname }}'
+    secretName: {{ .Release.Name }}-cert
+  {{- end }}

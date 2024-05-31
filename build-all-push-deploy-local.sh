@@ -12,6 +12,8 @@ fi
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source ${SCRIPT_DIR}/vars.sh
 
+export KUBECONFIG=$LOCAL_KUBECONFIG
+
 [[ ! -z $(k3d cluster list ${APPNAME} | grep '0/1') ]] && k3d cluster stop --all && k3d cluster start ${APPNAME}
 
 # Delete the images on the node - not the registry!
@@ -20,8 +22,6 @@ docker exec k3d-${APPNAME}-server-0 sh -c 'ctr image rm $(ctr image list -q)'
 docker build ${SCRIPT_DIR} -f ${SCRIPT_DIR}/Dockerfile \
   -t ${REGISTRY_NAME}/${REPO}/${APPNAME}:${GIT_TAG} -t ${LOCAL_REGISTRY}/${REPO}/${APPNAME}:${GIT_TAG}
 docker push ${LOCAL_REGISTRY}/${REPO}/${APPNAME}:${GIT_TAG}
-
-# helm dependency build --skip-refresh $SCRIPT_DIR/kube/chart/${APPNAME}/
 
 helm upgrade --install ${APPNAME} \
   $SCRIPT_DIR/kube/chart/${APPNAME}/ \

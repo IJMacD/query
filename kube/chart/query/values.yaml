@@ -7,6 +7,14 @@ web:
     enabled: true
     storage_class: "local-path"
     capacity: "8Gi"
+  ingress:
+    enabled: false
+  gateway:
+    enabled: true
+    parentRef:
+      name: gateway
+      namespace: default
+      sectionName: https
   tls:
     enabled: false
   local:
@@ -14,6 +22,6 @@ web:
   resources:
     requests:
       cpu: 5m
-      memory: 49Mi
+      memory: 100Mi
     limits:
-      memory: 49Mi
+      memory: 100Mi

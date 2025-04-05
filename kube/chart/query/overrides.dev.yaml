@@ -2,6 +2,10 @@ hostname: query.localhost
 web:
   repository:
     image: k3d-registry.localhost:5111/ijmacd/query
+  ingress:
+    enabled: true
+  gateway:
+    enabled: false
   tls:
     enabled: true
   local:
